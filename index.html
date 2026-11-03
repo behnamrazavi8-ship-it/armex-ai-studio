@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#090909">
+<title>ARMEX AI STUDIO</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090909;color:#fff;font-family:Tahoma,Arial,sans-serif}
+header{padding:20px;border-bottom:1px solid #292929;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:19px;font-weight:900;letter-spacing:1px}
+.logo span{color:#ff263d}
+.menu{color:#aaa;font-size:13px}
+main{max-width:850px;margin:auto;padding:22px 16px}
+.hero{padding:32px 20px;border:1px solid #3a171d;border-radius:20px;background:radial-gradient(ellipse at top right,#421018,#171014 55%,#0d0d0d)}
+.tag{color:#ff4658;font-size:11px;letter-spacing:2px}
+h1{font-size:30px;line-height:1.6;margin:12px 0}
+h1 span{color:#ff263d}
+.hero p{color:#aaa;line-height:2;font-size:13px}
+.btn{border:0;border-radius:10px;padding:13px 18px;background:#ed2038;color:white;font-weight:bold;cursor:pointer}
+.section-title{font-size:18px;margin:30px 0 15px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.card{background:#151515;border:1px solid #292929;border-radius:15px;padding:18px;cursor:pointer;transition:.2s}
+.card:active{border-color:#ff263d;transform:scale(.98)}
+.icon{font-size:27px;margin-bottom:12px}
+.card h3{font-size:14px;margin:5px 0 10px}
+.card p{font-size:11px;color:#999;line-height:1.9;margin:0}
+.badge{display:inline-block;color:#ff6877;background:#35141b;padding:5px 9px;border-radius:20px;font-size:10px;margin-top:12px}
+.panel{background:#151515;border:1px solid #292929;padding:18px;border-radius:15px}
+textarea{width:100%;height:110px;background:#090909;border:1px solid #333;border-radius:10px;color:white;padding:13px;resize:vertical;font-family:inherit;line-height:2}
+.actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.secondary{background:#292929;color:#fff}
+footer{text-align:center;color:#666;font-size:11px;padding:35px 10px;line-height:2}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#292929;padding:13px 18px;border-radius:10px;display:none;font-size:12px}
+@media(min-width:650px){.grid{grid-template-columns:repeat(4,1fr)}h1{font-size:40px}}
+</style>
+</head>
+<body>
+<header>
+ <div class="logo">ARMEX <span>AI</span> STUDIO</div>
+ <div class="menu">CREATIVE POWER ✦</div>
+</header>
+
+<main>
+ <section class="hero">
+  <div class="tag">YOUR PERSONAL AI CREATIVE STUDIO</div>
+  <h1>ایده‌هایت را به <span>واقعیت</span> تبدیل کن.</h1>
+  <p>یک استودیوی خلاقیت هوش مصنوعی برای ساخت تصاویر، ویدیوها و خلق ایده‌های حرفه‌ای.</p>
+  <button class="btn" onclick="document.getElementById('tools').scrollIntoView({behavior:'smooth'})">شروع خلاقیت ←</button>
+ </section>
+
+ <h2 class="section-title" id="tools">✦ استودیوی خلاقیت</h2>
+ <section class="grid">
+  <div class="card" onclick="selectTool('تولید تصویر')">
+   <div class="icon">🎨</div>
+   <h3>تولید تصویر AI</h3>
+   <p>خلق تصاویر هنری و سینمایی از ایده‌ها</p>
+   <span class="badge">IMAGE STUDIO</span>
+  </div>
+  <div class="card" onclick="selectTool('تولید ویدیو')">
+   <div class="icon">🎬</div>
+   <h3>تولید ویدیو AI</h3>
+   <p>تبدیل متن و تصویر به ویدیو</p>
+   <span class="badge">VIDEO STUDIO</span>
+  </div>
+  <div class="card" onclick="selectTool('مهندسی پرامپت')">
+   <div class="icon">⚡</div>
+   <h3>مهندسی پرامپت</h3>
+   <p>ساخت دستورهای حرفه‌ای هوش مصنوعی</p>
+   <span class="badge">PROMPT LAB</span>
+  </div>
+  <div class="card" onclick="selectTool('ابزارهای خلاقیت')">
+   <div class="icon">🛠️</div>
+   <h3>ابزارهای خلاقیت</h3>
+   <p>مجموعه ابزارهای کاربردی تولید محتوا</p>
+   <span class="badge">CREATIVE TOOLS</span>
+  </div>
+ </section>
+
+ <h2 class="section-title">✦ فضای ساخت پرامپت</h2>
+ <section class="panel">
+  <p id="selected" style="color:#ff5265;font-size:13px">ابزار انتخابی: مهندسی پرامپت</p>
+  <textarea id="prompt" placeholder="ایده خود را اینجا بنویس..."></textarea>
+  <div class="actions">
+   <button class="btn" onclick="copyPrompt()">کپی پرامپت</button>
+   <button class="btn secondary" onclick="clearPrompt()">پاک کردن</button>
+  </div>
+ </section>
+
+ <h2 class="section-title">✦ درباره استودیو</h2>
+ <section class="panel">
+  <h3>ARMEX AI STUDIO</h3>
+  <p style="color:#aaa;font-size:13px;line-height:2">
+  یک فضای خلاقانه برای نسل جدید تولیدکنندگان محتوا؛
+  طراحی شده برای قدرت بخشیدن به ایده‌ها با کمک هوش مصنوعی.
+  </p>
+  <span class="badge">DESIGNED FOR CREATORS</span>
+ </section>
+</main>
+
+<footer>
+ ARMEX AI STUDIO<br>
+ CREATE • IMAGINE • INNOVATE<br>
+ © 2026 ARMEX
+</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+function notify(message){
+ const t=document.getElementById('toast');
+ t.textContent=message;
+ t.style.display='block';
+ setTimeout(()=>t.style.display='none',2200);
+}
+function selectTool(name){
+ document.getElementById('selected').textContent='ابزار انتخابی: '+name;
+ document.getElementById('prompt').focus();
+ notify(name+' انتخاب شد');
+}
+function copyPrompt(){
+ const p=document.getElementById('prompt');
+ if(!p.value.trim()){notify('ابتدا پرامپت خود را بنویس');return;}
+ if(navigator.clipboard && window.isSecureContext){
+ navigator.clipboard.writeText(p.value).then(()=>notify('پرامپت کپی شد')).catch(()=>notify('کپی انجام نشد'));
+ }else{
+ p.select();
+ notify('متن را انتخاب کن و کپی کن');
+ }
+}
+function clearPrompt(){
+ document.getElementById('prompt').value='';
+ notify('متن پاک شد');
+}
+</script>
+</body>
+</html>
