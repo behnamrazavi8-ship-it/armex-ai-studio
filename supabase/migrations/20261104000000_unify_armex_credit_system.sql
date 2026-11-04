@@ -40,6 +40,18 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'ARMEX migration preflight failed: profiles.credits is missing';
   END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.armex_payment_orders
+    WHERE provider IS NOT NULL
+      AND provider_reference IS NOT NULL
+      AND btrim(provider_reference) <> ''
+    GROUP BY provider, provider_reference
+    HAVING count(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'ARMEX migration preflight failed: duplicate provider payment references must be resolved first';
+  END IF;
 END
 $preflight$;
 
@@ -137,7 +149,9 @@ DECLARE
   v_referrer_id uuid;
   v_status text;
   v_granted boolean;
-  v_already_rewarded boolean;
+  v_invitee_granted boolean;
+  v_referrer_ledger_exists boolean;
+  v_invitee_ledger_exists boolean;
   v_has_successful_usage boolean;
   v_key text;
 BEGIN
@@ -159,7 +173,7 @@ BEGIN
     RETURN true;
   END IF;
 
-  IF v_status = 'rejected' THEN
+  IF v_status = 'rejected' OR v_status NOT IN ('pending', 'qualified') THEN
     RETURN false;
   END IF;
 
@@ -182,7 +196,14 @@ BEGIN
     RETURN false;
   END IF;
 
-  IF v_referrer_id = p_referred_user_id THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM auth.users
+    WHERE id = p_referred_user_id AND email_confirmed_at IS NOT NULL
+  ) THEN
+    RETURN false;
+  END IF;
+
+  IF v_referrer_id IS NULL OR v_referrer_id = p_referred_user_id THEN
     RETURN false;
   END IF;
 
@@ -194,32 +215,49 @@ BEGIN
   WHERE id = v_referral_id
     AND status = 'pending';
 
+  -- Both sides receive 200 credits for one qualified referral.
+  -- Separate idempotency keys prevent cross-recipient collisions.
   v_granted := public.armex_grant_credits(
     v_referrer_id,
     200,
     'referral_bonus',
-    v_key,
+    v_key || ':referrer',
     'پاداش دعوت موفق',
-    jsonb_build_object('referral_id', v_referral_id, 'referred_user_id', p_referred_user_id)
+    jsonb_build_object('referral_id', v_referral_id, 'referred_user_id', p_referred_user_id, 'recipient', 'referrer')
+  );
+
+  v_invitee_granted := public.armex_grant_credits(
+    p_referred_user_id,
+    200,
+    'referral_bonus',
+    v_key || ':referred',
+    'پاداش ثبت‌نام با دعوت موفق',
+    jsonb_build_object('referral_id', v_referral_id, 'referrer_user_id', v_referrer_id, 'recipient', 'referred')
   );
 
   SELECT EXISTS (
-    SELECT 1
-    FROM public.armex_credit_transactions
+    SELECT 1 FROM public.armex_credit_transactions
     WHERE user_id = v_referrer_id
-      AND idempotency_key = v_key
-  ) INTO v_already_rewarded;
+      AND idempotency_key = v_key || ':referrer'
+  ) INTO v_referrer_ledger_exists;
 
-  IF v_granted OR v_already_rewarded THEN
-    UPDATE public.armex_referrals
-    SET status = 'rewarded',
-        rewarded_at = COALESCE(rewarded_at, now())
-    WHERE id = v_referral_id;
+  SELECT EXISTS (
+    SELECT 1 FROM public.armex_credit_transactions
+    WHERE user_id = p_referred_user_id
+      AND idempotency_key = v_key || ':referred'
+  ) INTO v_invitee_ledger_exists;
 
-    RETURN true;
+  -- Raising rolls back both grants if either ledger entry is missing.
+  IF NOT v_referrer_ledger_exists OR NOT v_invitee_ledger_exists THEN
+    RAISE EXCEPTION 'Referral reward could not be completed atomically for referral %', v_referral_id;
   END IF;
 
-  RETURN false;
+  UPDATE public.armex_referrals
+  SET status = 'rewarded',
+      rewarded_at = COALESCE(rewarded_at, now())
+  WHERE id = v_referral_id;
+
+  RETURN true;
 END;
 $function$;
 
@@ -313,6 +351,15 @@ END;
 $function$;
 
 -- 8) Referral qualification and payment settlement must never be callable by browser users.
+REVOKE ALL ON FUNCTION public.armex_activate_user(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.armex_activate_user(uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.armex_grant_credits(uuid, bigint, text, text, text, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.armex_grant_credits(uuid, bigint, text, text, text, jsonb) TO service_role;
+
+REVOKE ALL ON FUNCTION public.armex_debit_credits(uuid, bigint, text, text, jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.armex_debit_credits(uuid, bigint, text, text, jsonb) TO service_role;
+
 REVOKE ALL ON FUNCTION public.armex_qualify_referral(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.armex_qualify_referral(uuid) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.armex_qualify_referral(uuid) TO service_role;
@@ -338,7 +385,7 @@ WHERE provider IS NOT NULL
   AND btrim(provider_reference) <> '';
 
 COMMENT ON FUNCTION public.armex_qualify_referral(uuid) IS
-'Trusted backend-only referral qualification. Requires a recorded successful usage row and server-side anti-abuse checks.';
+'Trusted backend-only referral qualification. Requires a confirmed account and a successful usage row written only after generation succeeds; grants 200 credits to both referrer and referred user. The backend must additionally enforce anti-abuse checks.';
 
 COMMENT ON FUNCTION public.armex_settle_payment_order(uuid, text) IS
 'Atomically credits a pending payment order once. Invoke only after the payment provider callback has been verified server-side.';
