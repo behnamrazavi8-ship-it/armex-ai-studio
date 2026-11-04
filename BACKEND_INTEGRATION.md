@@ -1,4 +1,4 @@
-# ARMEX AI STUDIO — Backend Integration Plan
+# LOKAL AI — Backend Integration Plan
 
 ## Verified repository state
 
