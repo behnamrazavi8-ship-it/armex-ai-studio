@@ -185,7 +185,7 @@ if (!config.supabaseUrl || !config.supabaseAnonKey ||
     setMessage("در حال ساخت حساب...");
     const { data, error } = await supabase.auth.signUp({
       ...credentials,
-      options: { emailRedirectTo: window.location.origin }
+      options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` }
     });
     if (error) return setMessage(translateError(error), true);
     if (data.session) renderSession(data.session);
@@ -206,7 +206,7 @@ if (!config.supabaseUrl || !config.supabaseAnonKey ||
     if (!email || !emailInput.checkValidity()) return setMessage("ابتدا ایمیل معتبر را وارد کن.", true);
     setMessage("در حال ارسال لینک بازیابی...");
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin
+      redirectTo: `${window.location.origin}${window.location.pathname}`
     });
     if (error) return setMessage(translateError(error), true);
     setMessage("اگر این ایمیل در سامانه ثبت شده باشد، لینک بازیابی برایش ارسال می‌شود.");
