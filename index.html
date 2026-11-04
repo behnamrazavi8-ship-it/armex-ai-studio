@@ -1,138 +1,96 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#090909">
-<title>ARMEX AI STUDIO</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090a0f">
+<meta name="description" content="ARMEX AI STUDIO — فضای یکپارچه خلق تصویر، ویدیو و ایده با هوش مصنوعی">
+<title>ARMEX AI STUDIO | استودیوی خلاقیت هوش مصنوعی</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#090909;color:#fff;font-family:Tahoma,Arial,sans-serif}
-header{padding:20px;border-bottom:1px solid #292929;display:flex;align-items:center;justify-content:space-between}
-.logo{font-size:19px;font-weight:900;letter-spacing:1px}
-.logo span{color:#ff263d}
-.menu{color:#aaa;font-size:13px}
-main{max-width:850px;margin:auto;padding:22px 16px}
-.hero{padding:32px 20px;border:1px solid #3a171d;border-radius:20px;background:radial-gradient(ellipse at top right,#421018,#171014 55%,#0d0d0d)}
-.tag{color:#ff4658;font-size:11px;letter-spacing:2px}
-h1{font-size:30px;line-height:1.6;margin:12px 0}
-h1 span{color:#ff263d}
-.hero p{color:#aaa;line-height:2;font-size:13px}
-.btn{border:0;border-radius:10px;padding:13px 18px;background:#ed2038;color:white;font-weight:bold;cursor:pointer}
-.section-title{font-size:18px;margin:30px 0 15px}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.card{background:#151515;border:1px solid #292929;border-radius:15px;padding:18px;cursor:pointer;transition:.2s}
-.card:active{border-color:#ff263d;transform:scale(.98)}
-.icon{font-size:27px;margin-bottom:12px}
-.card h3{font-size:14px;margin:5px 0 10px}
-.card p{font-size:11px;color:#999;line-height:1.9;margin:0}
-.badge{display:inline-block;color:#ff6877;background:#35141b;padding:5px 9px;border-radius:20px;font-size:10px;margin-top:12px}
-.panel{background:#151515;border:1px solid #292929;padding:18px;border-radius:15px}
-textarea{width:100%;height:110px;background:#090909;border:1px solid #333;border-radius:10px;color:white;padding:13px;resize:vertical;font-family:inherit;line-height:2}
-.actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
-.secondary{background:#292929;color:#fff}
-footer{text-align:center;color:#666;font-size:11px;padding:35px 10px;line-height:2}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#292929;padding:13px 18px;border-radius:10px;display:none;font-size:12px}
-@media(min-width:650px){.grid{grid-template-columns:repeat(4,1fr)}h1{font-size:40px}}
+:root{color-scheme:dark;--bg:#090a0f;--surface:#11131c;--surface2:#171a25;--line:#282c3b;--text:#f6f6fa;--muted:#a0a4b5;--red:#ff344f;--red2:#c81735;--gold:#f2bd68;--green:#5ed6a0;--radius:18px;--shadow:0 18px 55px #0008}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 80% -10%,#39101d 0,transparent 36%),var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif;min-height:100vh}button,input,textarea,select{font:inherit}button{cursor:pointer}.app{max-width:1440px;margin:auto;min-height:100vh}.topbar{height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid #ffffff12;position:sticky;top:0;background:#090a0feF;backdrop-filter:blur(18px);z-index:10}.brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:.5px}.brand-mark{width:39px;height:39px;border-radius:13px;background:linear-gradient(145deg,#ff5269,#a90e2d);display:grid;place-items:center;box-shadow:0 7px 24px #ff344f44;font-size:19px}.brand small{display:block;color:var(--muted);font-size:9px;letter-spacing:2px;margin-top:4px}.top-actions{display:flex;align-items:center;gap:10px}.credit-chip,.status-chip{border:1px solid var(--line);background:#ffffff08;border-radius:30px;padding:9px 13px;font-size:11px;color:#d8d9e1}.credit-chip b{color:var(--gold);font-size:14px;margin-right:5px}.avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#29202a;border:1px solid #58303b;color:#ff9aaa;font-weight:bold}.layout{display:grid;grid-template-columns:238px minmax(0,1fr);gap:28px;padding:28px}.sidebar{position:sticky;top:104px;align-self:start;background:#10121a;border:1px solid var(--line);border-radius:20px;padding:15px}.side-label{font-size:9px;color:#74798c;letter-spacing:1.5px;padding:12px 10px 8px}.nav-btn{width:100%;border:0;background:transparent;color:#aeb2c1;padding:12px 13px;border-radius:12px;text-align:right;display:flex;gap:12px;align-items:center;font-size:12px;margin:2px 0}.nav-btn:hover,.nav-btn.active{background:linear-gradient(90deg,#ff344f20,#ff344f08);color:#fff}.nav-btn.active{box-shadow:inset -2px 0 var(--red)}.nav-ico{font-size:17px;width:22px;text-align:center}.side-note{margin-top:20px;padding:13px;border:1px solid #44303a;background:#21141b;border-radius:14px;font-size:10px;color:#c7aab2;line-height:1.9}.side-note b{color:#ff8292;display:block;margin-bottom:4px}.main{min-width:0}.welcome{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin:5px 0 24px}.eyebrow{font-size:10px;color:#ff7285;letter-spacing:2px}.welcome h1{font-size:clamp(23px,3vw,34px);margin:9px 0 8px}.welcome p{color:var(--muted);font-size:12px;line-height:1.9;margin:0}.date-label{color:#888da0;font-size:11px;white-space:nowrap}.hero{position:relative;overflow:hidden;border:1px solid #6a2637;border-radius:24px;padding:29px 30px;background:linear-gradient(115deg,#281018 0,#17131d 54%,#11131a 100%);box-shadow:var(--shadow);margin-bottom:25px}.hero:after{content:"✦";position:absolute;left:8%;top:-46px;font-size:190px;color:#ff344f10;transform:rotate(12deg)}.hero-content{position:relative;z-index:1;max-width:650px}.hero-tag{font-size:9px;letter-spacing:2px;color:#ff8998}.hero h2{font-size:clamp(22px,3vw,32px);line-height:1.6;margin:12px 0}.hero h2 span{color:#ff5269}.hero p{font-size:12px;color:#c2b7bf;line-height:2;margin:0 0 20px}.btn{border:0;border-radius:11px;padding:12px 17px;color:white;background:linear-gradient(135deg,var(--red),var(--red2));font-size:11px;font-weight:bold;box-shadow:0 7px 22px #ff344f2b}.btn:hover{filter:brightness(1.12);transform:translateY(-1px)}.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}.btn-ghost{background:#ffffff0a;border:1px solid var(--line);box-shadow:none;color:#ddd}.section-head{display:flex;align-items:center;justify-content:space-between;margin:28px 0 14px}.section-head h3{font-size:15px;margin:0}.section-head span{font-size:10px;color:#82879a}.tools-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}.tool-card{position:relative;min-height:157px;background:linear-gradient(145deg,#171a25,#10121a);border:1px solid var(--line);border-radius:17px;padding:17px;text-align:right;color:inherit;transition:.2s}.tool-card:hover{border-color:#a6384b;transform:translateY(-3px);background:#1b1822}.tool-icon{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:#ff344f18;font-size:21px;margin-bottom:15px}.tool-card h4{font-size:12px;margin:0 0 8px}.tool-card p{font-size:10px;color:var(--muted);line-height:1.8;margin:0}.tool-arrow{position:absolute;left:15px;top:20px;color:#72788a}.workspace{margin-top:25px;border:1px solid var(--line);background:var(--surface);border-radius:20px;overflow:hidden}.workspace-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}.workspace-head h3{font-size:14px;margin:0}.workspace-head p{font-size:10px;color:var(--muted);margin:6px 0 0}.demo-label{font-size:9px;color:var(--gold);border:1px solid #72552d;background:#4b361c33;border-radius:30px;padding:6px 9px;white-space:nowrap}.workspace-body{padding:20px}.field-label{display:block;font-size:11px;color:#d9dbe5;margin-bottom:9px}.textarea{width:100%;min-height:130px;resize:vertical;background:#090b11;border:1px solid #303444;border-radius:13px;color:white;padding:14px;outline:none;line-height:2;font-size:12px}.textarea:focus,.input:focus,.select:focus{border-color:#b63c52;box-shadow:0 0 0 3px #ff344f16}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:15px}.input,.select{width:100%;background:#090b11;border:1px solid #303444;border-radius:11px;color:#eee;padding:11px 12px;font-size:11px;outline:none}.workspace-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.result{margin-top:15px;padding:14px;border:1px solid #34483f;background:#122019;border-radius:12px;color:#c8ead8;font-size:11px;line-height:1.9;display:none}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px}.stat{border:1px solid var(--line);background:#11131c;border-radius:15px;padding:15px}.stat span{font-size:10px;color:var(--muted)}.stat b{display:block;font-size:19px;margin-top:9px}.stat small{font-size:9px;color:#73798a}.bottom-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:24px}.info-card{background:#11131c;border:1px solid var(--line);border-radius:17px;padding:18px}.info-card h3{font-size:13px;margin:0 0 12px}.info-card p,.info-card li{font-size:10px;color:var(--muted);line-height:2}.info-card ul{padding-right:18px;margin:0}.notice{border-right:2px solid var(--gold);padding:9px 12px;background:#3b2c171f;color:#c9b58f;font-size:10px;line-height:1.9;margin-top:12px}.page{display:none}.page.active{display:block}.empty{padding:35px;text-align:center;color:#9297a8;border:1px dashed #343849;border-radius:15px;font-size:11px;line-height:2}.mobile-nav{display:none}.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#242633;border:1px solid #44495c;color:white;border-radius:12px;padding:12px 17px;font-size:11px;box-shadow:var(--shadow);z-index:30;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}.footer{text-align:center;color:#606577;font-size:9px;padding:30px 10px 12px;letter-spacing:1px}
+@media(max-width:1050px){.tools-grid{grid-template-columns:repeat(2,1fr)}.layout{gap:18px;padding:20px}.sidebar{width:210px}}
+@media(max-width:700px){.topbar{height:65px;padding:0 15px}.layout{display:block;padding:18px 14px 88px}.sidebar{display:none}.welcome{align-items:flex-start}.date-label{display:none}.hero{padding:23px 19px}.tools-grid{gap:9px}.tool-card{min-height:145px;padding:13px}.field-row,.bottom-grid{grid-template-columns:1fr}.stats{gap:8px}.stat{padding:12px}.stat b{font-size:16px}.top-actions .status-chip{display:none}.mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:20;background:#10121aef;backdrop-filter:blur(15px);border-top:1px solid var(--line);justify-content:space-around;padding:9px 5px calc(9px + env(safe-area-inset-bottom))}.mobile-nav button{border:0;background:none;color:#9da2b3;font-size:9px;display:grid;gap:4px;justify-items:center}.mobile-nav button span{font-size:18px}.mobile-nav button.active{color:#ff6c80}.workspace-body{padding:14px}.workspace-head{padding:15px}.credit-chip{padding:8px 10px}.brand{font-size:12px}.brand-mark{width:34px;height:34px}}
 </style>
 </head>
 <body>
-<header>
- <div class="logo">ARMEX <span>AI</span> STUDIO</div>
- <div class="menu">CREATIVE POWER ✦</div>
+<div class="app">
+<header class="topbar">
+ <div class="brand"><div class="brand-mark">A</div><div>ARMEX AI STUDIO<small>CREATE • IMAGINE • INNOVATE</small></div></div>
+ <div class="top-actions"><div class="credit-chip">اعتبار نمایشی <b id="creditCount">۵۰۰</b></div><div class="status-chip">نسخه پیش‌نمایش</div><div class="avatar">A</div></div>
 </header>
-
-<main>
- <section class="hero">
-  <div class="tag">YOUR PERSONAL AI CREATIVE STUDIO</div>
-  <h1>ایده‌هایت را به <span>واقعیت</span> تبدیل کن.</h1>
-  <p>یک استودیوی خلاقیت هوش مصنوعی برای ساخت تصاویر، ویدیوها و خلق ایده‌های حرفه‌ای.</p>
-  <button class="btn" onclick="document.getElementById('tools').scrollIntoView({behavior:'smooth'})">شروع خلاقیت ←</button>
- </section>
-
- <h2 class="section-title" id="tools">✦ استودیوی خلاقیت</h2>
- <section class="grid">
-  <div class="card" onclick="selectTool('تولید تصویر')">
-   <div class="icon">🎨</div>
-   <h3>تولید تصویر AI</h3>
-   <p>خلق تصاویر هنری و سینمایی از ایده‌ها</p>
-   <span class="badge">IMAGE STUDIO</span>
-  </div>
-  <div class="card" onclick="selectTool('تولید ویدیو')">
-   <div class="icon">🎬</div>
-   <h3>تولید ویدیو AI</h3>
-   <p>تبدیل متن و تصویر به ویدیو</p>
-   <span class="badge">VIDEO STUDIO</span>
-  </div>
-  <div class="card" onclick="selectTool('مهندسی پرامپت')">
-   <div class="icon">⚡</div>
-   <h3>مهندسی پرامپت</h3>
-   <p>ساخت دستورهای حرفه‌ای هوش مصنوعی</p>
-   <span class="badge">PROMPT LAB</span>
-  </div>
-  <div class="card" onclick="selectTool('ابزارهای خلاقیت')">
-   <div class="icon">🛠️</div>
-   <h3>ابزارهای خلاقیت</h3>
-   <p>مجموعه ابزارهای کاربردی تولید محتوا</p>
-   <span class="badge">CREATIVE TOOLS</span>
-  </div>
- </section>
-
- <h2 class="section-title">✦ فضای ساخت پرامپت</h2>
- <section class="panel">
-  <p id="selected" style="color:#ff5265;font-size:13px">ابزار انتخابی: مهندسی پرامپت</p>
-  <textarea id="prompt" placeholder="ایده خود را اینجا بنویس..."></textarea>
-  <div class="actions">
-   <button class="btn" onclick="copyPrompt()">کپی پرامپت</button>
-   <button class="btn secondary" onclick="clearPrompt()">پاک کردن</button>
-  </div>
- </section>
-
- <h2 class="section-title">✦ درباره استودیو</h2>
- <section class="panel">
-  <h3>ARMEX AI STUDIO</h3>
-  <p style="color:#aaa;font-size:13px;line-height:2">
-  یک فضای خلاقانه برای نسل جدید تولیدکنندگان محتوا؛
-  طراحی شده برای قدرت بخشیدن به ایده‌ها با کمک هوش مصنوعی.
-  </p>
-  <span class="badge">DESIGNED FOR CREATORS</span>
- </section>
+<div class="layout">
+<aside class="sidebar">
+ <div class="side-label">فضای کاری</div>
+ <button class="nav-btn active" data-page="home"><span class="nav-ico">⌂</span>داشبورد</button>
+ <button class="nav-btn" data-page="prompt"><span class="nav-ico">✦</span>مهندسی پرامپت</button>
+ <button class="nav-btn" data-page="projects"><span class="nav-ico">▤</span>پروژه‌های من</button>
+ <button class="nav-btn" data-page="account"><span class="nav-ico">◉</span>حساب کاربری</button>
+ <div class="side-label">راهنما</div>
+ <button class="nav-btn" data-page="about"><span class="nav-ico">ⓘ</span>درباره استودیو</button>
+ <div class="side-note"><b>نسخه در حال توسعه</b>این محیط پیش‌نمایش رابط کاربری است. ورود، پرداخت و تولید واقعی پس از اتصال امن سرویس‌ها فعال می‌شوند.</div>
+</aside>
+<main class="main">
+<section class="page active" id="page-home">
+ <div class="welcome"><div><div class="eyebrow">به فضای خلاقیت خوش آمدی</div><h1>ایده‌ات را به جهان نشان بده.</h1><p>ابزار مناسب را انتخاب کن و ساختن را شروع کن؛ همه‌چیز از یک ایده آغاز می‌شود.</p></div><div class="date-label">ARMEX / CREATIVE WORKSPACE</div></div>
+ <section class="hero"><div class="hero-content"><div class="hero-tag">YOUR PERSONAL AI CREATIVE STUDIO</div><h2>قدرت تخیل تو،<br><span>بدون مرز.</span></h2><p>فضای یکپارچه برای طراحی تصویر، ساخت ویدیو و تبدیل ایده‌های خام به پرامپت‌های دقیق و حرفه‌ای.</p><button class="btn" data-go="prompt">ورود به آزمایشگاه پرامپت ←</button></div></section>
+ <div class="section-head"><h3>ابزارهای خلاقیت</h3><span>۴ ابزار اصلی</span></div>
+ <div class="tools-grid">
+  <button class="tool-card" data-tool="image"><div class="tool-icon">🎨</div><span class="tool-arrow">↖</span><h4>استودیوی تصویر</h4><p>ایده‌پردازی و آماده‌سازی پرامپت تصویر</p></button>
+  <button class="tool-card" data-tool="video"><div class="tool-icon">🎬</div><span class="tool-arrow">↖</span><h4>استودیوی ویدیو</h4><p>طراحی سناریو و پرامپت ویدیویی</p></button>
+  <button class="tool-card" data-tool="prompt"><div class="tool-icon">⚡</div><span class="tool-arrow">↖</span><h4>مهندسی پرامپت</h4><p>ساخت دستورهای دقیق برای مدل‌های هوش مصنوعی</p></button>
+  <button class="tool-card" data-tool="ideas"><div class="tool-icon">🧠</div><span class="tool-arrow">↖</span><h4>آزمایشگاه ایده</h4><p>توسعه کانسپت و مسیرهای خلاقانه</p></button>
+ </div>
+ <div class="stats"><div class="stat"><span>اعتبار نمایشی اولیه</span><b>۵۰۰</b><small>قابل استفاده واقعی نیست</small></div><div class="stat"><span>ابزارهای آماده رابط</span><b>۰۴</b><small>اتصال موتور در مرحله بعد</small></div><div class="stat"><span>پروژه‌های ذخیره‌شده</span><b id="projectCount">۰</b><small>روی همین مرورگر</small></div></div>
+ <div class="bottom-grid"><div class="info-card"><h3>شروع سریع</h3><ul><li>نوع محتوای موردنظرت را انتخاب کن.</li><li>ایده و جزئیات را در آزمایشگاه بنویس.</li><li>پرامپت آماده‌شده را کپی و در ابزار دلخواه استفاده کن.</li></ul></div><div class="info-card"><h3>وضعیت توسعه</h3><p>رابط اصلی و ابزارهای کمکی در حال آماده‌سازی هستند.</p><div class="notice">تولید تصویر/ویدیو، حساب کاربری و پرداخت تا زمان اتصال Backend فعال نیستند.</div></div></div>
+</section>
+<section class="page" id="page-prompt">
+ <div class="welcome"><div><div class="eyebrow">PROMPT LAB</div><h1>آزمایشگاه پرامپت</h1><p>ایده‌ات را بنویس و یک دستور ساختاریافته برای ابزارهای هوش مصنوعی آماده کن.</p></div></div>
+ <div class="workspace"><div class="workspace-head"><div><h3>سازنده پرامپت</h3><p>خروجی متنی؛ بدون فراخوانی مدل خارجی</p></div><span class="demo-label">ابزار محلی</span></div><div class="workspace-body">
+ <label class="field-label" for="idea">ایده یا توضیح اولیه</label><textarea id="idea" class="textarea" placeholder="مثلاً: یک خودروی اسپرت مشکی در خیابان خیس و نورهای قرمز نئونی..."></textarea>
+ <div class="field-row"><div><label class="field-label" for="contentType">نوع خروجی</label><select class="select" id="contentType"><option value="image">تصویر</option><option value="video">ویدیو</option><option value="design">طراحی گرافیک</option><option value="social">محتوای شبکه اجتماعی</option></select></div><div><label class="field-label" for="style">سبک بصری</label><select class="select" id="style"><option>سینمایی و واقع‌گرایانه</option><option>مینیمال و مدرن</option><option>فانتزی و سورئال</option><option>تاریک و دراماتیک</option><option>سه‌بعدی و آینده‌نگر</option><option>تبلیغاتی و تجاری</option></select></div></div>
+ <div class="field-row"><div><label class="field-label" for="ratio">کادر تصویر</label><select class="select" id="ratio"><option>۱:۱ مربع</option><option selected>۹:۱۶ عمودی</option><option>۱۶:۹ افقی</option><option>۴:۵ پرتره</option><option>۳:۲ منظره</option></select></div><div><label class="field-label" for="language">زبان پرامپت</label><select class="select" id="language"><option value="en">انگلیسی (پیشنهادی)</option><option value="fa">فارسی</option></select></div></div>
+ <div class="workspace-actions"><button class="btn" id="generatePrompt">ساخت پرامپت</button><button class="btn btn-ghost" id="savePrompt">ذخیره در پروژه‌ها</button><button class="btn btn-ghost" id="clearPrompt">پاک کردن</button></div>
+ <div id="promptResult" class="result" aria-live="polite"></div><div class="workspace-actions" id="resultActions" style="display:none"><button class="btn" id="copyResult">کپی خروجی</button></div>
+ </div></div>
+</section>
+<section class="page" id="page-projects"><div class="welcome"><div><div class="eyebrow">MY WORK</div><h1>پروژه‌های من</h1><p>پروژه‌هایی که در همین مرورگر ذخیره کرده‌ای.</p></div></div><div id="projectsList" class="empty">هنوز پروژه‌ای ذخیره نشده است.</div><div class="notice">ذخیره‌سازی فعلاً محلی است و بین دستگاه‌ها همگام‌سازی نمی‌شود.</div></section>
+<section class="page" id="page-account"><div class="welcome"><div><div class="eyebrow">ACCOUNT</div><h1>حساب کاربری</h1><p>نمای پیش‌نمایش حساب کاربری ARMEX.</p></div></div><div class="info-card"><h3>حساب مهمان</h3><p>برای استفاده از امکانات شخصی‌سازی‌شده، سامانه ثبت‌نام و ورود باید به Backend متصل شود.</p><div class="notice">در این نسخه هیچ حسابی ساخته نمی‌شود و اعتبار نمایش‌داده‌شده واقعی نیست.</div></div></section>
+<section class="page" id="page-about"><div class="welcome"><div><div class="eyebrow">ABOUT ARMEX</div><h1>خلق کن. تصور کن. نوآوری کن.</h1><p>ARMEX AI STUDIO فضای خلاقیت دیجیتال با کمک هوش مصنوعی است.</p></div></div><div class="info-card"><h3>نقشه راه محصول</h3><ul><li>تکمیل رابط کاربری واکنش‌گرا</li><li>اتصال امن سرویس احراز هویت و پایگاه داده</li><li>اتصال موتورهای تولید تصویر و ویدیو</li><li>کیف پول اعتبار، تراکنش و دعوت دوستان</li><li>درگاه پرداخت متناسب با بازار هدف</li></ul></div></section>
+<footer class="footer">ARMEX AI STUDIO · CREATE · IMAGINE · INNOVATE · © 2026</footer>
 </main>
-
-<footer>
- ARMEX AI STUDIO<br>
- CREATE • IMAGINE • INNOVATE<br>
- © 2026 ARMEX
-</footer>
-<div class="toast" id="toast"></div>
-
+</div>
+<nav class="mobile-nav"><button class="active" data-page="home"><span>⌂</span>خانه</button><button data-page="prompt"><span>✦</span>پرامپت</button><button data-page="projects"><span>▤</span>پروژه‌ها</button><button data-page="account"><span>◉</span>حساب</button></nav>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-function notify(message){
- const t=document.getElementById('toast');
- t.textContent=message;
- t.style.display='block';
- setTimeout(()=>t.style.display='none',2200);
-}
-function selectTool(name){
- document.getElementById('selected').textContent='ابزار انتخابی: '+name;
- document.getElementById('prompt').focus();
- notify(name+' انتخاب شد');
-}
-function copyPrompt(){
- const p=document.getElementById('prompt');
- if(!p.value.trim()){notify('ابتدا پرامپت خود را بنویس');return;}
- if(navigator.clipboard && window.isSecureContext){
- navigator.clipboard.writeText(p.value).then(()=>notify('پرامپت کپی شد')).catch(()=>notify('کپی انجام نشد'));
- }else{
- p.select();
- notify('متن را انتخاب کن و کپی کن');
+(()=> {
+ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+ const storeKey='armex_demo_projects_v1';
+ let output='';
+ const toast=msg=>{const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2400)};
+ const readProjects=()=>{try{return JSON.parse(localStorage.getItem(storeKey)||'[]')}catch{return []}};
+ const writeProjects=p=>{try{localStorage.setItem(storeKey,JSON.stringify(p));return true}catch{return false}};
+ function showPage(name){$$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));$$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===name));window.scrollTo({top:0,behavior:'smooth'});if(name==='projects')renderProjects()}
+ $$('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+ $$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
+ $$('[data-tool]').forEach(b=>b.addEventListener('click',()=>{const tool=b.dataset.tool;$('#contentType').value=tool==='video'?'video':tool==='image'?'image':tool==='ideas'?'social':'design';showPage('prompt');$('#idea').focus()}));
+ function buildPrompt(){
+  const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return ''}
+  const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;
+  const labels={image:'Create a high-quality image based on this concept:',video:'Create a cinematic video based on this concept:',design:'Create a polished graphic design based on this concept:',social:'Create engaging social media content based on this concept:'};
+  const en=labels[type]+' '+idea+'. Visual direction: '+style+'. Composition: '+ratio+'. Use clear subject hierarchy, refined lighting, rich but balanced details, professional production quality, coherent perspective, and intentional color grading. Avoid visual clutter, distorted anatomy, random text, watermarks, and unwanted logos.';
+  const fa='بر اساس این ایده '+(type==='video'?'یک ویدیوی سینمایی':type==='design'?'یک طراحی گرافیکی حرفه‌ای':type==='social'?'یک محتوای جذاب شبکه اجتماعی':'یک تصویر باکیفیت')+' خلق کن: '+idea+'؛ سبک بصری: '+style+'؛ کادر: '+ratio+'؛ ترکیب‌بندی حرفه‌ای، نورپردازی دقیق، جزئیات منسجم، سوژه واضح و کیفیت خروجی بالا. از شلوغی بصری، نوشته‌های تصادفی، واترمارک و لوگوهای ناخواسته پرهیز کن.';
+  return lang==='fa'?fa:en;
  }
-}
-function clearPrompt(){
- document.getElementById('prompt').value='';
- notify('متن پاک شد');
-}
+ $('#generatePrompt').addEventListener('click',()=>{output=buildPrompt();if(!output)return;$('#promptResult').textContent=output;$('#promptResult').style.display='block';$('#resultActions').style.display='flex'});
+ $('#copyResult').addEventListener('click',async()=>{if(!output)return;try{await navigator.clipboard.writeText(output);toast('پرامپت کپی شد.')}catch{$('#promptResult').focus();toast('امکان کپی خودکار نیست؛ متن را انتخاب کن.')}});
+ $('#savePrompt').addEventListener('click',()=>{if(!output)output=buildPrompt();if(!output)return;const p=readProjects();p.unshift({id:Date.now(),title:$('#idea').value.trim().slice(0,55),prompt:output,created:new Date().toLocaleString('fa-IR')});if(writeProjects(p)){renderProjects();toast('پروژه در همین مرورگر ذخیره شد.')}else toast('ذخیره‌سازی مرورگر در دسترس نیست.')});
+ $('#clearPrompt').addEventListener('click',()=>{$('#idea').value='';$('#promptResult').textContent='';$('#promptResult').style.display='none';$('#resultActions').style.display='none';output='';toast('فرم پاک شد.')});
+ function renderProjects(){const p=readProjects();$('#projectCount').textContent=p.length.toLocaleString('fa-IR');const root=$('#projectsList');if(!p.length){root.className='empty';root.textContent='هنوز پروژه‌ای ذخیره نشده است.';return}root.className='';root.innerHTML=p.map(x=>'<article class="info-card" style="margin-bottom:12px"><h3>'+escapeHtml(x.title||'پروژه بدون عنوان')+'</h3><p>'+escapeHtml(x.created||'')+'</p><p style="white-space:pre-wrap">'+escapeHtml(x.prompt)+'</p><button class="btn btn-ghost" data-copy="'+x.id+'">کپی پرامپت</button> <button class="btn btn-ghost" data-delete="'+x.id+'">حذف</button></article>').join('');$$('[data-copy]').forEach(b=>b.addEventListener('click',async()=>{const item=readProjects().find(x=>x.id===Number(b.dataset.copy));if(item){try{await navigator.clipboard.writeText(item.prompt);toast('کپی شد.')}catch{toast('کپی خودکار در دسترس نیست.')}}}));$$('[data-delete]').forEach(b=>b.addEventListener('click',()=>{writeProjects(readProjects().filter(x=>x.id!==Number(b.dataset.delete)));renderProjects();toast('پروژه حذف شد.')}))}
+ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+ renderProjects();
+})();
 </script>
 </body>
 </html>
