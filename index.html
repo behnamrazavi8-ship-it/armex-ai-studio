@@ -83,6 +83,58 @@ body{
  .workspace,.info-card{border-radius:17px}
 }
 
+
+/* LOKAL AI Emerald & Deep Blue visual system */
+:root{
+ --bg:#05090b;--surface:#0b1216;--surface2:#101e29;--line:#18313a;
+ --text:#effffb;--muted:#91aaa9;--red:#18d6a5;--red2:#079b82;
+ --radius:20px;--shadow:0 24px 70px #000b;
+}
+body{
+ background:
+  radial-gradient(ellipse at 88% 2%,#0a8f7130 0,transparent 34%),
+  radial-gradient(ellipse at 8% 48%,#123b7040 0,transparent 38%),
+  #05090b;
+ color:var(--text);
+}
+.topbar{background:#050a0ced;border-bottom-color:#1b3a3b;box-shadow:0 8px 30px #0008}
+.brand-mark{background:linear-gradient(145deg,#27f0b9,#087e70);box-shadow:0 0 0 5px #18d6a51c,0 8px 30px #18d6a544}
+.brand-mark:after{border-color:#45f5c04a}
+.sidebar{background:linear-gradient(180deg,#0d1a20,#091116);border-color:#1a3940}
+.nav-btn.active{background:linear-gradient(100deg,#16d6a526,#16d6a507);box-shadow:inset -2px 0 #20e4b1,0 8px 24px #0004}
+.hero{
+ background:
+  radial-gradient(ellipse at 15% 80%,#13d7a51e 0,transparent 40%),
+  radial-gradient(ellipse at 88% 10%,#1765b52c 0,transparent 45%),
+  linear-gradient(112deg,#0b2929 0%,#0c1b28 52%,#0a111c 100%);
+ border-color:#1c655c;box-shadow:0 25px 70px #0009,inset 0 1px #ffffff12;
+}
+.hero h2 span{background:linear-gradient(90deg,#8bffdb,#20e3b0 58%,#2999e8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn{background:linear-gradient(120deg,#20e5b2,#087e78);color:#03130f;box-shadow:0 8px 28px #18d6a533,inset 0 1px #ffffff55}
+.btn:hover{box-shadow:0 12px 32px #18d6a555,inset 0 1px #ffffff55}
+.btn-ghost{background:#ffffff08;border-color:#ffffff1b;color:#d7eeeb;box-shadow:none}
+.tool-card{background:linear-gradient(145deg,#10263a,#0b151f 72%);border-color:#1a3b50;box-shadow:0 12px 28px #0004}
+.tool-card:before{background:linear-gradient(135deg,#3b9be51a,transparent 48%)}
+.tool-card:hover{border-color:#20dcb388;box-shadow:0 16px 34px #0007,0 0 26px #18d6a514}
+.tool-icon{background:linear-gradient(145deg,#18d6a52c,#1765b52b);border:1px solid #2c9e9380;box-shadow:inset 0 1px #ffffff12}
+.workspace,.info-card,.stat{background:linear-gradient(145deg,#101d25,#0a1219);border-color:#1b3842;box-shadow:0 14px 35px #0004}
+.workspace-head{background:#ffffff04;border-bottom-color:#ffffff12}
+.textarea,.input,.select{background:#071016;border-color:#23404a;color:#eafffa}
+.textarea:focus,.input:focus,.select:focus{border-color:#20dcb3;box-shadow:0 0 0 3px #18d6a51c,0 0 22px #18d6a512}
+.stat:after{background:#18d6a512}
+.stat b{color:#eafffa}
+.demo-label{background:#10352f80;border-color:#24685b;color:#8ff5d5}
+.side-note{background:linear-gradient(135deg,#102c30,#102039);border-color:#245b60}
+.notice{background:#123e382e;border-color:#24594e}
+.mobile-nav{background:#071016ed;border-top-color:#1c3a42;box-shadow:0 -12px 35px #0007}
+.mobile-nav button.active{color:#38e7b8}
+.toast{background:#10212a;border-color:#28505a;color:#eafffa}
+.footer{color:#718b8d;letter-spacing:1.5px}
+@media(max-width:700px){
+ body{background:radial-gradient(ellipse at 85% 0%,#0a8f7130 0,transparent 35%),#05090b}
+ .hero{background:radial-gradient(ellipse at 15% 80%,#13d7a51e 0,transparent 40%),linear-gradient(112deg,#0b2929,#0a111c)}
+}
+
 </style>
 </head>
 <body>
