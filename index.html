@@ -55,7 +55,29 @@
  </div></div>
 </section>
 <section class="page" id="page-projects"><div class="welcome"><div><div class="eyebrow">MY WORK</div><h1>پروژه‌های من</h1><p>پروژه‌هایی که در همین مرورگر ذخیره کرده‌ای.</p></div></div><div id="projectsList" class="empty">هنوز پروژه‌ای ذخیره نشده است.</div><div class="notice">ذخیره‌سازی فعلاً محلی است و بین دستگاه‌ها همگام‌سازی نمی‌شود.</div></section>
-<section class="page" id="page-account"><div class="welcome"><div><div class="eyebrow">ACCOUNT</div><h1>حساب کاربری</h1><p>نمای پیش‌نمایش حساب کاربری ARMEX.</p></div></div><div class="info-card"><h3>حساب مهمان</h3><p>برای استفاده از امکانات شخصی‌سازی‌شده، سامانه ثبت‌نام و ورود باید به Backend متصل شود.</p><div class="notice">در این نسخه هیچ حسابی ساخته نمی‌شود و اعتبار نمایش‌داده‌شده واقعی نیست.</div></div></section>
+<section class="page" id="page-account">
+ <div class="welcome"><div><div class="eyebrow">ACCOUNT</div><h1>حساب کاربری</h1><p>ثبت‌نام و ورود امن با ایمیل از طریق Supabase Auth.</p></div></div>
+ <div class="info-card" id="auth-session-card" hidden>
+  <h3>حساب فعال</h3><p id="auth-user-email"></p>
+  <div class="notice">ورود موفق است. اعتبار کیف پول پس از اعمال مهاجرت دیتابیس و اتصال سرویس اعتبار نمایش داده می‌شود.</div>
+  <div class="workspace-actions"><button class="btn btn-ghost" id="auth-signout" type="button">خروج از حساب</button></div>
+ </div>
+ <div class="workspace" id="auth-form-card">
+  <div class="workspace-head"><div><h3>ورود یا ساخت حساب</h3><p>برای ثبت‌نام، ایمیل خود را تأیید می‌کنی.</p></div><span class="demo-label">Supabase Auth</span></div>
+  <div class="workspace-body">
+   <label class="field-label" for="auth-email">ایمیل</label><input class="input" id="auth-email" type="email" autocomplete="email" placeholder="name@example.com" required>
+   <div style="height:13px"></div>
+   <label class="field-label" for="auth-password">رمز عبور</label><input class="input" id="auth-password" type="password" autocomplete="current-password" minlength="8" placeholder="حداقل ۸ کاراکتر" required>
+   <div class="workspace-actions">
+    <button class="btn" id="auth-signin" type="button">ورود</button>
+    <button class="btn btn-ghost" id="auth-signup" type="button">ساخت حساب</button>
+    <button class="btn btn-ghost" id="auth-reset" type="button">بازیابی رمز</button>
+   </div>
+   <div class="result" id="auth-message" role="status" aria-live="polite" style="display:block"></div>
+   <div class="notice">کلید قابل انتشار Supabase فقط در فایل armex-config.js قرار می‌گیرد. هرگز service_role key یا رمز محرمانه را در این فایل وارد نکن.</div>
+  </div>
+ </div>
+</section>
 <section class="page" id="page-about"><div class="welcome"><div><div class="eyebrow">ABOUT ARMEX</div><h1>خلق کن. تصور کن. نوآوری کن.</h1><p>ARMEX AI STUDIO فضای خلاقیت دیجیتال با کمک هوش مصنوعی است.</p></div></div><div class="info-card"><h3>نقشه راه محصول</h3><ul><li>تکمیل رابط کاربری واکنش‌گرا</li><li>اتصال امن سرویس احراز هویت و پایگاه داده</li><li>اتصال موتورهای تولید تصویر و ویدیو</li><li>کیف پول اعتبار، تراکنش و دعوت دوستان</li><li>درگاه پرداخت متناسب با بازار هدف</li></ul></div></section>
 <footer class="footer">ARMEX AI STUDIO · CREATE · IMAGINE · INNOVATE · © 2026</footer>
 </main>
@@ -91,6 +113,116 @@
  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
  renderProjects();
 })();
+</script>
+<script src="./armex-config.js"></script>
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const config = window.ARMEX_CONFIG || {};
+const message = document.getElementById("auth-message");
+const formCard = document.getElementById("auth-form-card");
+const sessionCard = document.getElementById("auth-session-card");
+const emailInput = document.getElementById("auth-email");
+const passwordInput = document.getElementById("auth-password");
+const setMessage = (text, isError = false) => {
+  if (!message) return;
+  message.textContent = text;
+  message.style.borderColor = isError ? "#8a3545" : "#34483f";
+  message.style.background = isError ? "#28131a" : "#122019";
+  message.style.color = isError ? "#ffc0ca" : "#c8ead8";
+};
+const translateError = (error) => {
+  const raw = String(error?.message || "");
+  if (/Invalid login credentials/i.test(raw)) return "ایمیل یا رمز عبور صحیح نیست.";
+  if (/User already registered/i.test(raw)) return "این ایمیل قبلاً ثبت‌نام کرده است؛ وارد حساب شو.";
+  if (/Password should be at least/i.test(raw)) return "رمز عبور باید حداقل ۸ کاراکتر باشد.";
+  if (/Email not confirmed/i.test(raw)) return "ابتدا ایمیل خود را تأیید کن.";
+  if (/rate limit/i.test(raw)) return "درخواست‌ها بیش از حد مجاز است؛ کمی بعد دوباره تلاش کن.";
+  return raw || "خطای نامشخص رخ داد.";
+};
+
+if (!config.supabaseUrl || !config.supabaseAnonKey ||
+    config.supabaseAnonKey.includes("PASTE_")) {
+  setMessage("برای فعال‌سازی ورود، مقدار Supabase anon/publishable key را در armex-config.js وارد کن. کلید service_role ممنوع است.", true);
+  ["auth-signin","auth-signup","auth-reset"].forEach(id => {
+    const button = document.getElementById(id);
+    if (button) button.disabled = true;
+  });
+} else {
+  const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+
+  const renderSession = (session) => {
+    const user = session?.user;
+    formCard.hidden = Boolean(user);
+    sessionCard.hidden = !user;
+    if (user) {
+      document.getElementById("auth-user-email").textContent = user.email || "ایمیل ثبت نشده";
+      setMessage("با موفقیت وارد شدی.");
+    }
+  };
+
+  const getCredentials = () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (!email || !emailInput.checkValidity()) {
+      setMessage("یک ایمیل معتبر وارد کن.", true);
+      emailInput.focus();
+      return null;
+    }
+    if (password.length < 8) {
+      setMessage("رمز عبور باید حداقل ۸ کاراکتر باشد.", true);
+      passwordInput.focus();
+      return null;
+    }
+    return { email, password };
+  };
+
+  document.getElementById("auth-signup").addEventListener("click", async () => {
+    const credentials = getCredentials();
+    if (!credentials) return;
+    setMessage("در حال ساخت حساب...");
+    const { data, error } = await supabase.auth.signUp({
+      ...credentials,
+      options: { emailRedirectTo: window.location.origin }
+    });
+    if (error) return setMessage(translateError(error), true);
+    if (data.session) renderSession(data.session);
+    else setMessage("حساب ساخته شد. ایمیل تأیید را باز کن و لینک فعال‌سازی را بزن؛ سپس وارد شو.");
+  });
+
+  document.getElementById("auth-signin").addEventListener("click", async () => {
+    const credentials = getCredentials();
+    if (!credentials) return;
+    setMessage("در حال ورود...");
+    const { data, error } = await supabase.auth.signInWithPassword(credentials);
+    if (error) return setMessage(translateError(error), true);
+    renderSession(data.session);
+  });
+
+  document.getElementById("auth-reset").addEventListener("click", async () => {
+    const email = emailInput.value.trim();
+    if (!email || !emailInput.checkValidity()) return setMessage("ابتدا ایمیل معتبر را وارد کن.", true);
+    setMessage("در حال ارسال لینک بازیابی...");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin
+    });
+    if (error) return setMessage(translateError(error), true);
+    setMessage("اگر این ایمیل در سامانه ثبت شده باشد، لینک بازیابی برایش ارسال می‌شود.");
+  });
+
+  document.getElementById("auth-signout").addEventListener("click", async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) return setMessage(translateError(error), true);
+    renderSession(null);
+    setMessage("از حساب خارج شدی.");
+  });
+
+  const { data: { session } } = await supabase.auth.getSession();
+  renderSession(session);
+  supabase.auth.onAuthStateChange((_event, nextSession) => renderSession(nextSession));
+}
 </script>
 </body>
 </html>
