@@ -15,7 +15,8 @@ BEGIN
      OR to_regclass('public.armex_credit_transactions') IS NULL
      OR to_regclass('public.armex_referral_codes') IS NULL
      OR to_regclass('public.armex_referrals') IS NULL
-     OR to_regclass('public.armex_payment_orders') IS NULL THEN
+     OR to_regclass('public.armex_payment_orders') IS NULL
+     OR to_regclass('public.armex_usage') IS NULL THEN
     RAISE EXCEPTION 'ARMEX migration preflight failed: one or more required tables are missing';
   END IF;
 
@@ -137,6 +138,7 @@ DECLARE
   v_status text;
   v_granted boolean;
   v_already_rewarded boolean;
+  v_has_successful_usage boolean;
   v_key text;
 BEGIN
   IF p_referred_user_id IS NULL THEN
@@ -158,6 +160,29 @@ BEGIN
   END IF;
 
   IF v_status = 'rejected' THEN
+    RETURN false;
+  END IF;
+
+  -- A referral is successful only after the referred account has at least
+  -- one recorded successful tool request. The usage row is written by the
+  -- trusted generation backend, not by the browser.
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.armex_usage u
+    WHERE u.user_id = p_referred_user_id
+      AND u.request_id IS NOT NULL
+      AND u.created_at >= (
+        SELECT au.created_at
+        FROM auth.users au
+        WHERE au.id = p_referred_user_id
+      )
+  ) INTO v_has_successful_usage;
+
+  IF NOT v_has_successful_usage THEN
+    RETURN false;
+  END IF;
+
+  IF v_referrer_id = p_referred_user_id THEN
     RETURN false;
   END IF;
 
@@ -198,10 +223,103 @@ BEGIN
 END;
 $function$;
 
--- 7) Referral qualification must never be callable by browser users.
+
+-- 7) Atomically credit a verified payment order exactly once.
+-- The caller MUST verify the provider's signed callback/server-side payment
+-- status and amount before invoking this service-role-only function.
+CREATE OR REPLACE FUNCTION public.armex_settle_payment_order(
+  p_order_id uuid,
+  p_provider_reference text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+DECLARE
+  v_order public.armex_payment_orders%ROWTYPE;
+  v_granted boolean;
+  v_ledger_exists boolean;
+  v_key text;
+BEGIN
+  IF p_order_id IS NULL OR NULLIF(btrim(p_provider_reference), '') IS NULL THEN
+    RAISE EXCEPTION 'Order ID and provider reference are required';
+  END IF;
+
+  SELECT *
+    INTO v_order
+  FROM public.armex_payment_orders
+  WHERE id = p_order_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+
+  IF v_order.provider_reference IS DISTINCT FROM p_provider_reference THEN
+    RETURN false;
+  END IF;
+
+  v_key := 'payment_order:' || v_order.id::text;
+
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.armex_credit_transactions
+    WHERE user_id = v_order.user_id
+      AND idempotency_key = v_key
+  ) INTO v_ledger_exists;
+
+  IF v_order.status = 'paid' THEN
+    RETURN v_ledger_exists;
+  END IF;
+
+  IF v_order.status <> 'pending' THEN
+    RETURN false;
+  END IF;
+
+  v_granted := public.armex_grant_credits(
+    v_order.user_id,
+    v_order.credits,
+    'purchase',
+    v_key,
+    'شارژ اعتبار از طریق پرداخت',
+    jsonb_build_object(
+      'payment_order_id', v_order.id,
+      'provider', v_order.provider,
+      'provider_reference', v_order.provider_reference,
+      'amount', v_order.amount,
+      'currency', v_order.currency
+    )
+  );
+
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.armex_credit_transactions
+    WHERE user_id = v_order.user_id
+      AND idempotency_key = v_key
+  ) INTO v_ledger_exists;
+
+  IF NOT v_granted AND NOT v_ledger_exists THEN
+    RETURN false;
+  END IF;
+
+  UPDATE public.armex_payment_orders
+  SET status = 'paid',
+      updated_at = now()
+  WHERE id = v_order.id;
+
+  RETURN true;
+END;
+$function$;
+
+-- 8) Referral qualification and payment settlement must never be callable by browser users.
 REVOKE ALL ON FUNCTION public.armex_qualify_referral(uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.armex_qualify_referral(uuid) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.armex_qualify_referral(uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.armex_settle_payment_order(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.armex_settle_payment_order(uuid, text) FROM anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.armex_settle_payment_order(uuid, text) TO service_role;
 
 -- Legacy credit mutation must not remain callable through the old RPC.
 REVOKE ALL ON FUNCTION public.process_credit_transaction(uuid, integer, text, text, text)
@@ -211,7 +329,7 @@ REVOKE ALL ON FUNCTION public.process_credit_transaction(uuid, integer, text, te
 REVOKE ALL ON FUNCTION public.armex_create_profile_on_signup() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.armex_prevent_profile_credit_edit() FROM PUBLIC, anon, authenticated, service_role;
 
--- 8) Prevent duplicate payment references from being settled more than once.
+-- 9) Prevent duplicate payment references from being settled more than once.
 -- The provider is included because references may only be unique within a provider.
 CREATE UNIQUE INDEX IF NOT EXISTS armex_payment_orders_provider_reference_uidx
 ON public.armex_payment_orders (provider, provider_reference)
@@ -220,7 +338,10 @@ WHERE provider IS NOT NULL
   AND btrim(provider_reference) <> '';
 
 COMMENT ON FUNCTION public.armex_qualify_referral(uuid) IS
-'Trusted backend-only referral qualification. Call only after server-side product qualification and anti-abuse checks.';
+'Trusted backend-only referral qualification. Requires a recorded successful usage row and server-side anti-abuse checks.';
+
+COMMENT ON FUNCTION public.armex_settle_payment_order(uuid, text) IS
+'Atomically credits a pending payment order once. Invoke only after the payment provider callback has been verified server-side.';
 
 COMMENT ON TABLE public.armex_wallets IS
 'Authoritative ARMEX credit balance. Client writes are not permitted; mutate through trusted server-side functions.';
