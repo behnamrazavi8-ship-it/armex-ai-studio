@@ -16,7 +16,7 @@ The current frontend includes:
 
 ## Important status
 
-This repository currently contains a frontend preview. Authentication, real AI generation, cloud project sync, credit accounting, referrals, and payment processing are **not yet connected**. The displayed 500-credit amount is a visual placeholder, not a real balance. Do not collect payments or promise generation until the backend integration is complete and tested.
+This repository contains a Persian-first responsive frontend preview. Supabase email/password sign-in, sign-up, session restore, and password-reset UI are integrated, but live authentication still requires Supabase Auth URL/redirect configuration and end-to-end testing. Real AI generation, cloud project sync, verified wallet balances, referral qualification, and payment processing are **not yet production-ready**. The displayed 500-credit amount is a visual placeholder, not a real balance. Do not collect payments or promise generation until backend integration is complete and tested.
 
 ## Run locally
 
