@@ -1,8 +1,8 @@
-# ARMEX AI STUDIO
+# LOKAL AI
 
 **Your All-in-One AI Creative Studio**
 
-ARMEX AI STUDIO is a Persian-first, mobile-responsive creative workspace for preparing AI image, video, and social-content prompts.
+LOKAL AI is a Persian-first, mobile-responsive creative workspace for preparing AI image, video, and social-content prompts.
 
 ## Current preview
 
@@ -36,4 +36,4 @@ See [BACKEND_INTEGRATION.md](./BACKEND_INTEGRATION.md) for the proposed secure i
 
 ## Brand
 
-ARMEX AI STUDIO — CREATE • IMAGINE • INNOVATE
+LOKAL AI — CREATE • IMAGINE • INNOVATE
