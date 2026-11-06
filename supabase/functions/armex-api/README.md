@@ -4,11 +4,10 @@ Authenticated LOKAL AI chat endpoint. This function uses the existing `armex_*` 
 
 ## Required Supabase Function secrets
 
+Supabase automatically provides `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions. Do not copy the service-role key into browser code or commit it.
+
 Set these under Supabase Dashboard → Edge Functions → Secrets:
 
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY` (the public anon/publishable key; used only to validate the user's JWT)
-- `SUPABASE_SERVICE_ROLE_KEY` (server-side only; never expose to the browser)
 - `OPENROUTER_API_KEY`
 - `CHAT_CREDIT_COST=1` (required initial billing policy: exactly one credit per accepted chat message)
 
