@@ -117,27 +117,35 @@ const refundCredits = async (
 ) => {
   if (amount <= 0) return true;
   const idempotencyKey = "ai_refund:" + requestId + ":" + attemptId + ":" + reason;
-  const { data, error } = await db.rpc("armex_grant_credits", {
-    p_user_id: userId,
-    p_amount: amount,
-    p_type: "refund",
-    p_idempotency_key: idempotencyKey,
-    p_description: "بازگشت اعتبار درخواست ناموفق",
-    p_metadata: { request_id: requestId, attempt_id: attemptId, reason },
-  });
-  if (error) {
-    console.error("Credit refund failed", { requestId, code: error.code });
-    return false;
-  }
-  if (data === true) return true;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { data, error } = await db.rpc("armex_grant_credits", {
+      p_user_id: userId,
+      p_amount: amount,
+      p_type: "refund",
+      p_idempotency_key: idempotencyKey,
+      p_description: "بازگشت اعتبار درخواست ناموفق",
+      p_metadata: { request_id: requestId, attempt_id: attemptId, reason },
+    });
+    if (!error && data === true) return true;
 
-  const { data: existing, error: lookupError } = await db
-    .from("armex_credit_transactions")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("idempotency_key", idempotencyKey)
-    .maybeSingle();
-  return !lookupError && Boolean(existing);
+    const { data: existing, error: lookupError } = await db
+      .from("armex_credit_transactions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    if (!lookupError && existing) return true;
+
+    if (error) {
+      console.error("Credit refund attempt failed", {
+        requestId,
+        attempt: attempt + 1,
+        code: error.code,
+      });
+    }
+  }
+  console.error("Credit refund could not be confirmed", { requestId, reason });
+  return false;
 };
 
 const handle = async (request: Request): Promise<Response> => {
@@ -358,17 +366,25 @@ const handle = async (request: Request): Promise<Response> => {
         status: providerResponse.status,
         body: providerError.slice(0, 500),
       });
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "provider_error");
+      const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "provider_error");
       debitCompleted = false;
-      return fail("AI provider request failed; reserved credits were returned", 502, cors);
+      return fail(
+        refunded ? "AI provider request failed; the charged credit was returned" : "AI provider failed and the credit refund could not be confirmed",
+        refunded ? 502 : 500,
+        cors,
+      );
     }
 
     const result = await providerResponse.json();
     const answer = result.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "invalid_provider_response");
+      const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "invalid_provider_response");
       debitCompleted = false;
-      return fail("AI returned an invalid response; reserved credits were returned", 502, cors);
+      return fail(
+        refunded ? "AI returned an invalid response; the charged credit was returned" : "AI response was invalid and the credit refund could not be confirmed",
+        refunded ? 502 : 500,
+        cors,
+      );
     }
 
     const usage = result.usage ?? {};
@@ -409,9 +425,13 @@ const handle = async (request: Request): Promise<Response> => {
       .select("id");
     if (messageError || !savedMessages) {
       console.error("Message persistence failed", { requestId, code: messageError?.code });
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "message_persistence_failed");
+      const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "message_persistence_failed");
       debitCompleted = false;
-      return fail("Could not save the conversation; credits were returned", 500, cors);
+      return fail(
+        refunded ? "Could not save the conversation; the charged credit was returned" : "Conversation save failed and the credit refund could not be confirmed",
+        500,
+        cors,
+      );
     }
 
     const { error: usageError } = await db.from("armex_usage").insert({
@@ -432,12 +452,16 @@ const handle = async (request: Request): Promise<Response> => {
         .delete()
         .eq("user_id", auth.user.id)
         .in("id", messageIds);
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "usage_persistence_failed");
+      const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "usage_persistence_failed");
       debitCompleted = false;
-      if (usageError.code === "23505") {
+      if (usageError.code === "23505" && refunded) {
         return fail("This request_id has already completed; the duplicate attempt was refunded", 409, cors);
       }
-      return fail("Could not record usage; credits were returned", 500, cors);
+      return fail(
+        refunded ? "Could not record usage; the charged credit was returned" : "Usage recording failed and the credit refund could not be confirmed",
+        500,
+        cors,
+      );
     }
 
     await db.from("armex_conversations")
@@ -466,14 +490,14 @@ const handle = async (request: Request): Promise<Response> => {
       requestId,
       error: error instanceof Error ? error.message : "unknown",
     });
-    if (debitCompleted) {
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "server_error");
-    }
+    const refunded = debitCompleted
+      ? await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "server_error")
+      : true;
     const timedOut = error instanceof Error && error.name === "AbortError";
     return fail(
       timedOut
-        ? "AI request timed out; charged credits were returned"
-        : "Internal server error",
+        ? (refunded ? "AI request timed out; the charged credit was returned" : "AI request timed out and the credit refund could not be confirmed")
+        : (refunded ? "Internal server error" : "Internal server error; the credit refund could not be confirmed"),
       timedOut ? 504 : 500,
       cors,
     );
