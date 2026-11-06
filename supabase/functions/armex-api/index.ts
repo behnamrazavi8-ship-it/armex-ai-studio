@@ -118,11 +118,12 @@ const refundCredits = async (
   reason: string,
 ) => {
   if (amount <= 0) return true;
+  const idempotencyKey = "ai_refund:" + requestId + ":" + reason;
   const { data, error } = await db.rpc("armex_grant_credits", {
     p_user_id: userId,
     p_amount: amount,
     p_type: "refund",
-    p_idempotency_key: "ai_refund:" + requestId + ":" + reason,
+    p_idempotency_key: idempotencyKey,
     p_description: "بازگشت اعتبار درخواست ناموفق",
     p_metadata: { request_id: requestId, reason },
   });
@@ -130,7 +131,15 @@ const refundCredits = async (
     console.error("Credit refund failed", { requestId, code: error.code });
     return false;
   }
-  return data === true;
+  if (data === true) return true;
+
+  const { data: existing, error: lookupError } = await db
+    .from("armex_credit_transactions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("idempotency_key", idempotencyKey)
+    .maybeSingle();
+  return !lookupError && Boolean(existing);
 };
 
 const handle = async (request: Request): Promise<Response> => {
