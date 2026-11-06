@@ -166,7 +166,14 @@ const handle = async (request: Request): Promise<Response> => {
 
   const url = new URL(request.url);
   if (request.method === "GET" && url.searchParams.get("action") === "health") {
-    return json({ success: true, service: "LOKAL AI", status: "online" }, 200, cors);
+    return json({
+      success: true,
+      service: "LOKAL AI",
+      status: "online",
+      api_version: "5.0",
+      secure_api: true,
+      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger"],
+    }, 200, cors);
   }
 
   if (request.method !== "GET" && request.method !== "POST") {
