@@ -241,10 +241,30 @@ const handle = async (request: Request): Promise<Response> => {
     ? Math.min(Number(body.max_tokens), 4096)
     : 1024;
 
-  const requestId = crypto.randomUUID();
-  const creditsPerUsd = safeNumber(Deno.env.get("CREDITS_PER_USD"));
-  if (creditsPerUsd <= 0) {
-    return fail("Credit pricing is not configured", 503, cors);
+  const requestId = isUuid(body.request_id) ? body.request_id : "";
+  if (!requestId) return fail("A UUID request_id is required for idempotent billing", 400, cors);
+
+  const chatCreditCost = Number(Deno.env.get("CHAT_CREDIT_COST") ?? "1");
+  if (!Number.isSafeInteger(chatCreditCost) || chatCreditCost !== 1) {
+    return fail("Chat billing configuration must be CHAT_CREDIT_COST=1", 503, cors);
+  }
+
+  const { data: priorUsage, error: priorUsageError } = await db
+    .from("armex_usage")
+    .select("request_id")
+    .eq("request_id", requestId)
+    .maybeSingle();
+  const { data: priorDebit, error: priorDebitError } = await db
+    .from("armex_credit_transactions")
+    .select("id")
+    .eq("user_id", auth.user.id)
+    .eq("idempotency_key", "ai_request:" + requestId)
+    .maybeSingle();
+  if (priorUsageError || priorDebitError) {
+    return fail("Could not verify request idempotency", 500, cors);
+  }
+  if (priorUsage || priorDebit) {
+    return fail("This request_id has already been processed; use a new UUID for a new message", 409, cors);
   }
 
   let conversation: { id: string };
@@ -286,26 +306,21 @@ const handle = async (request: Request): Promise<Response> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  let reservedCredits = 0;
+  let reservedCredits = chatCreditCost;
   let debitCompleted = false;
   try {
-    const modelInfo = await getModelInfo(openRouterKey, model, controller.signal);
+    let modelInfo: ModelInfo | null = null;
+    try {
+      modelInfo = await getModelInfo(openRouterKey, model, controller.signal);
+    } catch {
+      console.warn("Model pricing metadata unavailable; actual_cost_usd will be null", { model });
+    }
     const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
     const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
-    if (!modelInfo || promptPrice < 0 || completionPrice < 0) {
-      return fail("Pricing is unavailable for the selected model", 503, cors);
-    }
-
-    const estimatedUsd = (
-      estimatedInputTokens * promptPrice +
-      maxTokens * completionPrice
-    ) * 1.25;
-    reservedCredits = creditsForUsd(estimatedUsd, creditsPerUsd);
-    if (reservedCredits < 1) reservedCredits = 1;
 
     const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
       p_user_id: auth.user.id,
-      p_amount: reservedCredits,
+      p_amount: chatCreditCost,
       p_idempotency_key: "ai_request:" + requestId,
       p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
       p_metadata: { request_id: requestId, model, conversation_id: conversation.id },
@@ -365,40 +380,14 @@ const handle = async (request: Request): Promise<Response> => {
     const outputTokens = safeNumber(usage.completion_tokens, Math.ceil(answer.length / 4));
     const totalTokens = safeNumber(usage.total_tokens, inputTokens + outputTokens);
     const reportedCost = safeNumber(usage.cost, -1);
+    const calculatedCost = promptPrice >= 0 && completionPrice >= 0
+      ? inputTokens * promptPrice + outputTokens * completionPrice
+      : -1;
     const actualUsd = reportedCost >= 0
       ? reportedCost
-      : inputTokens * promptPrice + outputTokens * completionPrice;
-    const actualCredits = creditsForUsd(actualUsd, creditsPerUsd);
-
-    if (actualCredits > reservedCredits) {
-      const extra = actualCredits - reservedCredits;
-      const { data: toppedUp, error: topupError } = await db.rpc("armex_debit_credits", {
-        p_user_id: auth.user.id,
-        p_amount: extra,
-        p_idempotency_key: "ai_topup:" + requestId,
-        p_description: "تکمیل هزینه واقعی درخواست هوش مصنوعی",
-        p_metadata: { request_id: requestId, model },
-      });
-      if (topupError || toppedUp !== true) {
-        await refundCredits(db, auth.user.id, reservedCredits, requestId, "usage_exceeded_reservation");
-        debitCompleted = false;
-        return fail("Actual model cost exceeded the available credit reservation", 402, cors);
-      }
-      reservedCredits = actualCredits;
-    } else if (reservedCredits > actualCredits) {
-      const refunded = await refundCredits(
-        db,
-        auth.user.id,
-        reservedCredits - actualCredits,
-        requestId,
-        "unused_reservation",
-      );
-      if (!refunded) {
-        console.error("Reservation adjustment requires review", { requestId });
-      } else {
-        reservedCredits = actualCredits;
-      }
-    }
+      : calculatedCost >= 0
+      ? calculatedCost
+      : null;
 
     const messageRows = [
       {
@@ -424,7 +413,7 @@ const handle = async (request: Request): Promise<Response> => {
       .select("id");
     if (messageError || !savedMessages) {
       console.error("Message persistence failed", { requestId, code: messageError?.code });
-      await refundCredits(db, auth.user.id, actualCredits, requestId, "message_persistence_failed");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "message_persistence_failed");
       debitCompleted = false;
       return fail("Could not save the conversation; credits were returned", 500, cors);
     }
@@ -437,7 +426,7 @@ const handle = async (request: Request): Promise<Response> => {
       output_tokens: outputTokens,
       total_tokens: totalTokens,
       actual_cost_usd: actualUsd,
-      credits_charged: actualCredits,
+      credits_charged: chatCreditCost,
       request_id: requestId,
     });
     if (usageError) {
@@ -447,7 +436,7 @@ const handle = async (request: Request): Promise<Response> => {
         .delete()
         .eq("user_id", auth.user.id)
         .in("id", messageIds);
-      await refundCredits(db, auth.user.id, actualCredits, requestId, "usage_persistence_failed");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "usage_persistence_failed");
       debitCompleted = false;
       return fail("Could not record usage; credits were returned", 500, cors);
     }
@@ -479,7 +468,7 @@ const handle = async (request: Request): Promise<Response> => {
       error: error instanceof Error ? error.message : "unknown",
     });
     if (debitCompleted) {
-      await refundCredits(db, auth.user.id, reservedCredits, requestId, "server_error");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "server_error");
     }
     return fail(
       error instanceof Error && error.name === "AbortError"
