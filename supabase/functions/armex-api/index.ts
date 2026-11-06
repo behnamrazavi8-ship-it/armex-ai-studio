@@ -418,9 +418,12 @@ const handle = async (request: Request): Promise<Response> => {
         output_tokens: outputTokens,
       },
     ];
-    const { error: messageError } = await db.from("armex_messages").insert(messageRows);
-    if (messageError) {
-      console.error("Message persistence failed", { requestId, code: messageError.code });
+    const { data: savedMessages, error: messageError } = await db
+      .from("armex_messages")
+      .insert(messageRows)
+      .select("id");
+    if (messageError || !savedMessages) {
+      console.error("Message persistence failed", { requestId, code: messageError?.code });
       await refundCredits(db, auth.user.id, actualCredits, requestId, "message_persistence_failed");
       debitCompleted = false;
       return fail("Could not save the conversation; credits were returned", 500, cors);
@@ -439,6 +442,11 @@ const handle = async (request: Request): Promise<Response> => {
     });
     if (usageError) {
       console.error("Usage persistence failed", { requestId, code: usageError.code });
+      const messageIds = savedMessages.map((row: { id: string }) => row.id);
+      await db.from("armex_messages")
+        .delete()
+        .eq("user_id", auth.user.id)
+        .in("id", messageIds);
       await refundCredits(db, auth.user.id, actualCredits, requestId, "usage_persistence_failed");
       debitCompleted = false;
       return fail("Could not record usage; credits were returned", 500, cors);
