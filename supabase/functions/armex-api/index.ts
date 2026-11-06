@@ -225,7 +225,7 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   const conversationId = body.conversation_id;
-  if (conversationId !== undefined && !isUuid(conversationId)) {
+  if (conversationId != null && !isUuid(conversationId)) {
     return fail("Invalid conversation_id", 400, cors);
   }
 
@@ -470,11 +470,12 @@ const handle = async (request: Request): Promise<Response> => {
     if (debitCompleted) {
       await refundCredits(db, auth.user.id, chatCreditCost, requestId, "server_error");
     }
+    const timedOut = error instanceof Error && error.name === "AbortError";
     return fail(
-      error instanceof Error && error.name === "AbortError"
-        ? "AI request timed out; reserved credits were returned"
+      timedOut
+        ? "AI request timed out; charged credits were returned"
         : "Internal server error",
-      500,
+      timedOut ? 504 : 500,
       cors,
     );
   } finally {
