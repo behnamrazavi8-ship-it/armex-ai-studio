@@ -178,12 +178,41 @@ const handle = async (request: Request): Promise<Response> => {
   const modelsAllowed = allowedModels();
 
   if (request.method === "GET" && url.searchParams.get("action") === "balance") {
-    const { data, error } = await db.from("armex_wallets")
+    const { data: wallet, error: walletError } = await db.from("armex_wallets")
       .select("balance")
       .eq("user_id", userId)
       .maybeSingle();
-    if (error) return fail("Could not load wallet balance", 500, cors);
-    return json({ success: true, balance: safeNumber(data?.balance, 0) }, 200, cors);
+    if (walletError) return fail("Could not load wallet balance", 500, cors);
+
+    const { data: ledger, error: ledgerError } = await db
+      .from("armex_credit_transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .limit(100);
+    if (ledgerError) {
+      console.error("Wallet ledger diagnostic failed", { userId, code: ledgerError.code });
+    }
+    const signupBonusRecorded = (ledger ?? []).some((entry: Record<string, unknown>) => {
+      const text = Object.values(entry).filter((value) => typeof value === "string")
+        .join(" ").toLowerCase();
+      const amount = Number(entry.amount ?? entry.credits ?? entry.delta ?? entry.credit_amount ?? 0);
+      return Number.isFinite(amount) && amount > 0 &&
+        /(signup|sign.?up|welcome|initial|activation|ثبت.?نام|خوش.?آمد)/i.test(text);
+    });
+    if (!wallet) {
+      return json({
+        success: true,
+        wallet_initialized: false,
+        balance: null,
+        signup_bonus_recorded: signupBonusRecorded,
+      }, 200, cors);
+    }
+    return json({
+      success: true,
+      wallet_initialized: true,
+      balance: safeNumber(wallet.balance, 0),
+      signup_bonus_recorded: signupBonusRecorded,
+    }, 200, cors);
   }
 
   const openRouterKey = env("OPENROUTER_API_KEY");
