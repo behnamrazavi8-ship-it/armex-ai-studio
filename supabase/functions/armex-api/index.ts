@@ -268,7 +268,7 @@ const handle = async (request: Request): Promise<Response> => {
 
   const { data: priorUsage, error: priorUsageError } = await db
     .from("armex_usage")
-    .select("request_id,conversation_id,model,input_tokens,output_tokens,total_tokens,actual_cost_usd,credits_charged")
+    .select("request_id,conversation_id,model,input_tokens,output_tokens,total_tokens,actual_cost_usd,credits_charged,created_at")
     .eq("request_id", requestId)
     .maybeSingle();
   if (priorUsageError) {
@@ -280,6 +280,7 @@ const handle = async (request: Request): Promise<Response> => {
       .eq("conversation_id", priorUsage.conversation_id)
       .eq("user_id", auth.user.id)
       .eq("role", "assistant")
+      .lte("created_at", priorUsage.created_at)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
