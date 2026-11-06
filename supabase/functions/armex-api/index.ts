@@ -177,9 +177,18 @@ const handle = async (request: Request): Promise<Response> => {
   if (!auth.user) return fail(auth.error || "Unauthorized", 401, cors);
 
   const db = adminClient();
-  const openRouterKey = env("OPENROUTER_API_KEY");
   const modelsAllowed = allowedModels();
 
+  if (request.method === "GET" && url.searchParams.get("action") === "balance") {
+    const { data, error } = await db.from("armex_wallets")
+      .select("balance")
+      .eq("user_id", auth.user.id)
+      .maybeSingle();
+    if (error) return fail("Could not load wallet balance", 500, cors);
+    return json({ success: true, balance: safeNumber(data?.balance, 0) }, 200, cors);
+  }
+
+  const openRouterKey = env("OPENROUTER_API_KEY");
   if (request.method === "GET" && url.searchParams.get("action") === "models") {
     try {
       const controller = new AbortController();
@@ -259,14 +268,39 @@ const handle = async (request: Request): Promise<Response> => {
 
   const { data: priorUsage, error: priorUsageError } = await db
     .from("armex_usage")
-    .select("request_id")
+    .select("request_id,conversation_id,model,input_tokens,output_tokens,total_tokens,actual_cost_usd,credits_charged")
     .eq("request_id", requestId)
     .maybeSingle();
   if (priorUsageError) {
     return fail("Could not verify request idempotency", 500, cors);
   }
   if (priorUsage) {
-    return fail("This request_id has already been processed; use a new UUID for a new message", 409, cors);
+    const { data: previousAnswer } = await db.from("armex_messages")
+      .select("content")
+      .eq("conversation_id", priorUsage.conversation_id)
+      .eq("user_id", auth.user.id)
+      .eq("role", "assistant")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (previousAnswer?.content) {
+      return json({
+        success: true,
+        duplicate: true,
+        request_id: requestId,
+        conversation_id: priorUsage.conversation_id,
+        model: priorUsage.model,
+        answer: previousAnswer.content,
+        usage: {
+          input_tokens: priorUsage.input_tokens,
+          output_tokens: priorUsage.output_tokens,
+          total_tokens: priorUsage.total_tokens,
+          actual_cost_usd: priorUsage.actual_cost_usd,
+          credits_charged: priorUsage.credits_charged,
+        },
+      }, 200, cors);
+    }
+    return fail("This request_id was already processed; use a new UUID for a new message", 409, cors);
   }
 
   let conversation: { id: string };
