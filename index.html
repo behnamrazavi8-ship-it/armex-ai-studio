@@ -12,62 +12,75 @@
 @media(max-width:1050px){.tools-grid{grid-template-columns:repeat(2,1fr)}.layout{gap:18px;padding:20px}.sidebar{width:210px}}
 @media(max-width:700px){.topbar{height:65px;padding:0 15px}.layout{display:block;padding:18px 14px 88px}.sidebar{display:none}.welcome{align-items:flex-start}.date-label{display:none}.hero{padding:23px 19px}.tools-grid{gap:9px}.tool-card{min-height:145px;padding:13px}.field-row,.bottom-grid{grid-template-columns:1fr}.stats{gap:8px}.stat{padding:12px}.stat b{font-size:16px}.top-actions .status-chip{display:none}.mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:20;background:#10121aef;backdrop-filter:blur(15px);border-top:1px solid var(--line);justify-content:space-around;padding:9px 5px calc(9px + env(safe-area-inset-bottom))}.mobile-nav button{border:0;background:none;color:#9da2b3;font-size:9px;display:grid;gap:4px;justify-items:center}.mobile-nav button span{font-size:18px}.mobile-nav button.active{color:#ff6c80}.workspace-body{padding:14px}.workspace-head{padding:15px}.credit-chip{padding:8px 10px}.brand{font-size:12px}.brand-mark{width:34px;height:34px}}
 
-/* LOKAL AI Dark Futuristic visual refresh */
+/* LOKAL AI — unified Neon Emerald & Electric Blue system */
 :root{
- --bg:#07080d;--surface:#10121b;--surface2:#171a27;--line:#292d3c;
- --text:#f7f7fb;--muted:#9da2b5;--red:#ff3657;--red2:#c9183d;
- --radius:20px;--shadow:0 24px 70px #0009;
+ --bg:#060a0e;--surface:#0d151b;--surface2:#12212c;--line:#203642;
+ --text:#effcf9;--muted:#9bb1b5;--red:#20e6ad;--red2:#087f88;
+ --green:#20e6ad;--radius:20px;--shadow:0 22px 60px #0009;
 }
+html{scroll-behavior:smooth}
 body{
  background:
-  radial-gradient(ellipse at 88% 2%,#58142635 0,transparent 31%),
-  radial-gradient(ellipse at 8% 48%,#251a3530 0,transparent 34%),
-  #07080d;
- letter-spacing:.05px;
+  radial-gradient(ellipse at 86% 0%,#16dca52a 0,transparent 34%),
+  radial-gradient(ellipse at 8% 48%,#287cff25 0,transparent 38%),
+  var(--bg);
+ color:var(--text);
 }
-.topbar{background:#080910eF;border-bottom-color:#ffffff13;box-shadow:0 8px 30px #0003}
-.brand-mark{position:relative;background:linear-gradient(145deg,#ff536e,#b90d32);box-shadow:0 0 0 5px #ff365710,0 8px 30px #ff365744}
-.brand-mark:after{content:"";position:absolute;inset:-5px;border:1px solid #ff536e35;border-radius:16px}
-.layout{gap:24px;padding-top:30px}
-.sidebar{background:linear-gradient(180deg,#131521,#0d0f17);border-color:#ffffff16;box-shadow:0 18px 45px #0003}
-.nav-btn{transition:background .2s,border-color .2s,color .2s}
-.nav-btn.active{background:linear-gradient(100deg,#ff365725,#ff365706);box-shadow:inset -2px 0 #ff4967,0 8px 24px #0002}
-.welcome h1{letter-spacing:-.7px}
+.topbar{background:#071017ed;border-bottom-color:#23434a;box-shadow:0 8px 30px #0008}
+.brand-mark{background:linear-gradient(145deg,#35f2bb,#168be8);box-shadow:0 0 0 5px #20e6ad18,0 8px 28px #20e6ad38}
+.brand-mark:after{border-color:#3cebc05c}
+.credit-chip b{color:#62efc5}
+.avatar{background:#102c35;border-color:#24635e;color:#8af4d4}
+.sidebar{background:linear-gradient(180deg,#0e1b22,#0a1219);border-color:#1c3a45;box-shadow:0 18px 45px #0004}
+.side-label{color:#77949c}
+.nav-btn{color:#b5c9ca;transition:background .2s,color .2s}
+.nav-btn:hover,.nav-btn.active{background:linear-gradient(100deg,#20e6ad20,#398bff12);color:#f4fffc}
+.nav-btn.active{box-shadow:inset -2px 0 #20e6ad,0 8px 24px #0003}
+.side-note{background:linear-gradient(135deg,#102c2d,#102039);border-color:#245b60;color:#b9d2d1}
+.side-note b{color:#6ff0c8}
+.eyebrow,.hero-tag{color:#69e9c5}
+.welcome h1{letter-spacing:-.6px}
 .hero{
- min-height:245px;display:flex;align-items:center;
+ min-height:225px;display:flex;align-items:center;
  background:
-  radial-gradient(ellipse at 15% 80%,#ff36571e 0,transparent 38%),
-  linear-gradient(112deg,#25101b 0%,#17131f 48%,#10131d 100%);
- border-color:#773044;box-shadow:0 25px 70px #0007, inset 0 1px #ffffff0d;
+  radial-gradient(ellipse at 12% 85%,#20e6ad22 0,transparent 42%),
+  radial-gradient(ellipse at 88% 12%,#398bff2b 0,transparent 45%),
+  linear-gradient(112deg,#0c2929 0%,#102435 55%,#0b1721 100%);
+ border-color:#246b66;
+ box-shadow:0 24px 65px #0008,inset 0 1px #ffffff12;
 }
-.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 45%,#ffffff05 45.2%,transparent 45.5%);pointer-events:none}
-.hero:after{content:"✧";left:7%;top:-72px;font-size:270px;color:#ff536e0c;text-shadow:0 0 80px #ff36571a}
-.hero h2{letter-spacing:-.6px}
-.hero h2 span{background:linear-gradient(90deg,#ff8495,#ff3657 60%,#c51a40);-webkit-background-clip:text;background-clip:text;color:transparent}
-.btn{background:linear-gradient(120deg,#ff4967,#c8173b);box-shadow:0 8px 28px #ff365733,inset 0 1px #ffffff35;transition:transform .2s,filter .2s,box-shadow .2s}
-.btn:hover{box-shadow:0 12px 32px #ff365744,inset 0 1px #ffffff35}
-.btn-ghost{background:#ffffff08;border-color:#ffffff1a;box-shadow:none}
-.tool-card{
- background:linear-gradient(145deg,#191c29,#10121b 72%);
- border-color:#ffffff15;box-shadow:0 12px 28px #0002;
-}
-.tool-card:before{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,#ffffff08,transparent 45%);pointer-events:none}
-.tool-card:hover{border-color:#ff496766;box-shadow:0 16px 34px #0005,0 0 24px #ff36570b}
-.tool-icon{background:linear-gradient(145deg,#ff36572a,#8f16301c);border:1px solid #ff536e24;box-shadow:inset 0 1px #ffffff0b}
-.workspace,.info-card,.stat{background:linear-gradient(145deg,#141722,#0f1119);border-color:#ffffff16;box-shadow:0 14px 35px #0002}
-.workspace-head{background:#ffffff03;border-bottom-color:#ffffff12}
-.textarea,.input,.select{background:#090b12;border-color:#34394b;transition:border-color .2s,box-shadow .2s}
-.textarea:focus,.input:focus,.select:focus{border-color:#ff4967;box-shadow:0 0 0 3px #ff365719,0 0 22px #ff36570c}
-.stat{position:relative;overflow:hidden}
-.stat:after{content:"";position:absolute;left:-22px;top:-28px;width:80px;height:80px;border-radius:50%;background:#ff36570b;filter:blur(3px)}
-.stat b{color:#fff;letter-spacing:.3px}
-.demo-label{background:#3a202b66;border-color:#784052;color:#ffb2bd}
-.side-note{background:linear-gradient(135deg,#29151e,#1a121a);border-color:#673043}
-.notice{background:#3b2c171f}
-.mobile-nav{background:#0c0e16ed;border-top-color:#ffffff18;box-shadow:0 -12px 35px #0005}
-.mobile-nav button.active{color:#ff7188}
-.toast{background:#191c28;border-color:#454b60}
-.footer{letter-spacing:1.5px}
+.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 48%,#ffffff07 48.2%,transparent 48.6%);pointer-events:none}
+.hero:after{content:"✧";left:7%;top:-70px;font-size:260px;color:#42eac30d;text-shadow:0 0 70px #398bff18}
+.hero h2{letter-spacing:-.5px}
+.hero h2 span{background:linear-gradient(90deg,#8bffdb,#27e6b4 48%,#62aaff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:#c0d6d5}
+.btn{background:linear-gradient(115deg,#25e8b2,#168ce8);color:#041511;box-shadow:0 8px 26px #20e6ad30,inset 0 1px #ffffff60;transition:transform .2s,filter .2s,box-shadow .2s}
+.btn:hover{filter:brightness(1.08);box-shadow:0 12px 32px #20e6ad40,inset 0 1px #ffffff70}
+.btn:disabled{opacity:.45}
+.btn-ghost{background:#ffffff08;border:1px solid #ffffff1b;color:#d9eeeb;box-shadow:none}
+.section-head span{color:#8ba4aa}
+.tool-card{background:linear-gradient(145deg,#122a39,#0c1721 72%);border-color:#1e4352;box-shadow:0 12px 28px #0004}
+.tool-card:before{background:linear-gradient(135deg,#4da7ff18,transparent 48%)}
+.tool-card:hover{border-color:#35dcb1a8;box-shadow:0 16px 34px #0007,0 0 26px #20e6ad16}
+.tool-icon{background:linear-gradient(145deg,#20e6ad2c,#398bff30);border:1px solid #3cae9a70;box-shadow:inset 0 1px #ffffff16}
+.tool-arrow{color:#7fa8b3}
+.workspace,.info-card,.stat{background:linear-gradient(145deg,#111f28,#0b141c);border-color:#203d49;box-shadow:0 14px 35px #0004}
+.workspace-head{background:#ffffff04;border-bottom-color:#ffffff12}
+.field-label{color:#d4e8e5}
+.textarea,.input,.select{background:#071118;border-color:#294653;color:#edfffb;transition:border-color .2s,box-shadow .2s}
+.textarea:focus,.input:focus,.select:focus{border-color:#28dfb2;box-shadow:0 0 0 3px #20e6ad1c,0 0 22px #398bff12}
+.result{border-color:#246b5d;background:#102a25;color:#c9f5e5}
+.stat:after{background:#20e6ad12}
+.stat b{color:#effffb}
+.stat small{color:#85a3a5}
+.demo-label{background:#10352f80;border-color:#24685b;color:#8ff5d5}
+.notice{background:#123e382e;border-color:#2a7869;color:#c2dfd6}
+.mobile-nav{background:#071219ed;border-top-color:#1c3e49;box-shadow:0 -12px 35px #0007}
+.mobile-nav button{color:#9bb1b5}
+.mobile-nav button.active{color:#45e8bd}
+.toast{background:#10212a;border-color:#28505a;color:#eafffa}
+.footer{color:#718f94;letter-spacing:1px}
+.empty{border-color:#29434d;color:#9bb1b5}
 @media(min-width:1100px){
  .layout{grid-template-columns:250px minmax(0,1fr);gap:30px;padding-left:34px;padding-right:34px}
  .tools-grid{gap:16px}
@@ -75,72 +88,19 @@ body{
  .hero{padding:34px 38px}
 }
 @media(max-width:700px){
- body{background:radial-gradient(ellipse at 85% 0%,#58142630 0,transparent 35%),#07080d}
+ body{background:radial-gradient(ellipse at 85% 0%,#16dca52a 0,transparent 35%),var(--bg)}
  .layout{padding-top:20px}
- .hero{min-height:220px}
- .hero:after{font-size:210px;left:-2%;top:-36px}
+ .hero{min-height:210px;background:radial-gradient(ellipse at 15% 80%,#20e6ad1e 0,transparent 40%),radial-gradient(ellipse at 90% 10%,#398bff20 0,transparent 42%),linear-gradient(112deg,#0c2929,#0b1721)}
+ .hero:after{font-size:205px;left:-2%;top:-36px}
  .tool-card{border-radius:16px}
  .workspace,.info-card{border-radius:17px}
 }
-
-
-/* LOKAL AI Emerald & Deep Blue visual system */
-:root{
- --bg:#05090b;--surface:#0b1216;--surface2:#101e29;--line:#18313a;
- --text:#effffb;--muted:#91aaa9;--red:#18d6a5;--red2:#079b82;
- --radius:20px;--shadow:0 24px 70px #000b;
-}
-body{
- background:
-  radial-gradient(ellipse at 88% 2%,#0a8f7130 0,transparent 34%),
-  radial-gradient(ellipse at 8% 48%,#123b7040 0,transparent 38%),
-  #05090b;
- color:var(--text);
-}
-.topbar{background:#050a0ced;border-bottom-color:#1b3a3b;box-shadow:0 8px 30px #0008}
-.brand-mark{background:linear-gradient(145deg,#27f0b9,#087e70);box-shadow:0 0 0 5px #18d6a51c,0 8px 30px #18d6a544}
-.brand-mark:after{border-color:#45f5c04a}
-.sidebar{background:linear-gradient(180deg,#0d1a20,#091116);border-color:#1a3940}
-.nav-btn.active{background:linear-gradient(100deg,#16d6a526,#16d6a507);box-shadow:inset -2px 0 #20e4b1,0 8px 24px #0004}
-.hero{
- background:
-  radial-gradient(ellipse at 15% 80%,#13d7a51e 0,transparent 40%),
-  radial-gradient(ellipse at 88% 10%,#1765b52c 0,transparent 45%),
-  linear-gradient(112deg,#0b2929 0%,#0c1b28 52%,#0a111c 100%);
- border-color:#1c655c;box-shadow:0 25px 70px #0009,inset 0 1px #ffffff12;
-}
-.hero h2 span{background:linear-gradient(90deg,#8bffdb,#20e3b0 58%,#2999e8);-webkit-background-clip:text;background-clip:text;color:transparent}
-.btn{background:linear-gradient(120deg,#20e5b2,#087e78);color:#03130f;box-shadow:0 8px 28px #18d6a533,inset 0 1px #ffffff55}
-.btn:hover{box-shadow:0 12px 32px #18d6a555,inset 0 1px #ffffff55}
-.btn-ghost{background:#ffffff08;border-color:#ffffff1b;color:#d7eeeb;box-shadow:none}
-.tool-card{background:linear-gradient(145deg,#10263a,#0b151f 72%);border-color:#1a3b50;box-shadow:0 12px 28px #0004}
-.tool-card:before{background:linear-gradient(135deg,#3b9be51a,transparent 48%)}
-.tool-card:hover{border-color:#20dcb388;box-shadow:0 16px 34px #0007,0 0 26px #18d6a514}
-.tool-icon{background:linear-gradient(145deg,#18d6a52c,#1765b52b);border:1px solid #2c9e9380;box-shadow:inset 0 1px #ffffff12}
-.workspace,.info-card,.stat{background:linear-gradient(145deg,#101d25,#0a1219);border-color:#1b3842;box-shadow:0 14px 35px #0004}
-.workspace-head{background:#ffffff04;border-bottom-color:#ffffff12}
-.textarea,.input,.select{background:#071016;border-color:#23404a;color:#eafffa}
-.textarea:focus,.input:focus,.select:focus{border-color:#20dcb3;box-shadow:0 0 0 3px #18d6a51c,0 0 22px #18d6a512}
-.stat:after{background:#18d6a512}
-.stat b{color:#eafffa}
-.demo-label{background:#10352f80;border-color:#24685b;color:#8ff5d5}
-.side-note{background:linear-gradient(135deg,#102c30,#102039);border-color:#245b60}
-.notice{background:#123e382e;border-color:#24594e}
-.mobile-nav{background:#071016ed;border-top-color:#1c3a42;box-shadow:0 -12px 35px #0007}
-.mobile-nav button.active{color:#38e7b8}
-.toast{background:#10212a;border-color:#28505a;color:#eafffa}
-.footer{color:#718b8d;letter-spacing:1.5px}
-@media(max-width:700px){
- body{background:radial-gradient(ellipse at 85% 0%,#0a8f7130 0,transparent 35%),#05090b}
- .hero{background:radial-gradient(ellipse at 15% 80%,#13d7a51e 0,transparent 40%),linear-gradient(112deg,#0b2929,#0a111c)}
-}
-
 </style>
 </head>
 <body>
 <div class="app">
 <header class="topbar">
- <div class="brand"><div class="brand-mark" >L</div><div>LOKAL AI<small>CREATE • IMAGINE • INNOVATE</small></div></div>
+ <div class="brand"><div class="brand-mark" >L</div><div>LOKAL AI<small>AI CREATIVE STUDIO</small></div></div>
  <div class="top-actions"><div class="credit-chip">اعتبار نمایشی <b id="creditCount">۵۰۰</b></div><div class="status-chip">نسخه پیش‌نمایش</div><div class="avatar" >L</div></div>
 </header>
 <div class="layout">
@@ -156,8 +116,8 @@ body{
 </aside>
 <main class="main">
 <section class="page active" id="page-home">
- <div class="welcome"><div><div class="eyebrow">به فضای خلاقیت خوش آمدی</div><h1>ایده‌ات را به جهان نشان بده.</h1><p>ابزار مناسب را انتخاب کن و ساختن را شروع کن؛ همه‌چیز از یک ایده آغاز می‌شود.</p></div><div class="date-label">LOKAL AI / CREATIVE WORKSPACE</div></div>
- <section class="hero"><div class="hero-content"><div class="hero-tag">YOUR PERSONAL AI CREATIVE STUDIO</div><h2>قدرت تخیل تو،<br><span>بدون مرز.</span></h2><p>فضای یکپارچه برای طراحی تصویر، ساخت ویدیو و تبدیل ایده‌های خام به پرامپت‌های دقیق و حرفه‌ای.</p><button class="btn" data-go="prompt">ورود به آزمایشگاه پرامپت ←</button></div></section>
+ <div class="welcome"><div><div class="eyebrow">داشبورد خلاقیت</div><h1>از اینجا شروع کن.</h1><p>ابزار موردنیازت را انتخاب کن و ایده‌ات را توسعه بده.</p></div><div class="date-label">LOKAL AI / CREATIVE WORKSPACE</div></div>
+ <section class="hero"><div class="hero-content"><div class="hero-tag">LOKAL AI WORKSPACE</div><h2>ایده‌ات را<br><span>به واقعیت نزدیک کن.</span></h2><p>ابزارهای خلاقیت و آزمایشگاه پرامپت، در یک فضای کاری.</p><button class="btn" data-go="prompt">ورود به آزمایشگاه پرامپت ←</button></div></section>
  <div class="section-head"><h3>ابزارهای خلاقیت</h3><span>۴ ابزار اصلی</span></div>
  <div class="tools-grid">
   <button class="tool-card" data-tool="image"><div class="tool-icon">🎨</div><span class="tool-arrow">↖</span><h4>استودیوی تصویر</h4><p>ایده‌پردازی و آماده‌سازی پرامپت تصویر</p></button>
@@ -202,8 +162,8 @@ body{
   </div>
  </div>
 </section>
-<section class="page" id="page-about"><div class="welcome"><div><div class="eyebrow">ABOUT LOKAL AI</div><h1>خلق کن. تصور کن. نوآوری کن.</h1><p>LOKAL AI فضای خلاقیت دیجیتال با کمک هوش مصنوعی است.</p></div></div><div class="info-card"><h3>نقشه راه محصول</h3><ul><li>تکمیل رابط کاربری واکنش‌گرا</li><li>اتصال امن سرویس احراز هویت و پایگاه داده</li><li>اتصال موتورهای تولید تصویر و ویدیو</li><li>کیف پول اعتبار، تراکنش و دعوت دوستان</li><li>درگاه پرداخت متناسب با بازار هدف</li></ul></div></section>
-<footer class="footer">LOKAL AI · CREATE · IMAGINE · INNOVATE · © 2026</footer>
+<section class="page" id="page-about"><div class="welcome"><div><div class="eyebrow">ABOUT LOKAL AI</div><h1>درباره LOKAL AI</h1><p>فضای یکپارچه ابزارهای خلاقیت مبتنی بر هوش مصنوعی.</p></div></div><div class="info-card"><h3>نقشه راه محصول</h3><ul><li>تکمیل رابط کاربری واکنش‌گرا</li><li>اتصال امن سرویس احراز هویت و پایگاه داده</li><li>اتصال موتورهای تولید تصویر و ویدیو</li><li>کیف پول اعتبار، تراکنش و دعوت دوستان</li><li>درگاه پرداخت متناسب با بازار هدف</li></ul></div></section>
+<footer class="footer">LOKAL AI · © 2026</footer>
 </main>
 </div>
 <nav class="mobile-nav"><button class="active" data-page="home"><span>⌂</span>خانه</button><button data-page="prompt"><span>✦</span>پرامپت</button><button data-page="projects"><span>▤</span>پروژه‌ها</button><button data-page="account"><span>◉</span>حساب</button></nav>
