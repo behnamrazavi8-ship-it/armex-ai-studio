@@ -488,6 +488,12 @@ const handle = async (request: Request): Promise<Response> => {
       .select("id");
     if (messageError || !savedMessages) {
       console.error("Message persistence failed", { requestId, code: messageError?.code });
+      if (createdConversation) {
+        await db.from("armex_conversations")
+          .delete()
+          .eq("id", conversation.id)
+          .eq("user_id", auth.user.id);
+      }
       const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "message_persistence_failed");
       debitCompleted = false;
       return fail(
