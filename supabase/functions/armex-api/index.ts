@@ -112,17 +112,18 @@ const refundCredits = async (
   userId: string,
   amount: number,
   requestId: string,
+  attemptId: string,
   reason: string,
 ) => {
   if (amount <= 0) return true;
-  const idempotencyKey = "ai_refund:" + requestId + ":" + reason;
+  const idempotencyKey = "ai_refund:" + requestId + ":" + attemptId + ":" + reason;
   const { data, error } = await db.rpc("armex_grant_credits", {
     p_user_id: userId,
     p_amount: amount,
     p_type: "refund",
     p_idempotency_key: idempotencyKey,
     p_description: "بازگشت اعتبار درخواست ناموفق",
-    p_metadata: { request_id: requestId, reason },
+    p_metadata: { request_id: requestId, attempt_id: attemptId, reason },
   });
   if (error) {
     console.error("Credit refund failed", { requestId, code: error.code });
@@ -241,6 +242,7 @@ const handle = async (request: Request): Promise<Response> => {
   const requestId = isUuid(body.request_id) ? body.request_id : "";
   if (!requestId) return fail("A UUID request_id is required for idempotent billing", 400, cors);
 
+  const attemptId = crypto.randomUUID();
   const chatCreditCost = Number(Deno.env.get("CHAT_CREDIT_COST") ?? "1");
   if (!Number.isSafeInteger(chatCreditCost) || chatCreditCost !== 1) {
     return fail("Chat billing configuration must be CHAT_CREDIT_COST=1", 503, cors);
@@ -251,16 +253,10 @@ const handle = async (request: Request): Promise<Response> => {
     .select("request_id")
     .eq("request_id", requestId)
     .maybeSingle();
-  const { data: priorDebit, error: priorDebitError } = await db
-    .from("armex_credit_transactions")
-    .select("id")
-    .eq("user_id", auth.user.id)
-    .eq("idempotency_key", "ai_request:" + requestId)
-    .maybeSingle();
-  if (priorUsageError || priorDebitError) {
+  if (priorUsageError) {
     return fail("Could not verify request idempotency", 500, cors);
   }
-  if (priorUsage || priorDebit) {
+  if (priorUsage) {
     return fail("This request_id has already been processed; use a new UUID for a new message", 409, cors);
   }
 
@@ -321,9 +317,9 @@ const handle = async (request: Request): Promise<Response> => {
     const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
       p_user_id: auth.user.id,
       p_amount: chatCreditCost,
-      p_idempotency_key: "ai_request:" + requestId,
+      p_idempotency_key: "ai_request:" + requestId + ":" + attemptId,
       p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
-      p_metadata: { request_id: requestId, model, conversation_id: conversation.id },
+      p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation.id },
     });
     if (debitError) {
       console.error("Credit debit failed", { requestId, code: debitError.code });
@@ -362,7 +358,7 @@ const handle = async (request: Request): Promise<Response> => {
         status: providerResponse.status,
         body: providerError.slice(0, 500),
       });
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "provider_error");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "provider_error");
       debitCompleted = false;
       return fail("AI provider request failed; reserved credits were returned", 502, cors);
     }
@@ -370,7 +366,7 @@ const handle = async (request: Request): Promise<Response> => {
     const result = await providerResponse.json();
     const answer = result.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "invalid_provider_response");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "invalid_provider_response");
       debitCompleted = false;
       return fail("AI returned an invalid response; reserved credits were returned", 502, cors);
     }
@@ -413,7 +409,7 @@ const handle = async (request: Request): Promise<Response> => {
       .select("id");
     if (messageError || !savedMessages) {
       console.error("Message persistence failed", { requestId, code: messageError?.code });
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "message_persistence_failed");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "message_persistence_failed");
       debitCompleted = false;
       return fail("Could not save the conversation; credits were returned", 500, cors);
     }
@@ -436,8 +432,11 @@ const handle = async (request: Request): Promise<Response> => {
         .delete()
         .eq("user_id", auth.user.id)
         .in("id", messageIds);
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "usage_persistence_failed");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "usage_persistence_failed");
       debitCompleted = false;
+      if (usageError.code === "23505") {
+        return fail("This request_id has already completed; the duplicate attempt was refunded", 409, cors);
+      }
       return fail("Could not record usage; credits were returned", 500, cors);
     }
 
@@ -468,7 +467,7 @@ const handle = async (request: Request): Promise<Response> => {
       error: error instanceof Error ? error.message : "unknown",
     });
     if (debitCompleted) {
-      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "server_error");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "server_error");
     }
     const timedOut = error instanceof Error && error.name === "AbortError";
     return fail(
