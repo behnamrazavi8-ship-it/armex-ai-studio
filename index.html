@@ -195,7 +195,7 @@ else{
    await Promise.all([loadWalletBalance(session),loadImageGallery(session)]);
   }catch(error){
    const raw=String(error?.message||"");
-   const friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول برای ساخت تصویر کافی نیست.":/timed out/i.test(raw)?"زمان ساخت تصویر تمام شد؛ در صورت کسر اعتبار، بازگشت آن در کیف پول ثبت می‌شود.":/already processing/i.test(raw)?"این درخواست در حال انجام است؛ کمی بعد گالری را تازه‌سازی کن.":raw||"ساخت تصویر ناموفق بود.";
+   const friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول برای ساخت تصویر کافی نیست.":/not configured/i.test(raw)?"اتصال موتور تصویر هنوز در سرور تنظیم نشده است.":/Image provider failed/i.test(raw)?"موتور تصویر Cloudflare موقتاً در دسترس نیست یا سهمیه رایگان امروز تمام شده؛ اعتبار رزروشده بازگردانده شده است.":/timed out/i.test(raw)?"زمان ساخت تصویر تمام شد؛ در صورت کسر اعتبار، بازگشت آن در کیف پول ثبت می‌شود.":/already processing/i.test(raw)?"این درخواست در حال انجام است؛ کمی بعد گالری را تازه‌سازی کن.":raw||"ساخت تصویر ناموفق بود.";
    setImageStatus(friendly,true);await loadWalletBalance(session);
   }finally{imageButton.disabled=false}
  });
