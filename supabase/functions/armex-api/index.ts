@@ -130,6 +130,206 @@ const refundCredits = async (
   return false;
 };
 
+
+const IMAGE_BUCKET = "lokal-ai-images";
+const IMAGE_MODEL = Deno.env.get("IMAGE_MODEL")?.trim() || "bytedance-seed/seedream-4.5";
+const IMAGE_CREDIT_COST = Number(Deno.env.get("IMAGE_CREDIT_COST") ?? "20");
+const IMAGE_ASPECT_RATIOS = new Set(["1:1", "9:16", "16:9", "4:5", "3:2"]);
+const IMAGE_RESOLUTIONS = new Set(["1K", "2K", "4K"]);
+
+const signedImageUrl = async (db: SupabaseClient, path: string) => {
+  const { data, error } = await db.storage.from(IMAGE_BUCKET).createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) throw new Error("IMAGE_SIGNING_FAILED");
+  return data.signedUrl;
+};
+
+const listGeneratedImages = async (db: SupabaseClient, userId: string, cors: HeadersInit): Promise<Response> => {
+  const { data, error } = await db.from("armex_image_generations")
+    .select("id,prompt,model,aspect_ratio,resolution,credits_charged,actual_cost_usd,storage_path,mime_type,created_at")
+    .eq("user_id", userId).eq("status", "completed").not("storage_path", "is", null)
+    .order("created_at", { ascending: false }).limit(24);
+  if (error) {
+    console.error("Image history query failed", { userId, code: error.code });
+    return fail("Could not load image history", 500, cors);
+  }
+  const images = await Promise.all((data ?? []).map(async (item: Record<string, unknown>) => {
+    try {
+      return {
+        id: item.id, prompt: item.prompt, model: item.model, aspect_ratio: item.aspect_ratio,
+        resolution: item.resolution, credits_charged: item.credits_charged,
+        actual_cost_usd: item.actual_cost_usd, created_at: item.created_at,
+        image_url: await signedImageUrl(db, String(item.storage_path)),
+      };
+    } catch { return null; }
+  }));
+  return json({ success: true, images: images.filter(Boolean) as Json[] }, 200, cors);
+};
+
+const generateImage = async (
+  db: SupabaseClient, userId: string, body: Json, apiKey: string, cors: HeadersInit,
+): Promise<Response> => {
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const requestId = isUuid(body.request_id) ? body.request_id : "";
+  const aspectRatio = typeof body.aspect_ratio === "string" ? body.aspect_ratio : "1:1";
+  const resolution = typeof body.resolution === "string" ? body.resolution : "1K";
+  if (!prompt || prompt.length > 6000) return fail("A prompt between 1 and 6000 characters is required", 400, cors);
+  if (!requestId) return fail("A UUID request_id is required for safe image billing", 400, cors);
+  if (!IMAGE_ASPECT_RATIOS.has(aspectRatio)) return fail("Unsupported image aspect ratio", 400, cors);
+  if (!IMAGE_RESOLUTIONS.has(resolution)) return fail("Unsupported image resolution", 400, cors);
+  if (!Number.isSafeInteger(IMAGE_CREDIT_COST) || IMAGE_CREDIT_COST < 1 || IMAGE_CREDIT_COST > 1000) {
+    return fail("Image billing configuration is invalid", 503, cors);
+  }
+
+  const { data: prior, error: priorError } = await db.from("armex_image_generations")
+    .select("id,status,storage_path,credits_charged,actual_cost_usd,model,aspect_ratio,resolution,prompt,created_at")
+    .eq("user_id", userId).eq("request_id", requestId).maybeSingle();
+  if (priorError) return fail("Could not verify image request idempotency", 500, cors);
+  if (prior) {
+    if (prior.status === "completed" && prior.storage_path) {
+      try {
+        return json({ success: true, duplicate: true, image: {
+          id: prior.id, image_url: await signedImageUrl(db, prior.storage_path), prompt: prior.prompt,
+          model: prior.model, aspect_ratio: prior.aspect_ratio, resolution: prior.resolution,
+          credits_charged: prior.credits_charged, actual_cost_usd: prior.actual_cost_usd,
+          created_at: prior.created_at,
+        } }, 200, cors);
+      } catch {
+        return fail("Image was saved but its temporary access link could not be created; refresh image history", 500, cors);
+      }
+    }
+    return fail(prior.status === "pending"
+      ? "This image request is already processing; refresh image history shortly"
+      : "This request was already processed; create a new request to try again", 409, cors);
+  }
+
+  const { data: job, error: jobError } = await db.from("armex_image_generations").insert({
+    user_id: userId, request_id: requestId, prompt, model: IMAGE_MODEL,
+    aspect_ratio: aspectRatio, resolution, credits_charged: IMAGE_CREDIT_COST, status: "pending",
+  }).select("id").single();
+  if (jobError || !job) {
+    console.error("Image job creation failed", { requestId, code: jobError?.code });
+    return fail(jobError?.code === "23505" ? "This image request is already being processed" : "Could not start image generation", 409, cors);
+  }
+
+  const attemptId = crypto.randomUUID();
+  const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
+    p_user_id: userId, p_amount: IMAGE_CREDIT_COST, p_idempotency_key: "image_request:" + requestId,
+    p_description: "تولید تصویر در LOKAL AI",
+    p_metadata: { request_id: requestId, attempt_id: attemptId, model: IMAGE_MODEL, aspect_ratio: aspectRatio, resolution },
+  });
+  let debitConfirmed = !debitError && debited === true;
+  if (debitError) {
+    // A network error can occur after Postgres commits the debit. Verify the
+    // idempotency key before deciding whether a refund or retry is required.
+    const { data: existingDebit, error: debitLookupError } = await db
+      .from("armex_credit_transactions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("idempotency_key", "image_request:" + requestId)
+      .maybeSingle();
+    debitConfirmed = !debitLookupError && Boolean(existingDebit);
+  }
+  if (!debitConfirmed) {
+    await db.from("armex_image_generations").update({
+      status: "failed", error_code: debitError ? "credit_reservation_failed" : "insufficient_credits",
+    }).eq("id", job.id).eq("user_id", userId);
+    if (debitError) {
+      console.error("Image credit reservation failed", { requestId, code: debitError.code });
+      return fail("Could not reserve image credits", 500, cors);
+    }
+    return fail("Insufficient credits", 402, cors);
+  }
+
+  let debitCompleted = true;
+  let storagePath: string | null = null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 110000);
+  try {
+    const providerResponse = await fetch(OPENROUTER_URL + "/images", {
+      method: "POST", signal: controller.signal,
+      headers: {
+        Authorization: "Bearer " + apiKey, "Content-Type": "application/json",
+        "HTTP-Referer": "https://lokal-ai.net", "X-Title": "LOKAL AI",
+      },
+      body: JSON.stringify({ model: IMAGE_MODEL, prompt, aspect_ratio: aspectRatio, resolution, n: 1 }),
+    });
+    if (!providerResponse.ok) {
+      const providerError = await providerResponse.text();
+      console.error("OpenRouter image request failed", { requestId, status: providerResponse.status, body: providerError.slice(0, 500) });
+      const refunded = await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_provider_error");
+      debitCompleted = false;
+      await db.from("armex_image_generations").update({ status: "failed", error_code: "provider_error" })
+        .eq("id", job.id).eq("user_id", userId);
+      return fail(refunded ? "Image provider failed; reserved credits were returned" : "Image provider failed and credit refund could not be confirmed", refunded ? 502 : 500, cors);
+    }
+
+    const result = await providerResponse.json();
+    const image = Array.isArray(result.data) ? result.data[0] : null;
+    const base64 = typeof image?.b64_json === "string" ? image.b64_json : "";
+    if (!base64 || base64.length > 28000000) {
+      const refunded = await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_invalid_response");
+      debitCompleted = false;
+      await db.from("armex_image_generations").update({ status: "failed", error_code: "invalid_image_response" })
+        .eq("id", job.id).eq("user_id", userId);
+      return fail(refunded ? "Image provider returned an invalid image; reserved credits were returned" : "Image response was invalid and the credit refund could not be confirmed", refunded ? 502 : 500, cors);
+    }
+
+    const mimeType = typeof image.media_type === "string" ? image.media_type.split(";")[0].toLowerCase() : "image/png";
+    const extensionByType: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+    const extension = extensionByType[mimeType];
+    if (!extension) throw new Error("UNSUPPORTED_IMAGE_FORMAT");
+    const binary = atob(base64);
+    if (!binary.length || binary.length > 20 * 1024 * 1024) throw new Error("IMAGE_SIZE_LIMIT");
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+
+    storagePath = userId + "/" + requestId + "." + extension;
+    const { error: uploadError } = await db.storage.from(IMAGE_BUCKET).upload(storagePath, bytes, {
+      contentType: mimeType, cacheControl: "3600", upsert: false,
+    });
+    if (uploadError) {
+      console.error("Generated image upload failed", { requestId, message: uploadError.message });
+      throw new Error("IMAGE_STORAGE_FAILED");
+    }
+
+    const actualCost = typeof result.usage?.cost === "number" && Number.isFinite(result.usage.cost) ? result.usage.cost : null;
+    const { data: completed, error: completeError } = await db.from("armex_image_generations").update({
+      status: "completed", storage_path: storagePath, mime_type: mimeType,
+      actual_cost_usd: actualCost, completed_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).select("id").maybeSingle();
+    if (completeError || !completed) {
+      console.error("Image job completion record failed", { requestId, code: completeError?.code });
+      throw new Error("IMAGE_RECORD_FAILED");
+    }
+
+    debitCompleted = false;
+    let imageUrl: string | null = null;
+    try { imageUrl = await signedImageUrl(db, storagePath); }
+    catch { console.warn("Image saved but signed URL could not be created", { requestId }); }
+    return json({ success: true, image: {
+      id: job.id, image_url: imageUrl, prompt, model: IMAGE_MODEL, aspect_ratio: aspectRatio,
+      resolution, credits_charged: IMAGE_CREDIT_COST, actual_cost_usd: actualCost,
+      created_at: new Date().toISOString(),
+    } }, 200, cors);
+  } catch (error) {
+    if (storagePath) await db.storage.from(IMAGE_BUCKET).remove([storagePath]).catch(() => undefined);
+    const refunded = debitCompleted
+      ? await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_server_error")
+      : true;
+    debitCompleted = false;
+    await db.from("armex_image_generations").update({
+      status: "failed", error_code: error instanceof Error ? error.message.slice(0, 80) : "image_server_error",
+      storage_path: null, mime_type: null,
+    }).eq("id", job.id).eq("user_id", userId);
+    const timedOut = error instanceof Error && error.name === "AbortError";
+    console.error("Image generation failed", { requestId, error: error instanceof Error ? error.message : "unknown", refund_confirmed: refunded });
+    return fail(timedOut
+      ? (refunded ? "Image generation timed out; reserved credits were returned" : "Image generation timed out and credit refund could not be confirmed")
+      : (refunded ? "Image generation failed; reserved credits were returned" : "Image generation failed and credit refund could not be confirmed"),
+      timedOut ? 504 : 500, cors);
+  } finally { clearTimeout(timeout); }
+};
+
 const handle = async (request: Request): Promise<Response> => {
   const origin = request.headers.get("Origin");
   const cors = corsFor(origin);
@@ -153,7 +353,7 @@ const handle = async (request: Request): Promise<Response> => {
       status: "online",
       api_version: "5.0",
       secure_api: true,
-      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger"],
+      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger", "image_generation", "private_image_storage"],
     }, 200, cors);
   }
 
@@ -243,6 +443,10 @@ const handle = async (request: Request): Promise<Response> => {
     }
   }
 
+  if (request.method === "GET" && url.searchParams.get("action") === "images") {
+    return await listGeneratedImages(db, userId, cors);
+  }
+
   if (request.method === "GET") {
     return json({ success: true, service: "LOKAL AI", status: "online" }, 200, cors);
   }
@@ -256,6 +460,10 @@ const handle = async (request: Request): Promise<Response> => {
     body = parsed as Json;
   } catch {
     return fail("Invalid JSON", 400, cors);
+  }
+
+  if (body.action === "generate_image") {
+    return await generateImage(db, userId, body, openRouterKey, cors);
   }
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
