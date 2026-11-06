@@ -306,10 +306,14 @@ const handle = async (request: Request): Promise<Response> => {
   let debitCompleted = false;
   try {
     let modelInfo: ModelInfo | null = null;
+    const catalogController = new AbortController();
+    const catalogTimeout = setTimeout(() => catalogController.abort(), 10000);
     try {
-      modelInfo = await getModelInfo(openRouterKey, model, controller.signal);
+      modelInfo = await getModelInfo(openRouterKey, model, catalogController.signal);
     } catch {
       console.warn("Model pricing metadata unavailable; actual_cost_usd will be null", { model });
+    } finally {
+      clearTimeout(catalogTimeout);
     }
     const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
     const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
