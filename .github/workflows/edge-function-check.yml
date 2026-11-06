@@ -1,19 +1,23 @@
-name: Edge Function checks
+name: Edge Function and frontend checks
 
 on:
   pull_request:
     paths:
+      - "index.html"
+      - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
   push:
     branches: [main]
     paths:
+      - "index.html"
+      - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
 
 permissions:
   contents: read
 
 jobs:
-  deno-check:
+  quality-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,12 +37,26 @@ jobs:
           for attrs, source in blocks:
               if not source.strip():
                   continue
-              is_module = "type=\"module\"" in attrs.lower()
+              is_module = 'type="module"' in attrs.lower()
               suffix = "mjs" if is_module else "js"
               pathlib.Path(f"/tmp/lokal-inline-{index}.{suffix}").write_text(source, encoding="utf-8")
               index += 1
-          if index == 0:
-              raise SystemExit("No inline JavaScript found")
+          if index != 2:
+              raise SystemExit(f"Expected 2 inline scripts, found {index}")
+          ids = re.findall(r'\bid="([^"]+)"', html)
+          duplicates = sorted({item for item in ids if ids.count(item) > 1})
+          if duplicates:
+              raise SystemExit("Duplicate HTML ids: " + ", ".join(duplicates))
+          required = [
+              "public-site", "workspace-app", "auth-email", "auth-password",
+              "auth-signin", "auth-signup", "auth-reset", "auth-signout",
+              "generatePrompt", "generateAIPrompt", "promptResult",
+              "creditCount", "walletStat", "page-home", "page-prompt",
+              "page-projects", "page-account"
+          ]
+          missing = [item for item in required if item not in ids]
+          if missing:
+              raise SystemExit("Missing required UI ids: " + ", ".join(missing))
           PY
           node --check /tmp/lokal-inline-0.js
           node --check /tmp/lokal-inline-1.mjs
