@@ -280,7 +280,7 @@ const translateError = (error) => {
 if (!config.supabaseUrl || !config.supabaseAnonKey ||
     config.supabaseAnonKey.includes("PASTE_")) {
   setMessage("برای فعال‌سازی ورود، مقدار Supabase anon/publishable key را در lokal-config.js وارد کن. کلید service_role ممنوع است.", true);
-  ["auth-signin","auth-signup","auth-reset"].forEach(id => {
+  ["auth-signin","auth-signup","auth-reset","generateAIPrompt"].forEach(id => {
     const button = document.getElementById(id);
     if (button) button.disabled = true;
   });
