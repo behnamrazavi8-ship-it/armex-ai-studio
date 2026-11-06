@@ -4,6 +4,7 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const MAX_MESSAGE_CHARS = 12000;
 const MAX_CONTEXT_MESSAGES = 30;
+const MAX_CONTEXT_CHARS = 30000;
 const REQUEST_TIMEOUT_MS = 60000;
 
 type Json = Record<string, unknown>;
@@ -288,10 +289,17 @@ const handle = async (request: Request): Promise<Response> => {
       .order("created_at", { ascending: false })
       .limit(MAX_CONTEXT_MESSAGES);
     if (historyError) return fail("Could not load conversation history", 500, cors);
-    context = (history ?? []).reverse().map((row: { role: string; content: string }) => ({
+    const chronological = (history ?? []).reverse().map((row: { role: string; content: string }) => ({
       role: row.role as "user" | "assistant",
       content: row.content,
     }));
+    let remainingContextChars = MAX_CONTEXT_CHARS;
+    context = chronological.reverse().flatMap((item) => {
+      if (remainingContextChars <= 0) return [];
+      const content = item.content.slice(-remainingContextChars);
+      remainingContextChars -= content.length;
+      return [{ role: item.role, content }];
+    }).reverse();
   } else {
     const title = message.replace(/\s+/g, " ").slice(0, 80) || "گفتگوی جدید";
     const { data, error } = await db.from("armex_conversations")
