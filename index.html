@@ -62,8 +62,8 @@
 <section class="page" id="page-account"><div class="welcome"><h1>حساب و کیف پول</h1></div><div class="account-card" id="auth-session-card" hidden><div class="account-profile"><img id="auth-user-avatar" alt="" hidden><div><h3 id="auth-user-name">حساب شخصی LOKAL AI</h3><p id="auth-user-email"></p><span class="tag" id="auth-provider">روش ورود</span></div></div><div class="account-details"><div><span>موجودی فعلی</span><b id="accountWalletBalance">در حال دریافت…</b></div><div><span>شناسه حساب</span><b id="auth-user-id">—</b></div></div><p class="muted-copy" id="wallet-help">اعتبار از کیف پول امن سرور خوانده می‌شود؛ این صفحه امکان تغییر مستقیم موجودی را ندارد.</p><div class="workspace-actions"><button class="btn btn-ghost" id="auth-signout" type="button">خروج از حساب</button></div></div></section>
 <section class="page" id="page-image"><div class="welcome"><div class="eyebrow">LOKAL AI IMAGE ENGINE</div><h1>استودیوی تصویر</h1><p class="muted-copy">ایده‌ات را بنویس و تصویر واقعی بساز؛ خروجی‌ها در گالری خصوصی حساب تو ذخیره می‌شوند.</p></div>
 <div class="panel image-studio-panel"><h3>ساخت تصویر جدید</h3><label class="field-label" for="imagePrompt">توضیح تصویر</label><textarea class="textarea" id="imagePrompt" maxlength="6000" placeholder="مثلاً: یک خودروی اسپرت مشکی در خیابان خیس توکیو، نورهای نئونی آبی، عکاسی سینمایی و واقع‌گرایانه..."></textarea>
-<div class="image-studio-controls"><div><label class="field-label" for="imageAspectRatio">نسبت تصویر</label><select class="select" id="imageAspectRatio"><option value="1:1">۱:۱ · مربع</option><option value="9:16" selected>۹:۱۶ · عمودی</option><option value="16:9">۱۶:۹ · افقی</option><option value="4:5">۴:۵ · پرتره</option><option value="3:2">۳:۲ · منظره</option></select></div><div><label class="field-label" for="imageResolution">کیفیت تصویر</label><select class="select" id="imageResolution"><option value="1K" selected>۱K · استاندارد</option><option value="2K">۲K · بالا</option><option value="4K">۴K · بسیار بالا</option></select></div></div>
-<div class="image-cost-note">مدل: Seedream 4.5 · هزینه هر تصویر: ۲۰ اعتبار · فقط یک تصویر در هر درخواست</div><div class="workspace-actions"><button class="btn" id="generateImage" type="button">ساخت تصویر · ۲۰ اعتبار</button><button class="btn btn-ghost" id="usePromptInImage" type="button">استفاده از پرامپت Prompt Lab</button></div>
+<div class="image-studio-controls"><div class="notice">مدل FLUX.1 Schnell در حال حاضر با ابعاد پیش‌فرض خودش تصویر می‌سازد؛ تنظیم دستی نسبت و رزولوشن در این اتصال فعال نیست.</div></div>
+<div class="image-cost-note">مدل: FLUX.1 Schnell · موتور Cloudflare Workers AI · هزینه هر تصویر: ۲۰ اعتبار · سهمیه رایگان روزانه محدود است</div><div class="workspace-actions"><button class="btn" id="generateImage" type="button">ساخت تصویر · ۲۰ اعتبار</button><button class="btn btn-ghost" id="usePromptInImage" type="button">استفاده از پرامپت Prompt Lab</button></div>
 <div class="image-status" id="imageStatus" role="status" aria-live="polite"></div><div class="image-preview" id="imagePreview" hidden><img id="generatedImage" alt="تصویر ساخته‌شده در LOKAL AI"><div class="image-preview-actions"><span class="muted-copy" id="imageMeta"></span><a class="btn btn-ghost btn-small" id="downloadGeneratedImage" href="#" target="_blank" rel="noopener">باز کردن / ذخیره تصویر</a></div></div></div>
 <div class="panel"><h3>گالری تصاویر من</h3><p class="muted-copy">تصاویر فقط برای حساب خودت قابل دسترسی هستند.</p><div id="imageGallery" class="image-gallery"><div class="empty">هنوز تصویری نساخته‌ای.</div></div></div></section>
 <section class="page" id="page-video"><div class="welcome"><h1>استودیوی ویدئو و صدا</h1></div><div class="empty">این بخش هنوز فعال نیست و هیچ خروجی نمایشی به‌عنوان تولید واقعی ارائه نمی‌کند.</div></section>
@@ -183,15 +183,14 @@ else{
   try{
    const result=await callArmexApi(session,"",{
     action:"generate_image",request_id:crypto.randomUUID(),prompt,
-    aspect_ratio:document.getElementById("imageAspectRatio").value,
-    resolution:document.getElementById("imageResolution").value
+    aspect_ratio:"1:1",resolution:"1K"
    });
    if(result.success!==true||!result.image)throw new Error("پاسخ موتور تصویر معتبر نیست.");
    if(result.image.image_url){
     const preview=document.getElementById("generatedImage"),link=document.getElementById("downloadGeneratedImage");
     preview.src=result.image.image_url;link.href=result.image.image_url;imagePreview.hidden=false;
    }
-   document.getElementById("imageMeta").textContent=String(result.image.model||"Seedream 4.5")+" · "+Number(result.image.credits_charged||20).toLocaleString("fa-IR")+" اعتبار مصرف شد";
+   document.getElementById("imageMeta").textContent=String(result.image.model||"FLUX.1 Schnell")+" · "+Number(result.image.credits_charged||20).toLocaleString("fa-IR")+" اعتبار مصرف شد";
    setImageStatus(result.image.image_url?"تصویر با موفقیت ساخته و در گالری خصوصی ذخیره شد.":"تصویر ذخیره شد؛ برای دریافت پیوند نمایش، گالری را تازه‌سازی کن.");
    await Promise.all([loadWalletBalance(session),loadImageGallery(session)]);
   }catch(error){
