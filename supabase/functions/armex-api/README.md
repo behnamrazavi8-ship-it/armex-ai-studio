@@ -20,7 +20,7 @@ Do not commit any secret values.
 
 ## Routes
 
-- `GET ?action=health`: public health check; returns no credentials or account data.
+- `GET ?action=health`: public health check; returns `api_version=5.0` and `secure_api=true` for the frontend's fail-closed version gate.
 - `GET ?action=models`: requires a valid Supabase access token and returns only enabled models.
 - `GET ?action=balance`: requires a valid Supabase access token and returns the authenticated user's wallet balance.
 - `POST`: requires a valid Supabase access token and a JSON body.
@@ -37,7 +37,7 @@ Example request body:
 }
 ```
 
-The chat response includes `conversation_id`, `request_id`, the answer, token usage, actual provider cost (when available), and credits charged.
+The chat response includes `conversation_id`, `request_id`, the answer, token usage, actual provider cost (when available), and credits charged. The frontend refuses to call chat or display a wallet balance unless the health route confirms this secure API version.
 
 ## Existing database contract
 
