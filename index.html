@@ -296,7 +296,7 @@ if (!config.supabaseUrl || !config.supabaseAnonKey ||
   let pendingPromptRequest = null;
 
   const setWalletBalance = (balance) => {
-    const formatted = Number(balance || 0).toLocaleString("fa-IR");
+    const formatted = balance === "—" ? "—" : Number(balance || 0).toLocaleString("fa-IR");
     if (creditCount) creditCount.textContent = formatted;
     if (walletStat) walletStat.textContent = formatted;
   };
