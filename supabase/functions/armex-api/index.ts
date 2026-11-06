@@ -122,7 +122,7 @@ const refundCredits = async (
     p_user_id: userId,
     p_amount: amount,
     p_type: "refund",
-    p_idempotency_key: "ai_refund:" + requestId,
+    p_idempotency_key: "ai_refund:" + requestId + ":" + reason,
     p_description: "بازگشت اعتبار درخواست ناموفق",
     p_metadata: { request_id: requestId, reason },
   });
@@ -272,7 +272,7 @@ const handle = async (request: Request): Promise<Response> => {
     conversation = data as { id: string };
   }
 
-  const promptChars = context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
+  const promptChars = SYSTEM_PROMPT.length + context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
   const estimatedInputTokens = Math.max(1, Math.ceil(promptChars / 3));
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -375,6 +375,7 @@ const handle = async (request: Request): Promise<Response> => {
         debitCompleted = false;
         return fail("Actual model cost exceeded the available credit reservation", 402, cors);
       }
+      reservedCredits = actualCredits;
     } else if (reservedCredits > actualCredits) {
       const refunded = await refundCredits(
         db,
@@ -385,6 +386,8 @@ const handle = async (request: Request): Promise<Response> => {
       );
       if (!refunded) {
         console.error("Reservation adjustment requires review", { requestId });
+      } else {
+        reservedCredits = actualCredits;
       }
     }
 
