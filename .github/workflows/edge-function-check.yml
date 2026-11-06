@@ -22,3 +22,23 @@ jobs:
           deno-version: v2.x
       - name: Type-check armex-api
         run: deno check supabase/functions/armex-api/index.ts
+
+      - name: Syntax-check browser JavaScript
+        run: |
+          python - <<'PY'
+          import pathlib, re
+          html = pathlib.Path("index.html").read_text(encoding="utf-8")
+          blocks = re.findall(r"<script([^>]*)>(.*?)</script>", html, re.S | re.I)
+          index = 0
+          for attrs, source in blocks:
+              if not source.strip():
+                  continue
+              is_module = "type=\"module\"" in attrs.lower()
+              suffix = "mjs" if is_module else "js"
+              pathlib.Path(f"/tmp/lokal-inline-{index}.{suffix}").write_text(source, encoding="utf-8")
+              index += 1
+          if index == 0:
+              raise SystemExit("No inline JavaScript found")
+          PY
+          node --check /tmp/lokal-inline-0.js
+          node --check /tmp/lokal-inline-1.mjs
