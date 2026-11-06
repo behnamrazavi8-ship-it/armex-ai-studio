@@ -217,7 +217,19 @@ const generateImage = async (
     p_description: "تولید تصویر در LOKAL AI",
     p_metadata: { request_id: requestId, attempt_id: attemptId, model: IMAGE_MODEL, aspect_ratio: aspectRatio, resolution },
   });
-  if (debitError || debited !== true) {
+  let debitConfirmed = !debitError && debited === true;
+  if (debitError) {
+    // A network error can occur after Postgres commits the debit. Verify the
+    // idempotency key before deciding whether a refund or retry is required.
+    const { data: existingDebit, error: debitLookupError } = await db
+      .from("armex_credit_transactions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("idempotency_key", "image_request:" + requestId)
+      .maybeSingle();
+    debitConfirmed = !debitLookupError && Boolean(existingDebit);
+  }
+  if (!debitConfirmed) {
     await db.from("armex_image_generations").update({
       status: "failed", error_code: debitError ? "credit_reservation_failed" : "insufficient_credits",
     }).eq("id", job.id).eq("user_id", userId);
