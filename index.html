@@ -137,6 +137,70 @@ else{
   else{walletLoadSequence++;setWalletBalance("—");}
   void loadWalletBalance(session);
  };
+
+ const imageButton=document.getElementById("generateImage");
+ const imageStatus=document.getElementById("imageStatus");
+ const imageGallery=document.getElementById("imageGallery");
+ const imagePreview=document.getElementById("imagePreview");
+ const setImageStatus=(text,isError=false)=>{if(!imageStatus)return;imageStatus.textContent=text;imageStatus.classList.toggle("error",isError)};
+ const renderImageCard=item=>{
+  const card=document.createElement("article");card.className="image-gallery-card";
+  const img=document.createElement("img");img.src=item.image_url;img.alt="تصویر ساخته‌شده در LOKAL AI";img.loading="lazy";card.append(img);
+  const prompt=document.createElement("p");prompt.textContent=String(item.prompt||"تصویر تولیدشده");card.append(prompt);
+  const meta=document.createElement("small");meta.textContent=String(item.resolution||"1K")+" · "+String(item.aspect_ratio||"1:1")+" · "+Number(item.credits_charged||20).toLocaleString("fa-IR")+" اعتبار";card.append(meta);
+  const link=document.createElement("a");link.href=item.image_url;link.target="_blank";link.rel="noopener";link.textContent="باز کردن تصویر";card.append(link);
+  return card;
+ };
+ const loadImageGallery=async session=>{
+  if(!imageGallery||!session)return;
+  imageGallery.replaceChildren();const loading=document.createElement("div");loading.className="empty";loading.textContent="در حال دریافت گالری تصاویر...";imageGallery.append(loading);
+  try{
+   const result=await callArmexApi(session,"?action=images");
+   imageGallery.replaceChildren();
+   if(!Array.isArray(result.images)||!result.images.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="هنوز تصویری نساخته‌ای.";imageGallery.append(empty);return}
+   result.images.forEach(item=>{if(item?.image_url)imageGallery.append(renderImageCard(item))});
+  }catch(error){
+   imageGallery.replaceChildren();const empty=document.createElement("div");empty.className="empty";empty.textContent="دریافت گالری ممکن نشد؛ صفحه را دوباره باز کن.";imageGallery.append(empty);console.warn("Image history unavailable",error);
+  }
+ };
+ window.addEventListener("lokal:open-image-studio",async()=>{
+  const {data:{session}}=await supabase.auth.getSession();
+  if(!session){location.hash="auth-section";return}
+  await loadImageGallery(session);
+ });
+ document.getElementById("usePromptInImage")?.addEventListener("click",()=>{
+  const text=document.getElementById("promptResult")?.textContent?.trim()||"";
+  if(!text){setImageStatus("ابتدا در Prompt Lab یک پرامپت بساز یا آن را بهبود بده.",true);return}
+  document.getElementById("imagePrompt").value=text.slice(0,6000);
+  setImageStatus("پرامپت Prompt Lab به استودیوی تصویر منتقل شد.");
+ });
+ imageButton?.addEventListener("click",async()=>{
+  const prompt=document.getElementById("imagePrompt")?.value?.trim()||"";
+  if(!prompt){setImageStatus("ابتدا توضیح تصویر را وارد کن.",true);document.getElementById("imagePrompt")?.focus();return}
+  const {data:{session}}=await supabase.auth.getSession();
+  if(!session){location.hash="auth-section";return}
+  imageButton.disabled=true;setImageStatus("در حال رزرو اعتبار و ساخت تصویر؛ ممکن است تا یک دقیقه زمان ببرد...");
+  try{
+   const result=await callArmexApi(session,"",{
+    action:"generate_image",request_id:crypto.randomUUID(),prompt,
+    aspect_ratio:document.getElementById("imageAspectRatio").value,
+    resolution:document.getElementById("imageResolution").value
+   });
+   if(result.success!==true||!result.image)throw new Error("پاسخ موتور تصویر معتبر نیست.");
+   if(result.image.image_url){
+    const preview=document.getElementById("generatedImage"),link=document.getElementById("downloadGeneratedImage");
+    preview.src=result.image.image_url;link.href=result.image.image_url;imagePreview.hidden=false;
+   }
+   document.getElementById("imageMeta").textContent=String(result.image.model||"Seedream 4.5")+" · "+Number(result.image.credits_charged||20).toLocaleString("fa-IR")+" اعتبار مصرف شد";
+   setImageStatus(result.image.image_url?"تصویر با موفقیت ساخته و در گالری خصوصی ذخیره شد.":"تصویر ذخیره شد؛ برای دریافت پیوند نمایش، گالری را تازه‌سازی کن.");
+   await Promise.all([loadWalletBalance(session),loadImageGallery(session)]);
+  }catch(error){
+   const raw=String(error?.message||"");
+   const friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول برای ساخت تصویر کافی نیست.":/timed out/i.test(raw)?"زمان ساخت تصویر تمام شد؛ در صورت کسر اعتبار، بازگشت آن در کیف پول ثبت می‌شود.":/already processing/i.test(raw)?"این درخواست در حال انجام است؛ کمی بعد گالری را تازه‌سازی کن.":raw||"ساخت تصویر ناموفق بود.";
+   setImageStatus(friendly,true);await loadWalletBalance(session);
+  }finally{imageButton.disabled=false}
+ });
+
  const authRedirectUrl=()=>new URL(window.location.pathname,window.location.origin).toString();
  window.addEventListener("lokal:generate-ai-prompt",async event=>{const promptMessage=String(event.detail?.message||"").trim();if(!promptMessage||!aiButton)return;const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}if(!pendingPromptRequest||pendingPromptRequest.message!==promptMessage)pendingPromptRequest={message:promptMessage,requestId:crypto.randomUUID()};aiButton.disabled=true;if(aiStatus){aiStatus.textContent="در حال اتصال امن و ساخت پرامپت هوشمند…";aiStatus.style.display="block"}try{await ensureSecureApi(session);const r=await callArmexApi(session,"",{request_id:pendingPromptRequest.requestId,message:promptMessage,model:"openai/gpt-4o-mini",max_tokens:1024});pendingPromptRequest=null;if(aiStatus)aiStatus.textContent="انجام شد · "+Number(r.usage?.credits_charged||1).toLocaleString("fa-IR")+" اعتبار مصرف شد.";window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{answer:r.answer}}));await loadWalletBalance(session)}catch(e){const raw=String(e?.message||""),friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول کافی نیست.":/Authentication required|Invalid or expired session/i.test(raw)?"نشست ورود منقضی شده است؛ دوباره وارد شو.":raw||"ساخت پرامپت ناموفق بود؛ دوباره تلاش کن.";if(aiStatus){aiStatus.textContent=friendly;aiStatus.style.display="block"}window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{error:friendly}}));if(/already completed/i.test(raw))pendingPromptRequest=null}finally{aiButton.disabled=false}});
  const credentials=()=>{const email=emailInput.value.trim(),password=passwordInput.value;if(!email||!emailInput.checkValidity()){setMessage("یک ایمیل معتبر وارد کن.",true);emailInput.focus();return null}if(password.length<8){setMessage("رمز عبور باید حداقل ۸ کاراکتر باشد.",true);passwordInput.focus();return null}return{email,password}};
