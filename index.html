@@ -116,8 +116,9 @@ else{
    // probe must not prevent the wallet from loading.
    const result=await callArmexApi(session,"?action=balance");
    if(sequence!==walletLoadSequence)return;
-   if(result.success!==true||!Number.isFinite(Number(result.balance))||Number(result.balance)<0)throw new Error("پاسخ موجودی کیف پول معتبر نیست.");
+   if(result.success!==true||result.wallet_initialized!==true||!Number.isFinite(Number(result.balance))||Number(result.balance)<0){const help=document.getElementById("wallet-help");if(help)help.textContent="کیف پول این حساب هنوز در سرور مقداردهی نشده است؛ اعتبار نمایش‌داده نمی‌شود تا از ثبت صحیح آن مطمئن شویم.";throw new Error("کیف پول این حساب هنوز مقداردهی نشده است.")}
    setWalletBalance(result.balance);
+   const help=document.getElementById("wallet-help");if(help)help.textContent=result.signup_bonus_recorded===false?"کیف پول موجود است، اما تراکنش اعتبار اولیه در دفتر تراکنش‌ها پیدا نشد؛ لازم است ثبت پاداش ۵۰۰ اعتباری بررسی شود.":"اعتبار از کیف پول امن سرور خوانده می‌شود؛ تغییر موجودی فقط از مسیرهای مجاز سرور انجام می‌شود.";
   }catch(error){
    if(sequence===walletLoadSequence)setWalletBalance("—");
    console.warn("Wallet balance unavailable",error);
