@@ -10,7 +10,7 @@ Set these under Supabase Dashboard → Edge Functions → Secrets:
 - `SUPABASE_ANON_KEY` (the public anon/publishable key; used only to validate the user's JWT)
 - `SUPABASE_SERVICE_ROLE_KEY` (server-side only; never expose to the browser)
 - `OPENROUTER_API_KEY`
-- `CREDITS_PER_USD` (required product pricing conversion: credits charged per USD of provider cost)
+- `CHAT_CREDIT_COST=1` (required initial billing policy: exactly one credit per accepted chat message)
 
 Optional secrets:
 
@@ -51,9 +51,7 @@ The service-role key is used only inside this Edge Function. Browser clients mus
 
 ## Pricing safety
 
-`CREDITS_PER_USD` is intentionally mandatory. No conversion rate is hard-coded because that is a product/economic decision. Until it is configured to the rate approved by LOKAL AI, chat requests fail closed with HTTP 503 rather than running for free or guessing a credit price.
-
-The function reserves an estimated maximum based on the selected model's OpenRouter token pricing, reconciles the reservation against actual usage, and uses unique ledger idempotency keys for debits/refunds.
+The approved initial policy charges exactly one credit per accepted chat message. `CHAT_CREDIT_COST` must be set to `1`; other values are rejected. Provider cost is recorded separately in USD when OpenRouter reports it or model pricing metadata is available. A request must include a UUID `request_id`; the same user/request pair cannot be charged twice. Provider failures trigger one idempotent compensating refund.
 
 ## Deployment
 
