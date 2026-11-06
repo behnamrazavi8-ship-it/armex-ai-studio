@@ -95,6 +95,81 @@ body{
  .tool-card{border-radius:16px}
  .workspace,.info-card{border-radius:17px}
 }
+
+/* LOKAL AI — sharper emerald / electric blue / vivid violet */
+:root{
+ --bg:#050810;--surface:#0b1220;--surface2:#111d30;--line:#263955;
+ --text:#f5f8ff;--muted:#a6b4ca;--red:#00f0b5;--red2:#168bff;
+ --green:#00f0b5;--purple:#a855f7;--purple2:#7c3aed;--blue:#238bff;
+ --shadow:0 22px 65px #000b;
+}
+body{
+ background:
+  radial-gradient(ellipse at 88% 0%,#8b5cf633 0,transparent 30%),
+  radial-gradient(ellipse at 8% 38%,#00e8b526 0,transparent 34%),
+  radial-gradient(ellipse at 70% 70%,#1677ff20 0,transparent 38%),var(--bg);
+}
+.topbar{background:#070d18ed;border-bottom-color:#314766}
+.brand-mark{
+ background:linear-gradient(135deg,#00f0b5 0%,#238bff 52%,#a855f7 100%);
+ box-shadow:0 0 22px #00f0b555,0 0 34px #8b5cf733;
+}
+.avatar{background:#25153c;border-color:#7943bb;color:#d8b4fe}
+.sidebar{background:linear-gradient(180deg,#101a2c,#0a1120);border-color:#30445f}
+.nav-btn:hover,.nav-btn.active{
+ background:linear-gradient(100deg,#00f0b52b,#238bff20,#a855f722);
+ color:#fff;
+}
+.nav-btn.active{box-shadow:inset -2px 0 #a855f7,0 0 22px #8b5cf71c}
+.side-note{background:linear-gradient(135deg,#102c2c,#1b1534);border-color:#40527b}
+.side-note b,.eyebrow{color:#b78aff}
+.hero{
+ background:
+  radial-gradient(ellipse at 12% 85%,#00f0b52c 0,transparent 40%),
+  radial-gradient(ellipse at 88% 10%,#238bff38 0,transparent 42%),
+  radial-gradient(ellipse at 52% 100%,#a855f72b 0,transparent 48%),
+  linear-gradient(112deg,#0b2928 0%,#10213c 55%,#1b1230 100%);
+ border-color:#5365a0;
+ box-shadow:0 24px 70px #0009,0 0 35px #8b5cf71c,inset 0 1px #ffffff20;
+}
+.hero:after{color:#b78aff18;text-shadow:0 0 75px #a855f755}
+.hero-tag{color:#bda0ff}
+.hero h2 span{
+ background:linear-gradient(90deg,#00f0b5 0%,#39a4ff 52%,#c084fc 100%);
+ -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero p{color:#d0d9eb}
+.btn{
+ background:linear-gradient(110deg,#00e6ad 0%,#238bff 55%,#9652ed 100%);
+ color:#050b16;
+ box-shadow:0 8px 28px #238bff38,0 0 24px #a855f72b,inset 0 1px #ffffff80;
+}
+.btn:hover{filter:brightness(1.18);box-shadow:0 12px 34px #238bff55,0 0 30px #a855f744}
+.tool-card{
+ background:linear-gradient(145deg,#14263d,#0c1525 72%);
+ border-color:#2d4568;box-shadow:0 12px 30px #0006;
+}
+.tool-card:hover{border-color:#a855f7;box-shadow:0 16px 38px #0008,0 0 25px #a855f72b}
+.tool-icon{
+ background:linear-gradient(135deg,#00e6ad35,#238bff35 55%,#a855f735);
+ border:1px solid #7c83d880;box-shadow:inset 0 1px #ffffff25,0 0 18px #8b5cf722;
+}
+.tool-arrow{color:#b99aff}
+.workspace,.info-card,.stat{
+ background:linear-gradient(145deg,#111e32,#0a1220);
+ border-color:#2b4261;
+}
+.textarea,.input,.select{background:#070e1b;border-color:#344b6b}
+.textarea:focus,.input:focus,.select:focus{
+ border-color:#a855f7;box-shadow:0 0 0 3px #a855f72b,0 0 22px #238bff20;
+}
+.demo-label{background:#26163f;border-color:#8050bb;color:#d8b4fe}
+.mobile-nav{background:#080f1ced;border-top-color:#334867}
+.mobile-nav button.active{color:#c084fc}
+.result{border-color:#267c70;background:#0d2a2b;color:#c8fff0}
+.notice{border-color:#a855f7;background:#25183a55;color:#e2d4ff}
+.toast{background:#111e32;border-color:#52668b}
+
 </style>
 </head>
 <body>
@@ -116,8 +191,8 @@ body{
 </aside>
 <main class="main">
 <section class="page active" id="page-home">
- <div class="welcome"><div><div class="eyebrow">داشبورد خلاقیت</div><h1>از اینجا شروع کن.</h1><p>ابزار موردنیازت را انتخاب کن و ایده‌ات را توسعه بده.</p></div><div class="date-label">LOKAL AI / CREATIVE WORKSPACE</div></div>
- <section class="hero"><div class="hero-content"><div class="hero-tag">LOKAL AI WORKSPACE</div><h2>ایده‌ات را<br><span>به واقعیت نزدیک کن.</span></h2><p>ابزارهای خلاقیت و آزمایشگاه پرامپت، در یک فضای کاری.</p><button class="btn" data-go="prompt">ورود به آزمایشگاه پرامپت ←</button></div></section>
+ <div class="welcome"><div><div class="eyebrow">داشبورد خلاقیت</div><h1>داشبورد</h1><p>ابزار موردنیازت را انتخاب کن.</p></div><div class="date-label">LOKAL AI / CREATIVE WORKSPACE</div></div>
+ <section class="hero"><div class="hero-content"><div class="hero-tag">CREATIVE STUDIO</div><h2>ایده‌ات را <span>بساز.</span></h2><p>تصویر، ویدیو و پرامپت؛ در یک فضای کاری.</p><button class="btn" data-go="prompt">شروع کار ←</button></div></section>
  <div class="section-head"><h3>ابزارهای خلاقیت</h3><span>۴ ابزار اصلی</span></div>
  <div class="tools-grid">
   <button class="tool-card" data-tool="image"><div class="tool-icon">🎨</div><span class="tool-arrow">↖</span><h4>استودیوی تصویر</h4><p>ایده‌پردازی و آماده‌سازی پرامپت تصویر</p></button>
