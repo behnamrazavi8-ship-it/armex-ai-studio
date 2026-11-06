@@ -47,9 +47,6 @@ const isUuid = (value: unknown): value is string =>
   typeof value === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
-const creditsForUsd = (usd: number, rate: number): number =>
-  usd <= 0 ? 0 : Math.max(1, Math.ceil(usd * rate));
-
 const safeNumber = (value: unknown, fallback = 0): number => {
   const n = typeof value === "string" ? Number(value) : value;
   return typeof n === "number" && Number.isFinite(n) && n >= 0 ? n : fallback;
@@ -306,7 +303,6 @@ const handle = async (request: Request): Promise<Response> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  let reservedCredits = chatCreditCost;
   let debitCompleted = false;
   try {
     let modelInfo: ModelInfo | null = null;
@@ -362,7 +358,7 @@ const handle = async (request: Request): Promise<Response> => {
         status: providerResponse.status,
         body: providerError.slice(0, 500),
       });
-      await refundCredits(db, auth.user.id, reservedCredits, requestId, "provider_error");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "provider_error");
       debitCompleted = false;
       return fail("AI provider request failed; reserved credits were returned", 502, cors);
     }
@@ -370,7 +366,7 @@ const handle = async (request: Request): Promise<Response> => {
     const result = await providerResponse.json();
     const answer = result.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {
-      await refundCredits(db, auth.user.id, reservedCredits, requestId, "invalid_provider_response");
+      await refundCredits(db, auth.user.id, chatCreditCost, requestId, "invalid_provider_response");
       debitCompleted = false;
       return fail("AI returned an invalid response; reserved credits were returned", 502, cors);
     }
@@ -458,7 +454,7 @@ const handle = async (request: Request): Promise<Response> => {
         output_tokens: outputTokens,
         total_tokens: totalTokens,
         actual_cost_usd: actualUsd,
-        credits_charged: actualCredits,
+        credits_charged: chatCreditCost,
       },
       finish_reason: result.choices?.[0]?.finish_reason ?? null,
     }, 200, cors);
