@@ -304,7 +304,8 @@ const handle = async (request: Request): Promise<Response> => {
     return fail("This request_id was already processed; use a new UUID for a new message", 409, cors);
   }
 
-  let conversation: { id: string };
+  let conversation: { id: string } | null = null;
+  let createdConversation = false;
   let context: Array<{ role: "user" | "assistant"; content: string }> = [];
 
   if (conversationId) {
@@ -335,14 +336,6 @@ const handle = async (request: Request): Promise<Response> => {
       remainingContextChars -= content.length;
       return [{ role: item.role, content }];
     }).reverse();
-  } else {
-    const title = message.replace(/\s+/g, " ").slice(0, 80) || "گفتگوی جدید";
-    const { data, error } = await db.from("armex_conversations")
-      .insert({ user_id: auth.user.id, title, model })
-      .select("id")
-      .single();
-    if (error || !data) return fail("Could not create conversation", 500, cors);
-    conversation = data as { id: string };
   }
 
   const promptChars = SYSTEM_PROMPT.length + context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
@@ -370,7 +363,7 @@ const handle = async (request: Request): Promise<Response> => {
       p_amount: chatCreditCost,
       p_idempotency_key: "ai_request:" + requestId + ":" + attemptId,
       p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
-      p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation.id },
+      p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation?.id ?? null },
     });
     if (debitError) {
       console.error("Credit debit failed", { requestId, code: debitError.code });
@@ -444,6 +437,26 @@ const handle = async (request: Request): Promise<Response> => {
       ? calculatedCost
       : null;
 
+    if (!conversation) {
+      const title = message.replace(/\s+/g, " ").slice(0, 80) || "گفتگوی جدید";
+      const { data: newConversation, error: conversationError } = await db
+        .from("armex_conversations")
+        .insert({ user_id: auth.user.id, title, model })
+        .select("id")
+        .single();
+      if (conversationError || !newConversation) {
+        const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "conversation_persistence_failed");
+        debitCompleted = false;
+        return fail(
+          refunded ? "Could not create the conversation; the charged credit was returned" : "Conversation creation failed and the credit refund could not be confirmed",
+          500,
+          cors,
+        );
+      }
+      conversation = newConversation as { id: string };
+      createdConversation = true;
+    }
+
     const messageRows = [
       {
         conversation_id: conversation.id,
@@ -495,6 +508,12 @@ const handle = async (request: Request): Promise<Response> => {
         .delete()
         .eq("user_id", auth.user.id)
         .in("id", messageIds);
+      if (createdConversation) {
+        await db.from("armex_conversations")
+          .delete()
+          .eq("id", conversation.id)
+          .eq("user_id", auth.user.id);
+      }
       const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "usage_persistence_failed");
       debitCompleted = false;
       if (usageError.code === "23505" && refunded) {
