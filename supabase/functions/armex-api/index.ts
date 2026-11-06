@@ -1,4 +1,5 @@
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createSupabaseContext } from "npm:@supabase/server@1";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -88,26 +89,6 @@ const allowedModels = (): string[] => {
   return configured.length ? configured : [DEFAULT_MODEL];
 };
 
-const authenticate = async (request: Request) => {
-  const authorization = request.headers.get("Authorization") ?? "";
-  const match = authorization.match(/^Bearer\s+(.+)$/i);
-  if (!match) return { user: null, error: "Authentication required" };
-
-  const authClient = createClient(env("SUPABASE_URL"), env("SUPABASE_ANON_KEY"), {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data, error } = await authClient.auth.getUser(match[1]);
-  if (error || !data.user) {
-    return { user: null, error: "Invalid or expired session" };
-  }
-  return { user: data.user, error: null };
-};
-
-const adminClient = (): SupabaseClient =>
-  createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
 const refundCredits = async (
   db: SupabaseClient,
   userId: string,
@@ -180,16 +161,26 @@ const handle = async (request: Request): Promise<Response> => {
     return fail("Method not allowed", 405, cors);
   }
 
-  const auth = await authenticate(request);
-  if (!auth.user) return fail(auth.error || "Unauthorized", 401, cors);
+  // Validate the user's JWT and obtain a privileged database client using
+  // Supabase's current publishable/secret-key environment variables.
+  const { data: supabaseContext, error: authError } =
+    await createSupabaseContext(request, { auth: "user" });
+  const userId = supabaseContext?.userClaims?.id;
+  if (authError || !userId || !supabaseContext?.supabaseAdmin) {
+    return fail(
+      authError?.message || "Invalid or expired session",
+      authError?.status || 401,
+      cors,
+    );
+  }
 
-  const db = adminClient();
+  const db: SupabaseClient = supabaseContext.supabaseAdmin;
   const modelsAllowed = allowedModels();
 
   if (request.method === "GET" && url.searchParams.get("action") === "balance") {
     const { data, error } = await db.from("armex_wallets")
       .select("balance")
-      .eq("user_id", auth.user.id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (error) return fail("Could not load wallet balance", 500, cors);
     return json({ success: true, balance: safeNumber(data?.balance, 0) }, 200, cors);
@@ -285,7 +276,7 @@ const handle = async (request: Request): Promise<Response> => {
     const { data: previousAnswer } = await db.from("armex_messages")
       .select("content")
       .eq("conversation_id", priorUsage.conversation_id)
-      .eq("user_id", auth.user.id)
+      .eq("user_id", userId)
       .eq("role", "assistant")
       .lte("created_at", priorUsage.created_at)
       .order("created_at", { ascending: false })
@@ -319,7 +310,7 @@ const handle = async (request: Request): Promise<Response> => {
     const { data, error } = await db.from("armex_conversations")
       .select("id")
       .eq("id", conversationId)
-      .eq("user_id", auth.user.id)
+      .eq("user_id", userId)
       .maybeSingle();
     if (error || !data) return fail("Conversation not found", 404, cors);
     conversation = data as { id: string };
@@ -327,7 +318,7 @@ const handle = async (request: Request): Promise<Response> => {
     const { data: history, error: historyError } = await db.from("armex_messages")
       .select("role,content")
       .eq("conversation_id", conversation.id)
-      .eq("user_id", auth.user.id)
+      .eq("user_id", userId)
       .in("role", ["user", "assistant"])
       .order("created_at", { ascending: false })
       .limit(MAX_CONTEXT_MESSAGES);
@@ -366,7 +357,7 @@ const handle = async (request: Request): Promise<Response> => {
     const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
 
     const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
-      p_user_id: auth.user.id,
+      p_user_id: userId,
       p_amount: chatCreditCost,
       p_idempotency_key: "ai_request:" + requestId + ":" + attemptId,
       p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
@@ -409,7 +400,7 @@ const handle = async (request: Request): Promise<Response> => {
         status: providerResponse.status,
         body: providerError.slice(0, 500),
       });
-      const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "provider_error");
+      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "provider_error");
       debitCompleted = false;
       return fail(
         refunded ? "AI provider request failed; the charged credit was returned" : "AI provider failed and the credit refund could not be confirmed",
@@ -421,7 +412,7 @@ const handle = async (request: Request): Promise<Response> => {
     const result = await providerResponse.json();
     const answer = result.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {
-      const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "invalid_provider_response");
+      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "invalid_provider_response");
       debitCompleted = false;
       return fail(
         refunded ? "AI returned an invalid response; the charged credit was returned" : "AI response was invalid and the credit refund could not be confirmed",
@@ -448,11 +439,11 @@ const handle = async (request: Request): Promise<Response> => {
       const title = message.replace(/\s+/g, " ").slice(0, 80) || "گفتگوی جدید";
       const { data: newConversation, error: conversationError } = await db
         .from("armex_conversations")
-        .insert({ user_id: auth.user.id, title, model })
+        .insert({ user_id: userId, title, model })
         .select("id")
         .single();
       if (conversationError || !newConversation) {
-        const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "conversation_persistence_failed");
+        const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "conversation_persistence_failed");
         debitCompleted = false;
         return fail(
           refunded ? "Could not create the conversation; the charged credit was returned" : "Conversation creation failed and the credit refund could not be confirmed",
@@ -467,14 +458,14 @@ const handle = async (request: Request): Promise<Response> => {
     const messageRows = [
       {
         conversation_id: conversation.id,
-        user_id: auth.user.id,
+        user_id: userId,
         role: "user",
         content: message,
         model,
       },
       {
         conversation_id: conversation.id,
-        user_id: auth.user.id,
+        user_id: userId,
         role: "assistant",
         content: answer,
         model: result.model || model,
@@ -492,9 +483,9 @@ const handle = async (request: Request): Promise<Response> => {
         await db.from("armex_conversations")
           .delete()
           .eq("id", conversation.id)
-          .eq("user_id", auth.user.id);
+          .eq("user_id", userId);
       }
-      const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "message_persistence_failed");
+      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "message_persistence_failed");
       debitCompleted = false;
       return fail(
         refunded ? "Could not save the conversation; the charged credit was returned" : "Conversation save failed and the credit refund could not be confirmed",
@@ -504,7 +495,7 @@ const handle = async (request: Request): Promise<Response> => {
     }
 
     const { error: usageError } = await db.from("armex_usage").insert({
-      user_id: auth.user.id,
+      user_id: userId,
       conversation_id: conversation.id,
       model: result.model || model,
       input_tokens: inputTokens,
@@ -519,15 +510,15 @@ const handle = async (request: Request): Promise<Response> => {
       const messageIds = savedMessages.map((row: { id: string }) => row.id);
       await db.from("armex_messages")
         .delete()
-        .eq("user_id", auth.user.id)
+        .eq("user_id", userId)
         .in("id", messageIds);
       if (createdConversation) {
         await db.from("armex_conversations")
           .delete()
           .eq("id", conversation.id)
-          .eq("user_id", auth.user.id);
+          .eq("user_id", userId);
       }
-      const refunded = await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "usage_persistence_failed");
+      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "usage_persistence_failed");
       debitCompleted = false;
       if (usageError.code === "23505" && refunded) {
         return fail("This request_id has already completed; the duplicate attempt was refunded", 409, cors);
@@ -542,7 +533,7 @@ const handle = async (request: Request): Promise<Response> => {
     await db.from("armex_conversations")
       .update({ model: result.model || model, updated_at: new Date().toISOString() })
       .eq("id", conversation.id)
-      .eq("user_id", auth.user.id);
+      .eq("user_id", userId);
 
     debitCompleted = false;
     return json({
@@ -566,7 +557,7 @@ const handle = async (request: Request): Promise<Response> => {
       error: error instanceof Error ? error.message : "unknown",
     });
     const refunded = debitCompleted
-      ? await refundCredits(db, auth.user.id, chatCreditCost, requestId, attemptId, "server_error")
+      ? await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "server_error")
       : true;
     const timedOut = error instanceof Error && error.name === "AbortError";
     return fail(
