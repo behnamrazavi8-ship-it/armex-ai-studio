@@ -29,6 +29,7 @@ Example request body:
 
 ```json
 {
+  "request_id": "7b2d7a0e-5f2c-4e0d-9d2c-6c1f7d7a9c31",
   "message": "سلام، خودت را معرفی کن",
   "model": "openai/gpt-4o-mini",
   "conversation_id": null,
@@ -61,4 +62,4 @@ From a local Supabase CLI workspace:
 supabase functions deploy armex-api --project-ref znendbwkmcldttugvwnr
 ```
 
-Do not deploy until the required secrets are present and the credit conversion rate has been selected. After deployment, run the end-to-end checks for authenticated access, insufficient balance, successful chat, provider failure refund, conversation persistence, and usage ledger accuracy.
+Do not deploy until the required secrets are present. The frontend must generate one UUID per chat submission and reuse that same UUID for transport retries; a new user message must receive a new UUID. After deployment, run the end-to-end checks for authenticated access, duplicate request IDs, insufficient balance, successful chat, provider failure refund, conversation persistence, and usage ledger accuracy.
