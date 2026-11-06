@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+<title id="title">LOKAL AI symbol</title>
+<defs>
+ <linearGradient id="g" x1="70" y1="70" x2="440" y2="440" gradientUnits="userSpaceOnUse"><stop stop-color="#00F0B5"/><stop offset=".52" stop-color="#238BFF"/><stop offset="1" stop-color="#A855F7"/></linearGradient>
+ <linearGradient id="orbit" x1="38" y1="210" x2="480" y2="310" gradientUnits="userSpaceOnUse"><stop stop-color="#00F0B5"/><stop offset=".55" stop-color="#238BFF"/><stop offset="1" stop-color="#C084FC"/></linearGradient>
+ <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="512" height="512" rx="112" fill="#070D18"/>
+<path d="M112 365 207 126q10-25 34-25h44l-105 264h-68Zm112 0 103-231q10-22 32-22h39L292 365H224Z" fill="url(#g)" filter="url(#glow)"/>
+<path d="M218 365h183l-26-57H245l-27 57Z" fill="url(#g)"/>
+<path d="M57 282c64-99 182-151 304-128 49 9 88 31 112 62-69-46-168-39-250 2-65 33-112 77-145 117-24 29-44-18-21-53Z" fill="none" stroke="url(#orbit)" stroke-width="17" stroke-linecap="round" filter="url(#glow)"/>
+<circle cx="421" cy="159" r="8" fill="#D9B7FF"/>
+</svg>
