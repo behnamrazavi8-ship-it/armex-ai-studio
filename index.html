@@ -316,12 +316,20 @@ if (!config.supabaseUrl || !config.supabaseAnonKey ||
     return payload;
   };
 
+  const ensureSecureApi = async (session) => {
+    const health = await callArmexApi(session, "?action=health");
+    if (health.api_version !== "5.0" || health.secure_api !== true) {
+      throw new Error("نسخه امن سرویس هنوز منتشر نشده است.");
+    }
+  };
+
   const loadWalletBalance = async (session) => {
     if (!session) {
       setWalletBalance("—");
       return;
     }
     try {
+      await ensureSecureApi(session);
       const result = await callArmexApi(session, "?action=balance");
       setWalletBalance(result.balance);
     } catch (error) {
@@ -366,6 +374,7 @@ if (!config.supabaseUrl || !config.supabaseAnonKey ||
     }
 
     try {
+      await ensureSecureApi(session);
       const result = await callArmexApi(session, "", {
         request_id: pendingPromptRequest.requestId,
         message: promptMessage,
