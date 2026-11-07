@@ -84,8 +84,8 @@
   const target=workspacePages.has(name)?name:'home';
   const current=$('.page.active')?.id.replace('page-','');
   if(current===target)return;
-  $('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));
-  $('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));
+  $$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));
+  $$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));
   if(options.history!==false&&workspaceRoot&&!workspaceRoot.hidden){
    history.pushState({...history.state,lokalWorkspacePage:target},'',location.pathname+location.search+'#workspace-'+target);
   }
@@ -98,9 +98,9 @@
   const previous=event.state?.lokalWorkspacePage;
   if(workspacePages.has(previous))showPage(previous,{history:false});
  });
- $('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
- $('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
- $('[data-tool]').forEach(b=>b.addEventListener('click',()=>{
+ $$('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+ $$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
+ $$('[data-tool]').forEach(b=>b.addEventListener('click',()=>{
   const tool=b.dataset.tool;
   showPage(tool==='image'?'image':tool==='video'?'video':'prompt');
  }));
