@@ -170,7 +170,24 @@ body{
 .notice{border-color:#a855f7;background:#25183a55;color:#e2d4ff}
 .toast{background:#111e32;border-color:#52668b}
 
-\n/* Official LOKAL AI neon identity assets */\n.brand-mark{overflow:hidden;padding:3px;background:linear-gradient(135deg,#00f0b5,#238bff 55%,#a855f7);}\n.brand-mark img{display:block;width:100%;height:100%;object-fit:contain;border-radius:10px;}\n</style>
+
+/* Official LOKAL AI neon identity assets */
+.brand-mark{overflow:hidden;padding:3px;background:linear-gradient(135deg,#00f0b5,#238bff 55%,#a855f7);}
+.brand-mark img{display:block;width:100%;height:100%;object-fit:contain;border-radius:10px;}
+
+/* Premium photographic tool cards — temporary curated visuals */
+.tools-grid{align-items:stretch}
+.tool-card{min-height:224px;padding:13px;display:flex;flex-direction:column;align-items:stretch;overflow:hidden;text-align:right}
+.tool-visual{position:relative;height:112px;width:100%;overflow:hidden;border-radius:13px;margin:0 0 14px;background:linear-gradient(135deg,#102d34,#1d2040);border:1px solid #ffffff18;isolation:isolate}
+.tool-visual:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#07101be0 0%,#07101b12 65%),linear-gradient(120deg,#00e6ad20,#238bff18 55%,#a855f725);z-index:1;pointer-events:none}
+.tool-visual img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .45s ease,filter .3s ease;filter:saturate(1.12) contrast(1.04)}
+.tool-card:hover .tool-visual img{transform:scale(1.07);filter:saturate(1.25) contrast(1.06)}
+.visual-tag{position:absolute;bottom:9px;right:10px;z-index:2;font:700 8px/1.2 Arial,sans-serif;letter-spacing:1.5px;color:#eafffb;text-shadow:0 1px 6px #000;opacity:.92}
+.tool-card h4{font-size:13px;margin:0 0 7px}.tool-card p{font-size:10px;line-height:1.85}
+.tool-arrow{top:15px;left:14px;z-index:3;background:#06101bbd;border:1px solid #ffffff25;border-radius:8px;padding:4px 7px;backdrop-filter:blur(8px)}
+@media(min-width:1100px){.tool-card{min-height:238px;padding:15px}.tool-visual{height:124px}}
+@media(max-width:700px){.tool-card{min-height:190px;padding:10px}.tool-visual{height:92px;margin-bottom:11px}.tool-card h4{font-size:12px}.visual-tag{font-size:7px;letter-spacing:1px}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -195,10 +212,10 @@ body{
  <section class="hero"><div class="hero-content"><div class="hero-tag">CREATIVE STUDIO</div><h2>ایده‌ات را <span>بساز.</span></h2><p>تصویر، ویدیو و پرامپت؛ در یک فضای کاری.</p><button class="btn" data-go="prompt">شروع کار ←</button></div></section>
  <div class="section-head"><h3>ابزارهای خلاقیت</h3><span>۴ ابزار اصلی</span></div>
  <div class="tools-grid">
-  <button class="tool-card" data-tool="image"><div class="tool-icon">🎨</div><span class="tool-arrow">↖</span><h4>استودیوی تصویر</h4><p>ایده‌پردازی و آماده‌سازی پرامپت تصویر</p></button>
-  <button class="tool-card" data-tool="video"><div class="tool-icon">🎬</div><span class="tool-arrow">↖</span><h4>استودیوی ویدیو</h4><p>طراحی سناریو و پرامپت ویدیویی</p></button>
-  <button class="tool-card" data-tool="prompt"><div class="tool-icon">⚡</div><span class="tool-arrow">↖</span><h4>مهندسی پرامپت</h4><p>ساخت دستورهای دقیق برای مدل‌های هوش مصنوعی</p></button>
-  <button class="tool-card" data-tool="ideas"><div class="tool-icon">🧠</div><span class="tool-arrow">↖</span><h4>آزمایشگاه ایده</h4><p>توسعه کانسپت و مسیرهای خلاقانه</p></button>
+  <button class="tool-card" data-tool="image"><div class="tool-visual"><img src="https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=900&q=80" alt="منظره سینمایی برای خلق تصویر" loading="lazy"><span class="visual-tag">IMAGE STUDIO</span></div><span class="tool-arrow">↖</span><h4>استودیوی تصویر</h4><p>ایده‌پردازی و آماده‌سازی پرامپت تصویر</p></button>
+  <button class="tool-card" data-tool="video"><div class="tool-visual"><img src="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=900&q=80" alt="فضای سینمایی تولید ویدیو" loading="lazy"><span class="visual-tag">VIDEO STUDIO</span></div><span class="tool-arrow">↖</span><h4>استودیوی ویدیو</h4><p>طراحی سناریو و پرامپت ویدیویی</p></button>
+  <button class="tool-card" data-tool="prompt"><div class="tool-visual"><img src="https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=900&q=80" alt="ترکیب رنگ انتزاعی برای پرامپت" loading="lazy"><span class="visual-tag">PROMPT LAB</span></div><span class="tool-arrow">↖</span><h4>مهندسی پرامپت</h4><p>ساخت دستورهای دقیق برای مدل‌های هوش مصنوعی</p></button>
+  <button class="tool-card" data-tool="ideas"><div class="tool-visual"><img src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80" alt="جزئیات فناوری و ایده‌پردازی" loading="lazy"><span class="visual-tag">IDEA LAB</span></div><span class="tool-arrow">↖</span><h4>آزمایشگاه ایده</h4><p>توسعه کانسپت و مسیرهای خلاقانه</p></button>
  </div>
  <div class="stats"><div class="stat"><span>اعتبار نمایشی اولیه</span><b>۵۰۰</b><small>قابل استفاده واقعی نیست</small></div><div class="stat"><span>ابزارهای آماده رابط</span><b>۰۴</b><small>اتصال موتور در مرحله بعد</small></div><div class="stat"><span>پروژه‌های ذخیره‌شده</span><b id="projectCount">۰</b><small>روی همین مرورگر</small></div></div>
  <div class="bottom-grid"><div class="info-card"><h3>شروع سریع</h3><ul><li>نوع محتوای موردنظرت را انتخاب کن.</li><li>ایده و جزئیات را در آزمایشگاه بنویس.</li><li>پرامپت آماده‌شده را کپی و در ابزار دلخواه استفاده کن.</li></ul></div><div class="info-card"><h3>وضعیت توسعه</h3><p>رابط اصلی و ابزارهای کمکی در حال آماده‌سازی هستند.</p><div class="notice">تولید تصویر/ویدیو، حساب کاربری و پرداخت تا زمان اتصال Backend فعال نیستند.</div></div></div>
