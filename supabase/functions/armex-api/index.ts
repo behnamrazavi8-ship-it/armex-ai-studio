@@ -132,10 +132,8 @@ const refundCredits = async (
 
 
 const IMAGE_BUCKET = "lokal-ai-images";
-const IMAGE_MODEL = Deno.env.get("IMAGE_MODEL")?.trim() || "bytedance-seed/seedream-4.5";
+const IMAGE_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const IMAGE_CREDIT_COST = Number(Deno.env.get("IMAGE_CREDIT_COST") ?? "20");
-const IMAGE_ASPECT_RATIOS = new Set(["1:1", "9:16", "16:9", "4:5", "3:2"]);
-const IMAGE_RESOLUTIONS = new Set(["1K", "2K", "4K"]);
 
 const signedImageUrl = async (db: SupabaseClient, path: string) => {
   const { data, error } = await db.storage.from(IMAGE_BUCKET).createSignedUrl(path, 3600);
@@ -166,16 +164,20 @@ const listGeneratedImages = async (db: SupabaseClient, userId: string, cors: Hea
 };
 
 const generateImage = async (
-  db: SupabaseClient, userId: string, body: Json, apiKey: string, cors: HeadersInit,
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
 ): Promise<Response> => {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   const requestId = isUuid(body.request_id) ? body.request_id : "";
-  const aspectRatio = typeof body.aspect_ratio === "string" ? body.aspect_ratio : "1:1";
-  const resolution = typeof body.resolution === "string" ? body.resolution : "1K";
-  if (!prompt || prompt.length > 6000) return fail("A prompt between 1 and 6000 characters is required", 400, cors);
+  // FLUX.1 Schnell currently exposes its model-default output dimensions through this REST API.
+  const aspectRatio = "1:1";
+  const resolution = "1K";
+  const cloudflareAccountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID")?.trim() || "";
+  const cloudflareApiToken = Deno.env.get("CLOUDFLARE_API_TOKEN")?.trim() || "";
+  if (!cloudflareAccountId || !/^[a-f0-9]{32}$/i.test(cloudflareAccountId) || !cloudflareApiToken) {
+    return fail("Image generation is not configured; Cloudflare Workers AI credentials are required", 503, cors);
+  }
+  if (!prompt || prompt.length > 2048) return fail("A prompt between 1 and 2048 characters is required", 400, cors);
   if (!requestId) return fail("A UUID request_id is required for safe image billing", 400, cors);
-  if (!IMAGE_ASPECT_RATIOS.has(aspectRatio)) return fail("Unsupported image aspect ratio", 400, cors);
-  if (!IMAGE_RESOLUTIONS.has(resolution)) return fail("Unsupported image resolution", 400, cors);
   if (!Number.isSafeInteger(IMAGE_CREDIT_COST) || IMAGE_CREDIT_COST < 1 || IMAGE_CREDIT_COST > 1000) {
     return fail("Image billing configuration is invalid", 503, cors);
   }
@@ -245,17 +247,18 @@ const generateImage = async (
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 110000);
   try {
-    const providerResponse = await fetch(OPENROUTER_URL + "/images", {
+    const providerUrl = "https://api.cloudflare.com/client/v4/accounts/" + cloudflareAccountId + "/ai/run/" + IMAGE_MODEL;
+    const providerResponse = await fetch(providerUrl, {
       method: "POST", signal: controller.signal,
       headers: {
-        Authorization: "Bearer " + apiKey, "Content-Type": "application/json",
-        "HTTP-Referer": "https://lokal-ai.net", "X-Title": "LOKAL AI",
+        Authorization: "Bearer " + cloudflareApiToken,
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model: IMAGE_MODEL, prompt, aspect_ratio: aspectRatio, resolution, n: 1 }),
+      body: JSON.stringify({ prompt, steps: 4 }),
     });
     if (!providerResponse.ok) {
       const providerError = await providerResponse.text();
-      console.error("OpenRouter image request failed", { requestId, status: providerResponse.status, body: providerError.slice(0, 500) });
+      console.error("Cloudflare Workers AI image request failed", { requestId, status: providerResponse.status, body: providerError.slice(0, 500) });
       const refunded = await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_provider_error");
       debitCompleted = false;
       await db.from("armex_image_generations").update({ status: "failed", error_code: "provider_error" })
@@ -263,9 +266,9 @@ const generateImage = async (
       return fail(refunded ? "Image provider failed; reserved credits were returned" : "Image provider failed and credit refund could not be confirmed", refunded ? 502 : 500, cors);
     }
 
-    const result = await providerResponse.json();
-    const image = Array.isArray(result.data) ? result.data[0] : null;
-    const base64 = typeof image?.b64_json === "string" ? image.b64_json : "";
+    const providerPayload = await providerResponse.json();
+    const result = providerPayload?.result ?? providerPayload;
+    const base64 = typeof result?.image === "string" ? result.image : "";
     if (!base64 || base64.length > 28000000) {
       const refunded = await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_invalid_response");
       debitCompleted = false;
@@ -274,7 +277,7 @@ const generateImage = async (
       return fail(refunded ? "Image provider returned an invalid image; reserved credits were returned" : "Image response was invalid and the credit refund could not be confirmed", refunded ? 502 : 500, cors);
     }
 
-    const mimeType = typeof image.media_type === "string" ? image.media_type.split(";")[0].toLowerCase() : "image/png";
+    const mimeType = "image/jpeg";
     const extensionByType: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
     const extension = extensionByType[mimeType];
     if (!extension) throw new Error("UNSUPPORTED_IMAGE_FORMAT");
@@ -292,7 +295,8 @@ const generateImage = async (
       throw new Error("IMAGE_STORAGE_FAILED");
     }
 
-    const actualCost = typeof result.usage?.cost === "number" && Number.isFinite(result.usage.cost) ? result.usage.cost : null;
+    // Cloudflare's model-run response does not report per-request USD cost in this payload.
+    const actualCost = null;
     const { data: completed, error: completeError } = await db.from("armex_image_generations").update({
       status: "completed", storage_path: storagePath, mime_type: mimeType,
       actual_cost_usd: actualCost, completed_at: new Date().toISOString(),
@@ -463,7 +467,7 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   if (body.action === "generate_image") {
-    return await generateImage(db, userId, body, openRouterKey, cors);
+    return await generateImage(db, userId, body, cors);
   }
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
