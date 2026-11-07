@@ -78,7 +78,7 @@
  const toast=msg=>{const t=$('#toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2400)};
  const readProjects=()=>{try{return JSON.parse(localStorage.getItem(storeKey)||'[]')}catch{return []}};
  const writeProjects=p=>{try{localStorage.setItem(storeKey,JSON.stringify(p));return true}catch{return false}};
- function showPage(name){const target=name;$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));if(target==='projects')renderProjects();if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'))}
+ function showPage(name){const target=name;$$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));$$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));if(target==='projects')renderProjects();if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'))}
  window.lokalShowPage=showPage;
  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
  $$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
