@@ -78,11 +78,32 @@
  const toast=msg=>{const t=$('#toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2400)};
  const readProjects=()=>{try{return JSON.parse(localStorage.getItem(storeKey)||'[]')}catch{return []}};
  const writeProjects=p=>{try{localStorage.setItem(storeKey,JSON.stringify(p));return true}catch{return false}};
- function showPage(name){const target=name;$$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));$$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));if(target==='projects')renderProjects();if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'))}
+ const workspacePages=new Set(['home','prompt','projects','account','image','video']);
+ const workspaceRoot=document.getElementById('workspace-app');
+ function showPage(name,options={}){
+  const target=workspacePages.has(name)?name:'home';
+  const current=$('.page.active')?.id.replace('page-','');
+  if(current===target)return;
+  $$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));
+  $$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));
+  if(options.history!==false&&workspaceRoot&&!workspaceRoot.hidden){
+   history.pushState({...history.state,lokalWorkspacePage:target},'',location.pathname+location.search+'#workspace-'+target);
+  }
+  if(target==='projects')renderProjects();
+  if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'));
+ }
  window.lokalShowPage=showPage;
+ window.addEventListener('popstate',event=>{
+  if(!workspaceRoot||workspaceRoot.hidden)return;
+  const previous=event.state?.lokalWorkspacePage;
+  if(workspacePages.has(previous))showPage(previous,{history:false});
+ });
  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
  $$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
- $$('[data-tool]').forEach(b=>b.addEventListener('click',()=>showPage('prompt')));
+ $$('[data-tool]').forEach(b=>b.addEventListener('click',()=>{
+  const tool=b.dataset.tool;
+  showPage(tool==='image'?'image':tool==='video'?'video':'prompt');
+ }));
  function buildPrompt(){const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return ''}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;const labels={image:'Create a high-quality image based on this concept:',video:'Create a cinematic video based on this concept:',design:'Create a polished graphic design based on this concept:',social:'Create engaging social media content based on this concept:'};const en=labels[type]+' '+idea+'. Visual direction: '+style+'. Composition: '+ratio+'. Use clear subject hierarchy, refined lighting, professional production quality, coherent perspective and intentional color grading. Avoid visual clutter, distorted anatomy, random text, watermarks and unwanted logos.';const fa='بر اساس این ایده '+(type==='video'?'یک ویدیوی سینمایی':type==='design'?'یک طراحی گرافیکی حرفه‌ای':type==='social'?'یک محتوای جذاب شبکه اجتماعی':'یک تصویر باکیفیت')+' خلق کن: '+idea+'؛ سبک بصری: '+style+'؛ کادر: '+ratio+'؛ ترکیب‌بندی حرفه‌ای، نورپردازی دقیق، جزئیات منسجم و کیفیت خروجی بالا. از شلوغی بصری، نوشته‌های تصادفی، واترمارک و لوگوهای ناخواسته پرهیز کن.';return lang==='fa'?fa:en}
  $('#generatePrompt').addEventListener('click',()=>{output=buildPrompt();if(!output)return;$('#promptResult').textContent=output;$('#promptResult').style.display='block';$('#resultActions').style.display='flex'});
  $('#generateAIPrompt').addEventListener('click',()=>{const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;const typeLabel={image:'image prompt',video:'cinematic video prompt',design:'graphic design prompt',social:'social media content prompt'}[type]||'creative prompt';const message='Act as a senior creative director and prompt engineer. Create one polished, detailed '+typeLabel+'. Output language: '+(lang==='fa'?'Persian':'English')+'. Visual style: '+style+'. Aspect ratio: '+ratio+'. User concept: '+idea+'. Return only the final ready-to-use prompt, with no preamble or explanation. Keep the concept faithful, improve specificity and composition, and avoid unwanted text, watermarks and logos.';window.dispatchEvent(new CustomEvent('lokal:generate-ai-prompt',{detail:{message}}))});
@@ -133,6 +154,10 @@ else{
  const renderSession=session=>{
   activeSession=session||null;const user=session?.user;publicSite.hidden=Boolean(user)&&!landingView;workspace.hidden=!user||landingView;formCard.hidden=Boolean(user);sessionCard.hidden=!user;
   const returnWorkspace=document.getElementById("return-workspace");if(returnWorkspace)returnWorkspace.hidden=!user||!landingView;
+  if(user&&!landingView&&workspace&&!history.state?.lokalWorkspacePage){
+   const currentPage=$('.page.active')?.id.replace('page-','')||'home';
+   history.replaceState({...history.state,lokalWorkspacePage:currentPage},'',location.pathname+location.search+'#workspace-'+currentPage);
+  }
   if(user){const metadata=user.user_metadata||{};document.getElementById("auth-user-email").textContent=user.email||"ایمیل ثبت نشده";document.getElementById("auth-user-name").textContent=metadata.full_name||metadata.name||metadata.user_name||"حساب شخصی LOKAL AI";document.getElementById("auth-user-id").textContent=user.id;const provider=(user.app_metadata?.provider||"email").toLowerCase();document.getElementById("auth-provider").textContent=provider==="google"?"ورود با Google":"ورود با ایمیل";const avatar=document.getElementById("auth-user-avatar"),avatarUrl=metadata.avatar_url||metadata.picture||"";if(avatarUrl&&/^https:\/\//i.test(avatarUrl)){avatar.src=avatarUrl;avatar.hidden=false}else{avatar.removeAttribute("src");avatar.hidden=true}setMessage("با موفقیت وارد شدی.");void loadCloudProjects(session);}
   else{walletLoadSequence++;setWalletBalance("—");}
   void loadWalletBalance(session);
