@@ -61,7 +61,7 @@
 <section class="page" id="page-projects"><div class="welcome"><h1>پروژه‌های من</h1></div><div id="projectsList" class="empty">هنوز پروژه‌ای ذخیره نشده است.</div><div class="notice" id="projectsSyncStatus">پروژه‌های جدید پس از فعال‌سازی جدول امن پروژه‌ها در حساب ذخیره و بین دستگاه‌ها همگام می‌شوند. تا آن زمان نسخه محلی حفظ می‌شود.</div></section>
 <section class="page" id="page-account"><div class="welcome"><h1>حساب و کیف پول</h1></div><div class="account-card" id="auth-session-card" hidden><div class="account-profile"><img id="auth-user-avatar" alt="" hidden><div><h3 id="auth-user-name">حساب شخصی LOKAL AI</h3><p id="auth-user-email"></p><span class="tag" id="auth-provider">روش ورود</span></div></div><div class="account-details"><div><span>موجودی فعلی</span><b id="accountWalletBalance">در حال دریافت…</b></div><div><span>شناسه حساب</span><b id="auth-user-id">—</b></div></div><p class="muted-copy" id="wallet-help">اعتبار از کیف پول امن سرور خوانده می‌شود؛ این صفحه امکان تغییر مستقیم موجودی را ندارد.</p><div class="workspace-actions"><button class="btn btn-ghost" id="auth-signout" type="button">خروج از حساب</button></div></div></section>
 <section class="page" id="page-image"><div class="welcome"><div class="eyebrow">LOKAL AI IMAGE ENGINE</div><h1>استودیوی تصویر</h1><p class="muted-copy">ایده‌ات را بنویس و تصویر واقعی بساز؛ خروجی‌ها در گالری خصوصی حساب تو ذخیره می‌شوند.</p></div>
-<div class="panel image-studio-panel"><h3>ساخت تصویر جدید</h3><label class="field-label" for="imagePrompt">توضیح تصویر</label><textarea class="textarea" id="imagePrompt" maxlength="6000" placeholder="مثلاً: یک خودروی اسپرت مشکی در خیابان خیس توکیو، نورهای نئونی آبی، عکاسی سینمایی و واقع‌گرایانه..."></textarea>
+<div class="panel image-studio-panel"><h3>ساخت تصویر جدید</h3><label class="field-label" for="imagePrompt">توضیح تصویر</label><textarea class="textarea" id="imagePrompt" maxlength="2048" placeholder="مثلاً: یک خودروی اسپرت مشکی در خیابان خیس توکیو، نورهای نئونی آبی، عکاسی سینمایی و واقع‌گرایانه..."></textarea>
 <div class="image-studio-controls"><div class="notice">مدل FLUX.1 Schnell در حال حاضر با ابعاد پیش‌فرض خودش تصویر می‌سازد؛ تنظیم دستی نسبت و رزولوشن در این اتصال فعال نیست.</div></div>
 <div class="image-cost-note">مدل: FLUX.1 Schnell · موتور Cloudflare Workers AI · هزینه هر تصویر: ۲۰ اعتبار · سهمیه رایگان روزانه محدود است</div><div class="workspace-actions"><button class="btn" id="generateImage" type="button">ساخت تصویر · ۲۰ اعتبار</button><button class="btn btn-ghost" id="usePromptInImage" type="button">استفاده از پرامپت Prompt Lab</button></div>
 <div class="image-status" id="imageStatus" role="status" aria-live="polite"></div><div class="image-preview" id="imagePreview" hidden><img id="generatedImage" alt="تصویر ساخته‌شده در LOKAL AI"><div class="image-preview-actions"><span class="muted-copy" id="imageMeta"></span><a class="btn btn-ghost btn-small" id="downloadGeneratedImage" href="#" target="_blank" rel="noopener">باز کردن / ذخیره تصویر</a></div></div></div>
@@ -171,7 +171,7 @@ else{
  document.getElementById("usePromptInImage")?.addEventListener("click",()=>{
   const text=document.getElementById("promptResult")?.textContent?.trim()||"";
   if(!text){setImageStatus("ابتدا در Prompt Lab یک پرامپت بساز یا آن را بهبود بده.",true);return}
-  document.getElementById("imagePrompt").value=text.slice(0,6000);
+  document.getElementById("imagePrompt").value=text.slice(0,2048);
   setImageStatus("پرامپت Prompt Lab به استودیوی تصویر منتقل شد.");
  });
  imageButton?.addEventListener("click",async()=>{
