@@ -364,9 +364,6 @@ const generateVideo = async (
   const requestId = isUuid(body.request_id) ? body.request_id : "";
   const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
   const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
-  let webhookUrl = "";
-  try { webhookUrl = runpodWebhookUrl(); }
-  catch { return fail("Video completion webhook is not configured", 503, cors); }
   if (!endpointId || !token) return fail("Video generation is not configured; RunPod endpoint credentials are required", 503, cors);
   if (!prompt || prompt.length > 6000) return fail("A prompt between 1 and 6000 characters is required", 400, cors);
   if (!requestId) return fail("A UUID request_id is required for safe video billing", 400, cors);
@@ -385,6 +382,15 @@ const generateVideo = async (
     credits_charged: VIDEO_CREDIT_COST, status: "queued", provider_metadata: { aspect_ratio: aspectRatio, duration_seconds: 5 },
   }).select("id").single();
   if (insertError || !job) return fail("Could not create video job", insertError?.code === "23505" ? 409 : 500, cors);
+
+  let webhookUrl = "";
+  try { webhookUrl = runpodWebhookUrl(job.id, requestId); }
+  catch {
+    await db.from("armex_video_generations").update({
+      status: "failed", error_code: "webhook_not_configured",
+    }).eq("id", job.id).eq("user_id", userId);
+    return fail("Video completion webhook is not configured", 503, cors);
+  }
 
   const debitKey = "video_request:" + requestId;
   const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
@@ -444,16 +450,22 @@ const generateVideo = async (
       .eq("id", job.id).eq("user_id", userId);
     return json({ success: true, pending: true, request_id: requestId, message: "Provider accepted the request; job ID reconciliation is required" }, 202, cors);
   }
+  // A terminal webhook can arrive before the /run response. Only update a job
+  // that is still queued, so the late submission response cannot overwrite it.
   const { error: updateError } = await db.from("armex_video_generations").update({
     provider_job_id: providerJobId, status: videoProviderStatus(String(payload.status ?? "IN_QUEUE")),
     provider_metadata: { delay_time: payload.delayTime ?? null, execution_time: payload.executionTime ?? null },
     updated_at: new Date().toISOString(),
-  }).eq("id", job.id).eq("user_id", userId);
+  }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
   if (updateError) return fail("Provider accepted the job but its tracking record could not be saved", 500, cors);
-  return json({ success: true, video: { id: job.id, request_id: requestId, provider_job_id: providerJobId, status: "queued" } }, 202, cors);
+  const { data: current, error: currentError } = await db.from("armex_video_generations")
+    .select("id,request_id,provider_job_id,status,result_url,refund_status")
+    .eq("id", job.id).eq("user_id", userId).single();
+  if (currentError || !current) return fail("Could not confirm video job status", 500, cors);
+  return json({ success: true, video: current }, 202, cors);
 };
 
-const runpodWebhookUrl = (): string => {
+const runpodWebhookUrl = (jobId: string, requestId: string): string => {
   const base = (Deno.env.get("RUNPOD_WEBHOOK_CALLBACK_URL")?.trim() ||
     (Deno.env.get("SUPABASE_URL")?.trim() + "/functions/v1/armex-api?action=runpod_callback"));
   const secret = Deno.env.get("RUNPOD_WEBHOOK_SECRET")?.trim() ?? "";
@@ -461,6 +473,8 @@ const runpodWebhookUrl = (): string => {
   const url = new URL(base);
   url.searchParams.set("action", "runpod_callback");
   url.searchParams.set("token", secret);
+  url.searchParams.set("job_id", jobId);
+  url.searchParams.set("request_id", requestId);
   return url.toString();
 };
 
@@ -479,18 +493,19 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
   if (!supabaseUrl || !serviceKey) return json({ success: false, error: "Webhook storage is not configured" }, 503);
   const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
-  const requestId = payload?.input && typeof payload.input === "object"
-    ? (payload.input as Record<string, unknown>).request_id : null;
+  const jobId = url.searchParams.get("job_id") ?? "";
+  const requestId = url.searchParams.get("request_id") ?? "";
   const providerJobId = typeof payload?.id === "string" ? payload.id : "";
   const providerStatus = typeof payload?.status === "string" ? payload.status : "";
-  if (!isUuid(requestId) || !providerJobId || !["COMPLETED", "FAILED", "CANCELLED"].includes(providerStatus)) {
+  if (!isUuid(jobId) || !isUuid(requestId) || !providerJobId ||
+      !["COMPLETED", "FAILED", "CANCELLED"].includes(providerStatus)) {
     return json({ success: false, error: "Invalid terminal job payload" }, 400);
   }
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: job, error } = await admin.from("armex_video_generations")
     .select("id,user_id,provider_job_id,status,credits_charged,refund_status")
-    .eq("request_id", requestId).maybeSingle();
+    .eq("id", jobId).eq("request_id", requestId).maybeSingle();
   if (error || !job) return json({ success: false, error: "Video job not found" }, 404);
   if (job.provider_job_id && job.provider_job_id !== providerJobId) {
     return json({ success: false, error: "Provider job ID mismatch" }, 409);
