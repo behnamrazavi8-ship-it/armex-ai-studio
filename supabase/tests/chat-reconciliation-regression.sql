@@ -190,6 +190,49 @@ begin
   if v_count <> 0 then raise exception 'completed request must not be claimable'; end if;
 end $main_regression$;
 
+-- A retryable release must never erase an existing manual-review hold.
+do $manual_review_diagnostic_regression$
+declare
+  v_user uuid := gen_random_uuid();
+  v_request uuid := gen_random_uuid();
+  v_claim record;
+  v_lease uuid;
+  v_diagnostic text;
+begin
+  insert into auth.users(id) values (v_user);
+  perform public.armex_claim_chat_request(v_user, v_request);
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'accepted', 'debited', 200,
+    '{"choices":[{"message":{"content":"Held for review"}}]}'::jsonb,
+    'accepted_before_review'
+  ) then
+    raise exception 'provider evidence should persist for manual-review regression';
+  end if;
+
+  select * into v_claim from public.armex_claim_chat_reconciliation(1, 120);
+  if v_claim.request_id is distinct from v_request then
+    raise exception 'manual-review regression request should be claimed';
+  end if;
+  v_lease := v_claim.reconciliation_lease_token;
+
+  update public.armex_chat_requests
+  set diagnostic_code = 'manual_review:operator_required'
+  where user_id = v_user and request_id = v_request;
+
+  if not public.armex_release_chat_reconciliation(
+    v_user, v_request, v_lease, 'retryable:transient_write_error'
+  ) then
+    raise exception 'lease should be released while preserving manual-review hold';
+  end if;
+
+  select diagnostic_code into v_diagnostic
+  from public.armex_chat_requests
+  where user_id = v_user and request_id = v_request;
+  if v_diagnostic <> 'manual_review:operator_required' then
+    raise exception 'manual-review diagnostic was overwritten: %', v_diagnostic;
+  end if;
+end $manual_review_diagnostic_regression$;
+
 -- Separate request proves ambiguous provider outcomes are excluded from claims.
 do $ambiguous_regression$
 declare
