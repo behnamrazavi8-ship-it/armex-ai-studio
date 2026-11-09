@@ -47,7 +47,9 @@ begin
   begin
     perform public.armex_grant_credits('00000000-0000-0000-0000-000000000001',50,'usage','grant-invalid-type','tamper','{}');
     raise exception 'invalid grant transaction type unexpectedly succeeded';
-  exception when raise_exception then null; end;
+  exception when raise_exception then
+    if sqlerrm = 'invalid grant transaction type unexpectedly succeeded' then raise; end if;
+  end;
 
   if (select count(*) from public.armex_credit_transactions where user_id='00000000-0000-0000-0000-000000000001')<>2 then
     raise exception 'unexpected wallet ledger row count';
