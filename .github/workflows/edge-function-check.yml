@@ -38,6 +38,9 @@ jobs:
       - name: Test chat request reconciliation policy
         run: deno test supabase/functions/armex-api/chat-request-reconciliation_test.ts
 
+      - name: Test deterministic chat recovery payload
+        run: deno test supabase/functions/armex-chat-reconciler/recovery-payload_test.ts
+
       - name: Syntax-check browser JavaScript
         run: |
           python - <<'PY'
