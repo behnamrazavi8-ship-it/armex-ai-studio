@@ -54,10 +54,19 @@ export const findUnverifiedAuthorityForOrder = (
         !row.authority.trim() || typeof row.callback_url !== "string") return false;
     try {
       const callback = new URL(row.callback_url);
+      const expectedParams = [...expectedUrl.searchParams.entries()].sort(([aKey, aValue], [bKey, bValue]) =>
+        aKey.localeCompare(bKey) || aValue.localeCompare(bValue));
+      const callbackParams = [...callback.searchParams.entries()]
+        .filter(([key]) => key !== "Authority" && key !== "Status")
+        .sort(([aKey, aValue], [bKey, bValue]) =>
+          aKey.localeCompare(bKey) || aValue.localeCompare(bValue));
       return callback.protocol === "https:" &&
+        !callback.username && !callback.password &&
         callback.origin === expectedUrl.origin &&
         callback.pathname === expectedUrl.pathname &&
-        callback.searchParams.get("order_id") === expected.orderId;
+        callback.hash === expectedUrl.hash &&
+        callback.searchParams.get("order_id") === expected.orderId &&
+        JSON.stringify(callbackParams) === JSON.stringify(expectedParams);
     } catch {
       return false;
     }
