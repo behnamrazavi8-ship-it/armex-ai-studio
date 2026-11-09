@@ -243,19 +243,21 @@ else{
   }catch(error){select.replaceChildren(new Option("دریافت بسته‌ها ناموفق بود",""));const status=document.getElementById("paymentStatus");if(status)status.textContent=String(error?.message||"اتصال بسته‌های پرداخت آماده نیست.")}
  };
  document.getElementById("reloadCreditPackages")?.addEventListener("click",()=>void loadPaymentPackages(true));
+ let pendingPaymentRequestMemory=null;
  document.getElementById("startCreditPayment")?.addEventListener("click",async()=>{
   const select=document.getElementById("creditPackage"),status=document.getElementById("paymentStatus"),button=document.getElementById("startCreditPayment");
   if(!select?.value){if(status)status.textContent="ابتدا یک بسته اعتبار انتخاب کن.";return}
   const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}
   const pendingKey="lokal-ai-pending-payment:"+session.user.id;
-  let pending=null;
-  try{pending=JSON.parse(localStorage.getItem(pendingKey)||"null")}catch{}
+  let pending=pendingPaymentRequestMemory;
+  try{const stored=JSON.parse(localStorage.getItem(pendingKey)||"null");if(stored?.request_id)pending=stored}catch{}
   if(pending?.request_id&&pending.package_id!==select.value){
    if(status)status.textContent="یک سفارش پرداخت قبلی هنوز در حال بررسی است؛ ابتدا همان بسته را برای پیگیری انتخاب کن.";
    return;
   }
   const requestId=pending?.request_id||crypto.randomUUID();
-  try{localStorage.setItem(pendingKey,JSON.stringify({request_id:requestId,package_id:select.value}))}catch{}
+  pendingPaymentRequestMemory={request_id:requestId,package_id:select.value};
+  try{localStorage.setItem(pendingKey,JSON.stringify(pendingPaymentRequestMemory))}catch{}
   button.disabled=true;if(status)status.textContent="در حال ساخت یا پیگیری سفارش امن پرداخت...";
   try{
    const result=await callArmexApi(session,"",{action:"create_payment",package_id:select.value,request_id:requestId});
@@ -263,13 +265,21 @@ else{
     if(status)status.textContent=result.message||"وضعیت سفارش هنوز قطعی نیست؛ همین سفارش را دوباره پیگیری کن و سفارش تازه نساز.";
     return;
    }
+   if(result.request_closed===true&&result.retry_allowed===true){
+    pendingPaymentRequestMemory=null;
+    try{localStorage.removeItem(pendingKey)}catch{}
+    if(status)status.textContent=result.message||"درخواست قبلی از سوی درگاه رد شد؛ اکنون می‌توانی دوباره پرداخت را شروع کنی.";
+    return;
+   }
    if(result.already_paid===true){
+    pendingPaymentRequestMemory=null;
     try{localStorage.removeItem(pendingKey)}catch{}
     if(status)status.textContent="این سفارش قبلاً پرداخت و تأیید شده است.";
     void loadWalletBalance(session);
     return;
    }
    if(!result.payment_url)throw new Error(result.error||result.message||"لینک پرداخت دریافت نشد.");
+   pendingPaymentRequestMemory=null;
    try{localStorage.removeItem(pendingKey)}catch{}
    if(status)status.textContent="در حال انتقال به درگاه زرین‌پال...";
    window.location.assign(result.payment_url);
