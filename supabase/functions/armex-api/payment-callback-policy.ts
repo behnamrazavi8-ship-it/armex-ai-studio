@@ -22,3 +22,22 @@ export const shouldCancelUnverifiedPayment = (
 /** Stable wallet-grant key shared by every callback retry for one order. */
 export const paymentGrantIdempotencyKey = (orderId: string): string =>
   "payment_order:" + orderId;
+
+/**
+ * armex_grant_credits returns false when an idempotency key already exists.
+ * Treat that as success only when the durable ledger row exactly matches this
+ * order's expected purchase, user, and credit amount.
+ */
+export const isMatchingPaymentGrant = (
+  ledger: unknown,
+  expected: { orderId: string; credits: number },
+): boolean => {
+  if (!ledger || typeof ledger !== "object" || Array.isArray(ledger) ||
+      !Number.isSafeInteger(expected.credits) || expected.credits <= 0) return false;
+  const row = ledger as Record<string, unknown>;
+  const metadata = row.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false;
+  return row.amount === expected.credits &&
+    row.transaction_type === "purchase" &&
+    (metadata as Record<string, unknown>).order_id === expected.orderId;
+};
