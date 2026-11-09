@@ -33,17 +33,19 @@ insert into payment_grants select * from dblink_get_result('pay_a') as t(id uuid
 insert into payment_grants select * from dblink_get_result('pay_b') as t(id uuid);
 select * from dblink_get_result('pay_a') as t(id uuid);
 select * from dblink_get_result('pay_b') as t(id uuid);
-do $$
+select set_config('test.payment_order', :'payment_order', false);
+do $
 begin
- if (select status from public.armex_payment_orders where id=:'payment_order'::uuid)<>'paid' then raise exception 'paid status missing'; end if;
- if (select provider_metadata->>'ref_id' from public.armex_payment_orders where id=:'payment_order'::uuid)<>'zarinpal-ref-race' then raise exception 'provider evidence missing'; end if;
- if (select count(*) from public.armex_credit_transactions where idempotency_key='payment_order:'||:'payment_order')<>1 then raise exception 'duplicate payment ledger grant'; end if;
+ if (select status from public.armex_payment_orders where id=current_setting('test.payment_order')::uuid)<>'paid' then raise exception 'paid status missing'; end if;
+ if (select provider_metadata->>'ref_id' from public.armex_payment_orders where id=current_setting('test.payment_order')::uuid)<>'zarinpal-ref-race' then raise exception 'provider evidence missing'; end if;
+ if (select count(*) from public.armex_credit_transactions where idempotency_key='payment_order:'||current_setting('test.payment_order'))<>1 then raise exception 'duplicate payment ledger grant'; end if;
  if (select count(*) from payment_grants)>1 then raise exception 'more than one payment grant insert won'; end if;
 end $$;
 insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key)
 values(:'payment_user'::uuid,500,'purchase','payment_order:'||:'payment_order') on conflict(idempotency_key) do nothing;
-do $$ begin
- if (select count(*) from public.armex_credit_transactions where idempotency_key='payment_order:'||:'payment_order')<>1 then raise exception 'payment retry duplicated grant'; end if;
+select set_config('test.payment_order', :'payment_order', false);
+do $ begin
+ if (select count(*) from public.armex_credit_transactions where idempotency_key='payment_order:'||current_setting('test.payment_order'))<>1 then raise exception 'payment retry duplicated grant'; end if;
 end $$;
 
 -- Success/failure video callbacks race for one terminal transition.
@@ -61,14 +63,15 @@ insert into video_claims select * from dblink_get_result('pay_a') as t(id uuid);
 insert into video_claims select * from dblink_get_result('pay_b') as t(id uuid);
 select * from dblink_get_result('pay_a') as t(id uuid);
 select * from dblink_get_result('pay_b') as t(id uuid);
-do $$
+select set_config('test.video_job', :'video_job', false);
+do $
 declare v_status text; v_count int;
 begin
- select status into v_status from public.armex_video_generations where id=:'video_job'::uuid;
+ select status into v_status from public.armex_video_generations where id=current_setting('test.video_job')::uuid;
  select count(*) into v_count from video_claims;
  if v_status not in ('failed','completed') then raise exception 'no terminal video state'; end if;
  if v_count<>1 then raise exception 'expected one video terminal winner, got %',v_count; end if;
- if v_status='completed' and exists(select 1 from public.armex_credit_transactions where idempotency_key='ai_refund:'||:'video_job'||':'||:'video_job'||':video_refund') then raise exception 'completed video job was refunded'; end if;
+ if v_status='completed' and exists(select 1 from public.armex_credit_transactions where idempotency_key='ai_refund:'||current_setting('test.video_job')||':'||current_setting('test.video_job')||':video_refund') then raise exception 'completed video job was refunded'; end if;
 end $$;
 
 -- Duplicate failure callbacks share one refund idempotency key.
@@ -86,14 +89,16 @@ insert into refund_claims select * from dblink_get_result('pay_a') as t(id uuid)
 insert into refund_claims select * from dblink_get_result('pay_b') as t(id uuid);
 select * from dblink_get_result('pay_a') as t(id uuid);
 select * from dblink_get_result('pay_b') as t(id uuid);
-do $$ begin
- if (select count(*) from public.armex_credit_transactions where idempotency_key='ai_refund:'||:'failed_video_job'||':'||:'failed_video_job'||':video_refund')<>1 then raise exception 'duplicate RunPod refund ledger'; end if;
+select set_config('test.failed_video_job', :'failed_video_job', false);
+do $ begin
+ if (select count(*) from public.armex_credit_transactions where idempotency_key='ai_refund:'||current_setting('test.failed_video_job')||':'||current_setting('test.failed_video_job')||':video_refund')<>1 then raise exception 'duplicate RunPod refund ledger'; end if;
  if (select count(*) from refund_claims)>1 then raise exception 'more than one refund insert won'; end if;
 end $$;
 
 -- Verify actual unique indexes from the staged migration.
-do $$
-declare v_user uuid:=:'payment_user'::uuid; v_req uuid:=gen_random_uuid();
+select set_config('test.payment_user', :'payment_user', false);
+do $
+declare v_user uuid:=current_setting('test.payment_user')::uuid; v_req uuid:=gen_random_uuid();
 begin
  insert into public.armex_video_generations(user_id,request_id,prompt,credits_charged,provider_job_id)
  values(v_user,v_req,'unique request',10,'provider-job-unique');
