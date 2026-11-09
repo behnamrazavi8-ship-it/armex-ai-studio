@@ -44,6 +44,11 @@ alter table public.armex_payment_orders
   add column if not exists paid_at timestamptz,
   add column if not exists provider_metadata jsonb not null default '{}'::jsonb;
 
+-- The unauthenticated provider callback uses the service-role client.
+-- RLS bypass does not replace SQL table privileges, so grant only the
+-- operations required by order creation, callback verification, and recovery.
+grant select, insert, update on public.armex_payment_orders to service_role;
+
 create unique index if not exists armex_payment_orders_user_idempotency_idx
   on public.armex_payment_orders (user_id, idempotency_key)
   where idempotency_key is not null;
@@ -51,4 +56,3 @@ create unique index if not exists armex_payment_orders_user_idempotency_idx
 create unique index if not exists armex_payment_orders_provider_reference_idx
   on public.armex_payment_orders (provider, provider_reference)
   where provider is not null and provider_reference is not null;
-
