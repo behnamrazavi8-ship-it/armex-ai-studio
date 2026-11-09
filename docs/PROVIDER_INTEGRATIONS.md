@@ -1,0 +1,91 @@
+# LOKAL AI provider integration setup
+
+This branch adds the application-side API and UI for asynchronous Wan 2.2 video jobs and Zarinpal credit top-ups. It is deliberately not deployed to the live Supabase project.
+
+## RunPod Serverless / Wan 2.2
+
+The Edge Function calls RunPod Serverless v2 invoke endpoints:
+
+- Submit: `POST https://api.runpod.ai/v2/{RUNPOD_ENDPOINT_ID}/run`
+- Poll: `GET https://api.runpod.ai/v2/{RUNPOD_ENDPOINT_ID}/status/{job_id}`
+
+Configure these Supabase Edge Function secrets:
+
+- `RUNPOD_API_KEY`: RunPod API key (server-side only).
+- `RUNPOD_ENDPOINT_ID`: ID of a queue-based Serverless endpoint running the Wan 2.2 TI2V-5B worker.
+- `VIDEO_CREDIT_COST`: positive integer credit cost for one 5-second clip.
+
+The endpoint should scale to zero while idle (minimum workers 0; set a short idle timeout) so there is no always-on GPU charge. Confirm the chosen GPU pool and per-second price in RunPod before enabling paid production traffic.
+
+### Worker contract
+
+The application sends the following JSON in the RunPod `input` object:
+
+```json
+{
+  "task": "text_to_video",
+  "model": "wan2.2-ti2v-5b",
+  "prompt": "A cinematic shot...",
+  "request_id": "UUID",
+  "aspect_ratio": "16:9",
+  "duration_seconds": 5,
+  "output_mode": "durable_https_url"
+}
+```
+
+The worker must return a result object with a durable public HTTPS URL:
+
+```json
+{
+  "video_url": "https://your-object-storage.example/video.mp4"
+}
+```
+
+Do not return a short-lived RunPod result URL: RunPod retains completed job results for a limited period. Upload completed MP4 files to durable object storage (preferably an R2 bucket) from the worker and return that permanent HTTPS URL. The app rejects non-HTTPS URLs. The worker must use the request ID to avoid producing duplicate work on a retry.
+
+The app-side queue, credit reservation, status polling and refund ledger are in place, but the actual GPU worker image/model weights and durable object storage still need to be deployed/configured in the RunPod account.
+
+## Zarinpal credit top-ups
+
+Configure these Supabase Edge Function secrets:
+
+- `ZARINPAL_MERCHANT_ID`: merchant ID issued by Zarinpal.
+- `SUPABASE_SERVICE_ROLE_KEY`: server-side Supabase service-role key used only by the unauthenticated payment callback.
+- `PAYMENT_PACKAGES`: JSON array of server-controlled packages. Amounts are integer IRR (not toman); never accept price or credit quantities from the browser.
+- `ZARINPAL_CALLBACK_URL`: optional override; default is the current `armex-api` function callback URL.
+
+Example package configuration (replace with approved commercial prices and credit amounts before use):
+
+```json
+[
+  {"id":"starter","title":"Starter","amount_irr":1000000,"credits":1000},
+  {"id":"creator","title":"Creator","amount_irr":3000000,"credits":3300}
+]
+```
+
+The example values are placeholders, not proposed LOKAL AI prices. Configure real amounts only after the owner approves the price/credit economics and confirms the merchant account.
+
+Payment flow:
+1. Authenticated user requests a package ID; amount and credits are read only from server configuration.
+2. The server creates a pending order and requests a Zarinpal authority.
+3. Zarinpal redirects to the callback. The server verifies the authority and exact amount with Zarinpal.
+4. Only a verified transaction is marked paid and credited through `armex_grant_credits`, with `payment_order:{order_id}` as an idempotency key.
+5. The callback can safely retry the grant if the payment was verified but a transient database failure interrupted wallet crediting.
+
+## Database and rollout
+
+The staged migration adds `armex_video_generations`, owner-only read access, refund retry state, and payment order package/idempotency metadata. Apply it only after reviewing the diff and approving the production migration.
+
+The existing `armex-api` must be redeployed after approval. This branch does not change the live function, database, secrets, RunPod account, or payment merchant configuration.
+
+## Release checklist
+
+- [ ] Review and merge this branch.
+- [ ] Apply the migration to a backed-up database.
+- [ ] Configure secrets in Supabase (never commit secrets).
+- [ ] Deploy a Wan 2.2 TI2V-5B Serverless worker and verify durable output upload.
+- [ ] Set the real video credit cost after GPU cost testing.
+- [ ] Configure the approved Zarinpal merchant ID and package economics.
+- [ ] Test Zarinpal in sandbox/test mode if available, then verify one real low-value transaction.
+- [ ] Test insufficient balance, provider failure, duplicate callback, refund retry, and user isolation.
+- [ ] Only then enable the new studios in production.
