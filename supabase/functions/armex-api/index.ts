@@ -1090,7 +1090,6 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   let conversation: { id: string } | null = null;
-  let createdConversation = false;
   let context: Array<{ role: "user" | "assistant"; content: string }> = [];
 
   if (conversationId) {
@@ -1333,137 +1332,38 @@ const handle = async (request: Request): Promise<Response> => {
       ? calculatedCost
       : null;
 
-    if (!conversation) {
-      const title = message.replace(/\s+/g, " ").slice(0, 80) || "گفتگوی جدید";
-      const { data: newConversation, error: conversationError } = await db
-        .from("armex_conversations")
-        .insert({ user_id: userId, title, model })
-        .select("id")
-        .single();
-      if (conversationError || !newConversation) {
-        // The provider has already returned a billable response. Keep the debit
-        // and leave the idempotency row processing for reconciliation.
-        debitCompleted = false;
-        return json({
-          success: true, pending: true, request_id: requestId,
-          message: "The AI response was received but the conversation could not be saved; reconciliation is required",
-        }, 202, cors);
-      }
-      conversation = newConversation as { id: string };
-      createdConversation = true;
-    }
-
-    const userMessageAt = new Date();
-    const assistantMessageAt = new Date(userMessageAt.getTime() + 1);
-    const messageRows = [
+    const { data: persistedResponse, error: persistenceError } = await db.rpc(
+      "armex_persist_chat_response_atomic",
       {
-        conversation_id: conversation.id,
-        user_id: userId,
-        role: "user",
-        content: message,
-        model,
-        created_at: userMessageAt.toISOString(),
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_lease_token: null,
+        p_answer: answer,
+        p_model: result.model || model,
+        p_input_tokens: inputTokens,
+        p_output_tokens: outputTokens,
+        p_total_tokens: totalTokens,
+        p_actual_cost_usd: actualUsd,
+        p_finish_reason: result.choices?.[0]?.finish_reason ?? null,
       },
-      {
-        conversation_id: conversation.id,
-        user_id: userId,
-        role: "assistant",
-        content: answer,
-        model: result.model || model,
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
-        created_at: assistantMessageAt.toISOString(),
-      },
-    ];
-    const { data: savedMessages, error: messageError } = await db
-      .from("armex_messages")
-      .insert(messageRows)
-      .select("id");
-    if (messageError || !savedMessages) {
-      console.error("Message persistence failed", { requestId, code: messageError?.code });
-      if (createdConversation) {
-        await db.from("armex_conversations")
-          .delete()
-          .eq("id", conversation.id)
-          .eq("user_id", userId);
-      }
-      // Provider execution may already be billable. Do not refund after a
-      // successful provider response merely because local persistence failed.
+    );
+    if (persistenceError || !persistedResponse ||
+        typeof persistedResponse !== "object" || Array.isArray(persistedResponse)) {
+      console.error("Atomic chat response persistence failed", {
+        requestId,
+        code: persistenceError?.code,
+      });
+      // The provider response and debit are already durable. Keep this request
+      // pending so a reconciler can retry local persistence without a provider call.
       debitCompleted = false;
       return json({
         success: true, pending: true, request_id: requestId,
-        message: "The AI response was received but message storage failed; reconciliation is required",
+        message: "The AI response is safely recorded; local response persistence needs reconciliation",
       }, 202, cors);
     }
 
-    const { error: usageError } = await db.from("armex_usage").insert({
-      user_id: userId,
-      conversation_id: conversation.id,
-      model: result.model || model,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      total_tokens: totalTokens,
-      actual_cost_usd: actualUsd,
-      credits_charged: chatCreditCost,
-      request_id: requestId,
-    });
-    if (usageError) {
-      console.error("Usage persistence failed", { requestId, code: usageError.code });
-      const messageIds = savedMessages.map((row: { id: string }) => row.id);
-      await db.from("armex_messages")
-        .delete()
-        .eq("user_id", userId)
-        .in("id", messageIds);
-      if (createdConversation) {
-        await db.from("armex_conversations")
-          .delete()
-          .eq("id", conversation.id)
-          .eq("user_id", userId);
-      }
-      // Keep the debit: a successful OpenRouter response may have incurred
-      // provider cost even when usage persistence fails. Never refund here.
-      debitCompleted = false;
-      return json({
-        success: true, pending: true, request_id: requestId,
-        message: usageError.code === "23505"
-          ? "Usage already exists for this request; response recovery is required"
-          : "The AI response was received but usage storage failed; reconciliation is required",
-      }, 202, cors);
-    }
-
-    await db.from("armex_conversations")
-      .update({ model: result.model || model, updated_at: new Date().toISOString() })
-      .eq("id", conversation.id)
-      .eq("user_id", userId);
-
-    const responsePayload: Json = {
-      success: true,
-      request_id: requestId,
-      conversation_id: conversation.id,
-      model: result.model || model,
-      answer,
-      usage: {
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
-        total_tokens: totalTokens,
-        actual_cost_usd: actualUsd,
-        credits_charged: chatCreditCost,
-      },
-      finish_reason: result.choices?.[0]?.finish_reason ?? null,
-    };
-    const { data: completedRequest, error: completeRequestError } = await db.rpc("armex_complete_chat_request", {
-      p_user_id: userId,
-      p_request_id: requestId,
-      p_response_payload: responsePayload,
-    });
-    if (completeRequestError || completedRequest !== true) {
-      console.error("Chat request completion record failed", { requestId, code: completeRequestError?.code });
-      // armex_usage and messages are already persisted; retries can recover through priorUsage.
-      debitCompleted = false;
-      return fail("The answer was generated and saved, but request finalization needs recovery", 500, cors);
-    }
     debitCompleted = false;
-    return json(responsePayload, 200, cors);
+    return json(persistedResponse as Json, 200, cors);
   } catch (error) {
     if (providerRequestStarted) {
       // The provider may have accepted/billed the request. Preserve an
