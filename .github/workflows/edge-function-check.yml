@@ -16,6 +16,7 @@ on:
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/**"
       - "supabase/migrations/**"
+      - "supabase/tests/**"
 
 permissions:
   contents: read
