@@ -62,4 +62,4 @@ end;
 $$;
 
 revoke all on function public.armex_set_chat_recovery_metadata(uuid,uuid,text,text,uuid,integer,uuid,numeric,numeric,integer) from public, anon, authenticated;
-grant execute on function public.armex_set_chat_recovery_metadata(uuid,uuid,text,text,uuid,integer,uuid,numeric,numeric) to service_role;
+grant execute on function public.armex_set_chat_recovery_metadata(uuid,uuid,text,text,uuid,integer,uuid,numeric,numeric,integer) to service_role;
