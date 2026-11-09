@@ -77,20 +77,37 @@ It never retries the provider and never initiates a refund.
   refund.
 - All other combinations: manual review; do not change credits or provider work.
 
+## Staged reconciliation worker
+
+The new Edge Function at
+`supabase/functions/armex-chat-reconciler/index.ts` is a staged, internal
+worker. It requires the platform's service-role JWT, claims a bounded batch
+using the lease RPC, reloads recovery metadata, and then:
+- accepted + debited: derives the response from the stored provider snapshot
+  and calls the atomic local persistence RPC with the lease token;
+- rejected + debited: retries the same idempotent refund key, then marks failed
+  only after the refund is independently confirmed;
+- not-started + debited: refunds using the original pre-provider idempotency key;
+- proven no-debit: marks failed without issuing a refund;
+- unknown or conflicting evidence: releases the lease into a
+  `manual_review:` diagnostic state, which is excluded from future automatic
+  claims.
+
+The worker contains no OpenRouter request path. It is not deployed or scheduled,
+and its first invocation is not authorized yet. The existing Edge Function
+handler also persists model pricing and estimated input-token metadata before
+debit/provider work so recovery can reproduce the normal usage accounting.
+
 ## Remaining work
 
-1. Implement a scheduled/triggered reconciler that claims eligible rows, loads
-   the persisted recovery metadata and provider snapshot, derives the response
-   fields, and calls the atomic persistence RPC with its lease token.
-2. Ensure the reconciler only handles accepted + debited snapshots, confirmed
-   rejected/refunded requests, or proven not-started/no-debit requests. It must
-   never call OpenRouter. Unknown outcomes stay in manual review.
-3. Persist any model-pricing inputs needed to reproduce `actual_cost_usd`
-   exactly when the provider response omits its own cost.
-4. Add database-level tests for concurrent claims, lease expiry, duplicate
+1. Add a scheduled trigger only after the migrations and worker have been
+   reviewed and tested; keep invocation credentials in a protected server-side
+   secret store.
+2. Add database-level tests for concurrent claims, lease expiry, duplicate
    persistence, partial legacy records, and refund uncertainty before rollout.
-5. Run CI and review all staged migrations. SQL migrations have not been
-   applied to Supabase; no live data or configuration has been changed.
+3. Run the updated CI checks and review SQL migration syntax/privileges. The
+   migrations have not been applied to Supabase; no live data or configuration
+   has been changed.
 
 No existing database rows should be rewritten or deleted as part of this work.
 Legacy tables and records remain untouched.
