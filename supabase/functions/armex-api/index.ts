@@ -1127,6 +1127,7 @@ const handle = async (request: Request): Promise<Response> => {
   const promptChars = SYSTEM_PROMPT.length + context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
   const estimatedInputTokens = Math.max(1, Math.ceil(promptChars / 3));
 
+  // Persist pricing and token fallbacks so recovery reproduces normal usage accounting.
   const { data: recoveryMetadataSaved, error: recoveryMetadataError } = await db.rpc(
     "armex_set_chat_recovery_metadata",
     {
