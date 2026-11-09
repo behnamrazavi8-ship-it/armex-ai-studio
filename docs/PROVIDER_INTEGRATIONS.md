@@ -13,6 +13,8 @@ Configure these Supabase Edge Function secrets:
 
 - `RUNPOD_API_KEY`: RunPod API key (server-side only).
 - `RUNPOD_ENDPOINT_ID`: ID of a queue-based Serverless endpoint running the Wan 2.2 TI2V-5B worker.
+- `RUNPOD_WEBHOOK_SECRET`: long random secret used to authenticate RunPod completion callbacks. Generate it privately and store only as a Supabase Edge Function secret.
+- `RUNPOD_WEBHOOK_CALLBACK_URL`: optional public HTTPS override; defaults to the `armex-api?action=runpod_callback` Edge Function URL.
 - `VIDEO_CREDIT_COST`: positive integer credit cost for one 5-second clip.
 
 The endpoint should scale to zero while idle (minimum workers 0; set a short idle timeout) so there is no always-on GPU charge. Confirm the chosen GPU pool and per-second price in RunPod before enabling paid production traffic.
@@ -43,7 +45,7 @@ The worker must return a result object with a durable public HTTPS URL:
 
 Do not return a short-lived RunPod result URL: RunPod retains completed job results for a limited period. Upload completed MP4 files to durable object storage (preferably an R2 bucket) from the worker and return that permanent HTTPS URL. The app rejects non-HTTPS URLs. The worker must use the request ID to avoid producing duplicate work on a retry.
 
-The app-side queue, credit reservation, status polling and refund ledger are in place, but the actual GPU worker image/model weights and durable object storage still need to be deployed/configured in the RunPod account.
+The app sends RunPod's top-level `webhook` field so RunPod POSTs the full terminal job payload to the authenticated Edge Function callback. The callback correlates by the UUID `input.request_id`, validates the provider job ID, persists the durable result URL, and applies idempotent refunds for terminal failures. Polling remains as a fallback. This also reconciles a lost `/run` response when the provider accepted the job but the app never received its job ID. The actual GPU worker image/model weights and durable object storage still need to be deployed/configured in the RunPod account.
 
 ## Zarinpal credit top-ups
 
@@ -82,7 +84,7 @@ The existing `armex-api` must be redeployed after approval. This branch does not
 
 - [ ] Review and merge this branch.
 - [ ] Apply the migration to a backed-up database.
-- [ ] Configure secrets in Supabase (never commit secrets).
+- [ ] Configure secrets in Supabase (never commit secrets), including a strong `RUNPOD_WEBHOOK_SECRET`.
 - [ ] Deploy a Wan 2.2 TI2V-5B Serverless worker and verify durable output upload.
 - [ ] Set the real video credit cost after GPU cost testing.
 - [ ] Configure the approved Zarinpal merchant ID and package economics.
