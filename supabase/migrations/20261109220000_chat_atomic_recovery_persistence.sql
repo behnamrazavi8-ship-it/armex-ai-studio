@@ -37,6 +37,7 @@ declare
   v_usage_found boolean := false;
   v_payload jsonb;
   v_result_model text;
+  v_user_message_at timestamptz;
 begin
   if p_answer is null or char_length(p_answer) = 0
      or p_model is null or char_length(p_model) not between 1 and 160
@@ -123,19 +124,21 @@ begin
   end if;
 
   if v_message_count = 0 then
+    v_user_message_at := clock_timestamp();
     insert into public.armex_messages (
-      conversation_id, user_id, request_id, role, content, model
+      conversation_id, user_id, request_id, role, content, model, created_at
     ) values (
       v_conversation_id, p_user_id, p_request_id, 'user',
-      v_request.recovery_message, v_request.recovery_model
+      v_request.recovery_message, v_request.recovery_model, v_user_message_at
     );
 
     insert into public.armex_messages (
       conversation_id, user_id, request_id, role, content, model,
-      input_tokens, output_tokens
+      input_tokens, output_tokens, created_at
     ) values (
       v_conversation_id, p_user_id, p_request_id, 'assistant',
-      p_answer, v_result_model, p_input_tokens, p_output_tokens
+      p_answer, v_result_model, p_input_tokens, p_output_tokens,
+      v_user_message_at + interval '1 millisecond'
     );
   elsif v_message_count <> 2
      or v_user_message_count <> 1
