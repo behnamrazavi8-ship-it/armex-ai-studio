@@ -98,7 +98,7 @@ If the `/request.json` call times out, the connection drops, the response is mal
 - the server-configured amount,
 - one non-empty Authority.
 
-If the provider does not return a callback URL, there are zero or multiple matches, or the result cannot be durably saved, the order stays held for manual reconciliation. Matching by amount alone is explicitly forbidden. A partial unique index also prevents the same user from creating a second pending Zarinpal order with no saved provider reference, even when the client invents a new request ID. The wallet UI retains the pending request ID per signed-in user and reuses it on retry; it blocks switching packages until that ambiguous request is resolved.
+If the provider does not return a callback URL, there are zero or multiple matches, or the result cannot be durably saved, the order stays held for manual reconciliation. Matching by amount alone is explicitly forbidden. A partial unique index prevents the same user from creating a second pending Zarinpal order, whether or not an Authority has been saved. The wallet UI retains the pending request ID per signed-in user through the gateway redirect and reuses it on retry; it blocks switching packages until the callback confirms payment or cancellation. This prevents a lost redirect or closed gateway tab from silently creating another payable session.
 
 Only a structured provider validation response with an explicit negative code is treated as a definitive request rejection. Timeouts, transport failures, malformed responses, and provider 5xx responses remain ambiguous. This flow does not automatically refund, credit, or issue another provider request for an ambiguous order.
 
