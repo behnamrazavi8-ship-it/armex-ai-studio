@@ -61,6 +61,9 @@ jobs:
       - name: Test Zarinpal payment callback recovery policy
         run: deno test supabase/functions/armex-api/payment-callback-policy_test.ts
 
+      - name: Test Zarinpal payment request recovery policy
+        run: deno test supabase/functions/armex-api/payment-request-policy_test.ts
+
       - name: Test RunPod callback and refund retry policy
         run: deno test supabase/functions/armex-api/runpod-callback-policy_test.ts
 
