@@ -158,9 +158,14 @@ else{
      await loadWalletBalance(session);return;
     }
     if(status==="failed"||status==="cancelled"){showVideoStatus(status==="failed"?"تولید ویدئو ناموفق شد؛ وضعیت بازگشت اعتبار را در کیف پول بررسی کن.":"درخواست ویدئو لغو شد.",true);await loadWalletBalance(session);return}
-    showVideoStatus(status==="queued"?"در صف انتظار موتور ویدئو هستی...":"موتور در حال تولید ویدئو است؛ این صفحه را می‌توانی باز نگه داری.");
+    if(!video.provider_job_id&&["provider_submission_uncertain","provider_job_id_missing"].includes(video.error_code)){
+     showVideoStatus("پاسخ اولیه موتور هنوز دریافت نشده؛ منتظر تأیید callback امن هستیم. وضعیت به‌صورت خودکار دوباره بررسی می‌شود.");
+    }else{
+     showVideoStatus(status==="queued"?"در صف انتظار موتور ویدئو هستی...":"موتور در حال تولید ویدئو است؛ این صفحه را می‌توانی باز نگه داری.");
+    }
    }catch(error){showVideoStatus("دریافت وضعیت موقتاً ناموفق بود؛ تلاش بعدی خودکار انجام می‌شود.");}
   }
+  if(sequence===videoPollSequence)showVideoStatus("پیگیری خودکار متوقف شد؛ اگر ویدئو هنوز آماده نیست، دکمه «به‌روزرسانی وضعیت» را بزن یا بعداً دوباره بررسی کن.");
  };
  document.getElementById("generateVideo")?.addEventListener("click",async()=>{
   const prompt=document.getElementById("videoPrompt")?.value?.trim()||"";
@@ -170,7 +175,11 @@ else{
   try{
    const result=await callArmexApi(session,"",{action:"generate_video",request_id:crypto.randomUUID(),prompt,aspect_ratio:document.getElementById("videoAspectRatio")?.value||"16:9"});
    const video=result.video||{};lastVideoJobId=video.id||"";
-   if(result.pending&&result.request_id){showVideoStatus("درخواست ثبت شد، اما پاسخ اولیه موتور نامشخص است؛ وضعیت را بعداً بررسی کن.");return}
+   if(result.pending&&result.request_id){
+    if(lastVideoJobId){videoPollSequence++;void pollVideoJob(session,lastVideoJobId,videoPollSequence);}
+    showVideoStatus("درخواست ثبت شد؛ پاسخ اولیه موتور هنوز مشخص نیست و وضعیت از طریق callback امن پیگیری می‌شود.");
+    return;
+   }
    if(!lastVideoJobId)throw new Error(result.message||"شناسه job ویدئو دریافت نشد.");
    videoPollSequence++;const sequence=videoPollSequence;
    showVideoStatus("درخواست ثبت شد و در صف موتور قرار گرفت. وضعیت به‌صورت خودکار بررسی می‌شود.");
