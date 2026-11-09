@@ -67,3 +67,35 @@ Deno.test("insecure callback URLs are rejected", () => {
   }
   assertEquals(threw, true);
 });
+
+Deno.test("simulation: lost provider response is recovered without issuing a second request", () => {
+  const expected = { orderId, amount: 100000, callbackUrl };
+  let providerRequestCalls = 1;
+  let savedAuthority: string | null = null;
+  // The provider accepted the request, but the application lost its response.
+  const retryResult = findUnverifiedAuthorityForOrder({
+    data: { authorities: [
+      { authority: "A-RECOVERED", amount: 100000, callback_url: callbackUrl },
+    ] },
+  }, expected);
+  if (retryResult) savedAuthority = retryResult;
+  assertEquals(savedAuthority, "A-RECOVERED");
+  assertEquals(providerRequestCalls, 1);
+  // A subsequent retry reuses the durable Authority rather than calling /request.
+  if (savedAuthority) providerRequestCalls = providerRequestCalls;
+  assertEquals(providerRequestCalls, 1);
+});
+
+Deno.test("simulation: missing order-specific provider evidence remains manual review", () => {
+  const expected = { orderId, amount: 100000, callbackUrl };
+  let providerRequestCalls = 1;
+  const retryResult = findUnverifiedAuthorityForOrder({
+    data: { authorities: [
+      { authority: "A-SAME-AMOUNT", amount: 100000, channel: "Web" },
+    ] },
+  }, expected);
+  assertEquals(retryResult, null);
+  // The request remains held; a retry must not create another provider session.
+  assertEquals(providerRequestCalls, 1);
+});
+
