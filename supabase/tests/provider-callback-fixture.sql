@@ -23,5 +23,6 @@ create table if not exists public.armex_credit_transactions(
 );
 grant usage on schema public,auth to service_role;
 grant select on auth.users to service_role;
-grant select,insert,update,delete on public.armex_payment_orders to service_role;
+-- Intentionally start without service_role access; the staged migration must add it.
+revoke all on public.armex_payment_orders from service_role;
 grant select,insert,update,delete on public.armex_credit_transactions to service_role;
