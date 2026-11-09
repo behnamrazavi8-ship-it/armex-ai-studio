@@ -14,6 +14,13 @@ create table if not exists auth.users (
   id uuid primary key default gen_random_uuid()
 );
 
+-- Minimal credit ledger columns used by the fail/refund guard.
+create table if not exists public.armex_credit_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  idempotency_key text not null unique
+);
+
 create table if not exists public.armex_conversations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
