@@ -65,3 +65,12 @@ export const findUnverifiedAuthorityForOrder = (
   if (matches.length !== 1) return null;
   return (matches[0] as Record<string, unknown>).authority as string;
 };
+
+
+export const isUnverifiedAuthorityForOrder = (
+  response: unknown,
+  expected: { orderId: string; amount: number; callbackUrl: string; authority: string },
+): boolean => {
+  if (!expected.authority.trim()) return false;
+  return findUnverifiedAuthorityForOrder(response, expected) === expected.authority;
+};
