@@ -1,9 +1,12 @@
 import json
+import sys
 import tempfile
 import unittest
 import urllib.request
 from pathlib import Path
 from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from handler import (
     MAX_VIDEO_BYTES,
@@ -95,13 +98,17 @@ class WorkerContractTests(unittest.TestCase):
             }):
                 with self.assertRaises(ValueError):
                     validate_video_file(path, "1280*704")
+            class OversizedPath:
+                def is_file(self): return True
+                def stat(self):
+                    class Stat:
+                        st_size = MAX_VIDEO_BYTES + 1
+                    return Stat()
             with patch("handler.probe_video", return_value={
                 "codec": "h264", "width": 1280, "height": 704, "duration": 5.04,
             }):
-                with patch("pathlib.Path.stat") as stat:
-                    stat.return_value.st_size = MAX_VIDEO_BYTES + 1
-                    with self.assertRaises(ValueError):
-                        validate_video_file(path, "1280*704")
+                with self.assertRaises(ValueError):
+                    validate_video_file(OversizedPath(), "1280*704")
 
     def test_upload_uses_signed_put_and_never_needs_service_role(self):
         value = validate_job_input(valid_input())
