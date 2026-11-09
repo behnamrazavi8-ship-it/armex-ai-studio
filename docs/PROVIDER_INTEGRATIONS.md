@@ -45,7 +45,7 @@ The worker must return a result object with a durable public HTTPS URL:
 
 Do not return a short-lived RunPod result URL: RunPod retains completed job results for a limited period. Upload completed MP4 files to durable object storage (preferably an R2 bucket) from the worker and return that permanent HTTPS URL. The app rejects non-HTTPS URLs. The worker must use the request ID to avoid producing duplicate work on a retry.
 
-The app sends RunPod's top-level `webhook` field so RunPod POSTs the full terminal job payload to the authenticated Edge Function callback. The callback correlates by the UUID `input.request_id`, validates the provider job ID, persists the durable result URL, and applies idempotent refunds for terminal failures. Polling remains as a fallback. This also reconciles a lost `/run` response when the provider accepted the job but the app never received its job ID. The actual GPU worker image/model weights and durable object storage still need to be deployed/configured in the RunPod account.
+The app sends RunPod's top-level `webhook` field so RunPod POSTs the full terminal job payload to the authenticated Edge Function callback. Webhook and polling failure paths share the same stable `video_refund` idempotency key; terminal state claims remain conditional so duplicate callbacks cannot overwrite a completed or failed job. The callback correlates by the UUID `input.request_id`, validates the provider job ID, persists the durable result URL, and applies idempotent refunds for terminal failures. Polling remains as a fallback. This also reconciles a lost `/run` response when the provider accepted the job but the app never received its job ID. The actual GPU worker image/model weights and durable object storage still need to be deployed/configured in the RunPod account.
 
 **Webhook reliability limitation:** RunPod webhook delivery is best-effort and retries a failed delivery only a limited number of times. When the `/run` response is lost and the callback is also never delivered, the app has no provider job ID to poll and cannot automatically discover that job. Such a record remains pending for manual reconciliation; do not blindly refund it because the GPU job may have run. When a provider job ID is available, the app's authenticated status endpoint can fall back to RunPod polling. The webhook signature is carried in the callback URL query string; redact query strings (especially the `token` parameter) from any proxy, analytics, and request logs.
 
@@ -76,6 +76,7 @@ Payment flow:
 4. Only a verified transaction is marked paid and credited through `armex_grant_credits`, with `payment_order:{order_id}` as an idempotency key.
 5. The callback can safely retry the grant if the payment was verified but a transient database failure interrupted wallet crediting.
 6. Once `status=paid` and a non-empty provider `ref_id` are durably stored, retries use that stored verification evidence and do not depend on another Zarinpal verification request. Wallet grants remain idempotent with `payment_order:{order_id}`.
+7. Repeated and concurrent callback paths use the same order-level grant key. A late non-OK browser return cannot cancel a durably paid order.
 
 ## Database and rollout
 
