@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert";
 import {
   hasDurableVerifiedPayment,
+  isMatchingPaymentGrant,
   paymentGrantIdempotencyKey,
   shouldCancelUnverifiedPayment,
 } from "./payment-callback-policy.ts";
@@ -27,7 +28,7 @@ class FakePaymentAdapter {
     status: "pending",
     provider_metadata: {},
   };
-  readonly walletLedger = new Map<string, number>();
+  readonly walletLedger = new Map<string, { amount: number; transaction_type: string; metadata: Record<string, unknown> }>();
   verificationCalls = 0;
   failGrantAfterCommitOnce = false;
 
@@ -38,8 +39,12 @@ class FakePaymentAdapter {
   }
 
   async grant(key: string, credits: number): Promise<boolean> {
-    if (this.walletLedger.has(key)) return true;
-    this.walletLedger.set(key, credits);
+    if (this.walletLedger.has(key)) return false;
+    this.walletLedger.set(key, {
+      amount: credits,
+      transaction_type: "purchase",
+      metadata: { order_id: this.order.id },
+    });
     if (this.failGrantAfterCommitOnce) {
       this.failGrantAfterCommitOnce = false;
       throw new Error("simulated transport loss after durable ledger commit");
@@ -69,12 +74,17 @@ class FakePaymentAdapter {
       };
     }
 
+    const key = paymentGrantIdempotencyKey(this.order.id);
     try {
-      await this.grant(paymentGrantIdempotencyKey(this.order.id), 500);
-      return "granted";
+      const granted = await this.grant(key, 500);
+      if (granted) return "granted";
     } catch {
-      return "retry";
+      // A lost response may still have committed the ledger row. Inspect it below.
     }
+    const existing = this.walletLedger.get(key);
+    return isMatchingPaymentGrant(existing, { orderId: this.order.id, credits: 500 })
+      ? "granted"
+      : "retry";
   }
 }
 
@@ -135,7 +145,7 @@ Deno.test("two concurrent Zarinpal callbacks produce one wallet ledger grant", a
 
   assertEquals(fake.order.status, "paid");
   assertEquals(fake.walletLedger.size, 1);
-  assertEquals(fake.walletLedger.get("payment_order:order-1"), 500);
+  assertEquals(fake.walletLedger.get("payment_order:order-1")?.amount, 500);
   assertEquals(outcomes.every((item) => item === "granted"), true);
 });
 
@@ -143,7 +153,7 @@ Deno.test("verified payment retries wallet grant after ambiguous commit without 
   const fake = new FakePaymentAdapter();
   fake.failGrantAfterCommitOnce = true;
 
-  assertEquals(await fake.callback("OK"), "retry");
+  assertEquals(await fake.callback("OK"), "granted");
   assertEquals(fake.order.status, "paid");
   assertEquals(fake.walletLedger.size, 1);
 
