@@ -8,7 +8,7 @@ on:
       - "supabase/functions/**"
       - "supabase/migrations/**"
   push:
-    branches: [main]
+    branches: [main, "feat/**"]
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
