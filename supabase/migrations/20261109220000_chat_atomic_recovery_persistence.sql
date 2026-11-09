@@ -34,6 +34,7 @@ declare
   v_user_message_count integer;
   v_assistant_message_count integer;
   v_existing_usage public.armex_usage%rowtype;
+  v_usage_found boolean := false;
   v_payload jsonb;
   v_result_model text;
 begin
@@ -107,7 +108,9 @@ begin
   where u.request_id = p_request_id
   for update;
 
-  if found and v_message_count = 0 then
+  v_usage_found := found;
+
+  if v_usage_found and v_message_count = 0 then
     raise exception 'usage exists without request-linked messages; manual review required';
   end if;
 
@@ -132,7 +135,7 @@ begin
     raise exception 'partial or conflicting request-linked messages require manual review';
   end if;
 
-  if found then
+  if v_usage_found then
     if v_existing_usage.user_id <> p_user_id
        or v_existing_usage.conversation_id <> v_conversation_id
        or v_existing_usage.model <> v_result_model
