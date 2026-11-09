@@ -80,7 +80,7 @@ Payment flow:
 
 ### Ambiguous payment-request recovery
 
-The payment request path now records the order UUID, request-attempt UUID, request start time, and exact HTTPS callback URL before contacting Zarinpal. The callback URL carries that order UUID as `order_id`, so a callback can identify the order even if the initial request response was lost before the Authority was saved.
+The payment request path now records the order UUID, request-attempt UUID, request start time, and exact HTTPS callback URL before contacting Zarinpal. The callback URL carries that order UUID as `order_id`. Because a browser callback parameter is not cryptographic proof, when the Authority was not already saved the callback must also be matched against the provider's unverified list using the exact order UUID, amount, callback origin/path, and Authority before the order can be verified or changed.
 
 If the `/request.json` call times out, the connection drops, the response is malformed, or Authority persistence cannot be confirmed, the order remains pending and is not automatically marked failed. Retrying the same request ID never calls `/request.json` again. The server may call Zarinpal's `/unVerified.json` endpoint and recover an Authority only when exactly one returned record matches all of:
 - the exact callback origin and path with this order UUID,
