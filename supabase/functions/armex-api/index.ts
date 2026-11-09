@@ -820,6 +820,34 @@ const handle = async (request: Request): Promise<Response> => {
 
   const db: SupabaseClient = supabaseContext.supabaseAdmin;
   const modelsAllowed = allowedModels();
+  if (request.method === "GET" && url.searchParams.get("action") === "conversations") {
+    const { data, error } = await db.from("armex_conversations")
+      .select("id,title,model,created_at,updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(50);
+    if (error) return fail("Could not load conversations", 500, cors);
+    return json({ success: true, conversations: data ?? [] }, 200, cors);
+  }
+  if (request.method === "GET" && url.searchParams.get("action") === "conversation_messages") {
+    const conversationId = url.searchParams.get("id") ?? "";
+    if (!isUuid(conversationId)) return fail("A valid conversation ID is required", 400, cors);
+    const { data: conversation, error: conversationError } = await db.from("armex_conversations")
+      .select("id")
+      .eq("id", conversationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (conversationError || !conversation) return fail("Conversation not found", 404, cors);
+    const { data, error } = await db.from("armex_messages")
+      .select("id,role,content,model,created_at")
+      .eq("conversation_id", conversationId)
+      .eq("user_id", userId)
+      .in("role", ["user", "assistant"])
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) return fail("Could not load conversation messages", 500, cors);
+    return json({ success: true, messages: (data ?? []).reverse() }, 200, cors);
+  }
   if (request.method === "GET" && url.searchParams.get("action") === "payment_packages") {
     return json({ success: true, packages: configuredPaymentPackages().map(({id,title,amount_irr,credits}) => ({id,title,amount_irr,credits})) }, 200, cors);
   }
