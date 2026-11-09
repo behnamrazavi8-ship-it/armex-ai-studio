@@ -12,7 +12,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 MAX_VIDEO_BYTES = 50 * 1024 * 1024
 MODEL_ID = "Wan-AI/Wan2.2-TI2V-5B"
@@ -55,8 +55,9 @@ def validate_job_input(value: Any) -> dict[str, Any]:
     parsed = urlparse(signed_url) if isinstance(signed_url, str) else None
     if not parsed or parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith(".supabase.co"):
         raise ValueError("Storage upload URL must be an HTTPS Supabase URL")
-    if not parsed.path.startswith("/storage/v1/object/upload/sign/") or not parsed.query:
-        raise ValueError("Storage upload URL is not a signed upload endpoint")
+    expected_signed_path = "/storage/v1/object/upload/sign/lokal-ai-videos/" + path
+    if unquote(parsed.path) != expected_signed_path or not parsed.query:
+        raise ValueError("Storage upload URL does not match the assigned private object path")
     api_key = upload.get("apikey")
     authorization = upload.get("authorization")
     if not isinstance(api_key, str) or not api_key or authorization != "Bearer " + api_key:
