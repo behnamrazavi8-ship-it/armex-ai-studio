@@ -406,10 +406,14 @@ const generateVideo = async (
     response = await fetch(RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/run", {
       method: "POST",
       headers: { Authorization: token, "Content-Type": "application/json" },
-      body: JSON.stringify({ input: {
-        task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
-        request_id: requestId, aspect_ratio: aspectRatio, duration_seconds: 5, output_mode: "durable_https_url",
-      } }),
+      body: JSON.stringify({
+        input: {
+          task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
+          request_id: requestId, aspect_ratio: aspectRatio, duration_seconds: 5, output_mode: "durable_https_url",
+        },
+        // Reconciles jobs even when the /run response is lost after provider acceptance.
+        webhook: runpodWebhookUrl(),
+      }),
       signal: AbortSignal.timeout(20000),
     });
   } catch (error) {
@@ -444,6 +448,85 @@ const generateVideo = async (
   }).eq("id", job.id).eq("user_id", userId);
   if (updateError) return fail("Provider accepted the job but its tracking record could not be saved", 500, cors);
   return json({ success: true, video: { id: job.id, request_id: requestId, provider_job_id: providerJobId, status: "queued" } }, 202, cors);
+};
+
+const runpodWebhookUrl = (): string => {
+  const base = (Deno.env.get("RUNPOD_WEBHOOK_CALLBACK_URL")?.trim() ||
+    (Deno.env.get("SUPABASE_URL")?.trim() + "/functions/v1/armex-api?action=runpod_callback"));
+  const secret = Deno.env.get("RUNPOD_WEBHOOK_SECRET")?.trim() ?? "";
+  if (!secret || !base.startsWith("https://")) throw new Error("RUNPOD_WEBHOOK_NOT_CONFIGURED");
+  const url = new URL(base);
+  url.searchParams.set("action", "runpod_callback");
+  url.searchParams.set("token", secret);
+  return url.toString();
+};
+
+const runpodWebhookCallback = async (request: Request): Promise<Response> => {
+  const url = new URL(request.url);
+  const expected = Deno.env.get("RUNPOD_WEBHOOK_SECRET")?.trim() ?? "";
+  const supplied = url.searchParams.get("token") ?? "";
+  let mismatch = supplied.length ^ expected.length;
+  const maxLength = Math.max(supplied.length, expected.length);
+  for (let i = 0; i < maxLength; i++) {
+    mismatch |= (supplied.charCodeAt(i) || 0) ^ (expected.charCodeAt(i) || 0);
+  }
+  if (!expected || mismatch !== 0) return json({ success: false, error: "Unauthorized webhook" }, 401);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
+  if (!supabaseUrl || !serviceKey) return json({ success: false, error: "Webhook storage is not configured" }, 503);
+  const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const requestId = payload?.input && typeof payload.input === "object"
+    ? (payload.input as Record<string, unknown>).request_id : null;
+  const providerJobId = typeof payload?.id === "string" ? payload.id : "";
+  const providerStatus = typeof payload?.status === "string" ? payload.status : "";
+  if (!isUuid(requestId) || !providerJobId || !["COMPLETED", "FAILED", "CANCELLED"].includes(providerStatus)) {
+    return json({ success: false, error: "Invalid terminal job payload" }, 400);
+  }
+
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: job, error } = await admin.from("armex_video_generations")
+    .select("id,user_id,provider_job_id,status,credits_charged,refund_status")
+    .eq("request_id", requestId).maybeSingle();
+  if (error || !job) return json({ success: false, error: "Video job not found" }, 404);
+  if (job.provider_job_id && job.provider_job_id !== providerJobId) {
+    return json({ success: false, error: "Provider job ID mismatch" }, 409);
+  }
+  if (["completed", "failed", "cancelled"].includes(job.status) &&
+      !(job.status === "failed" && job.refund_status === "pending")) {
+    return json({ success: true, duplicate: true }, 200);
+  }
+
+  if (providerStatus === "COMPLETED") {
+    const output = payload?.output && typeof payload.output === "object"
+      ? payload.output as Record<string, unknown> : {};
+    const resultUrl = safeHttpsUrl(output.video_url ?? output.url);
+    if (!resultUrl) {
+      const refunded = await refundCredits(admin, job.user_id, Number(job.credits_charged), job.id, job.id, "video_refund");
+      const { error: saveError } = await admin.from("armex_video_generations").update({
+        provider_job_id: providerJobId, status: "failed",
+        refund_status: refunded ? "completed" : "pending",
+        error_code: "worker_did_not_return_durable_https_url", updated_at: new Date().toISOString(),
+      }).eq("id", job.id);
+      if (saveError) return json({ success: false, error: "Could not persist failed video result" }, 500);
+      return json({ success: true, refund_status: refunded ? "completed" : "pending" }, 200);
+    }
+    const { error: saveError } = await admin.from("armex_video_generations").update({
+      provider_job_id: providerJobId, status: "completed", result_url: resultUrl,
+      completed_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    }).eq("id", job.id);
+    if (saveError) return json({ success: false, error: "Could not persist video result" }, 500);
+    return json({ success: true }, 200);
+  }
+
+  const refunded = await refundCredits(admin, job.user_id, Number(job.credits_charged), job.id, job.id, "video_refund");
+  const { error: saveError } = await admin.from("armex_video_generations").update({
+    provider_job_id: providerJobId, status: providerStatus === "CANCELLED" ? "cancelled" : "failed",
+    refund_status: refunded ? "completed" : "pending",
+    error_code: "provider_job_failed", updated_at: new Date().toISOString(),
+  }).eq("id", job.id);
+  if (saveError) return json({ success: false, error: "Could not persist failed video result" }, 500);
+  return json({ success: true, refund_status: refunded ? "completed" : "pending" }, 200);
 };
 
 const getVideoStatus = async (
@@ -626,6 +709,9 @@ const handle = async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
   if (request.method === "GET" && url.searchParams.get("action") === "payment_callback") {
     return await zarinpalCallback(request);
+  }
+  if (request.method === "POST" && url.searchParams.get("action") === "runpod_callback") {
+    return await runpodWebhookCallback(request);
   }
   if (request.method === "GET" && url.searchParams.get("action") === "health") {
     return json({
