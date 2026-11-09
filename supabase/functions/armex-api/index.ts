@@ -510,11 +510,9 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
   if (!supabaseUrl || !serviceKey) return json({ success: false, error: "Webhook storage is not configured" }, 503);
   const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
-  const jobId = url.searchParams.get("job_id") ?? "";
-  const requestId = url.searchParams.get("request_id") ?? "";
   const providerJobId = typeof payload?.id === "string" ? payload.id : "";
   const providerStatus = typeof payload?.status === "string" ? payload.status : "";
-  if (!isUuid(jobId) || !isUuid(requestId) || !providerJobId ||
+  if (!payload || !providerJobId ||
       !["COMPLETED", "FAILED", "CANCELLED"].includes(providerStatus)) {
     return json({ success: false, error: "Invalid terminal job payload" }, 400);
   }
