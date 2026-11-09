@@ -607,25 +607,40 @@ const getVideoStatus = async (
     ? safeHttpsUrl(output.video_url ?? output.url)
     : null;
   if (status === "completed" && !resultUrl) {
+    const { data: claimed, error: claimError } = await db.from("armex_video_generations").update({
+      status: "failed", refund_status: "pending", error_code: "worker_did_not_return_durable_https_url",
+      updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).in("status", ["queued", "processing"]).select("id").maybeSingle();
+    if (claimError) return fail("Could not claim failed video result", 500, cors);
+    if (!claimed) return json({ success: true, duplicate: true, video: job }, 200, cors);
     const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
-    await db.from("armex_video_generations").update({ status: "failed", refund_status: refunded ? "completed" : "pending", error_code: "worker_did_not_return_durable_https_url" })
-      .eq("id", job.id).eq("user_id", userId);
+    await db.from("armex_video_generations").update({ refund_status: refunded ? "completed" : "pending", updated_at: new Date().toISOString() })
+      .eq("id", job.id).eq("user_id", userId).eq("status", "failed");
     return fail(refunded ? "Video worker did not return a permanent HTTPS video URL; credits were returned" : "Video output is missing and credit refund could not be confirmed", 502, cors);
   }
   if (status === "failed" || status === "cancelled") {
+    const { data: claimed, error: claimError } = await db.from("armex_video_generations").update({
+      status, refund_status: "pending",
+      error_code: String(payload.status) === "TIMED_OUT" ? "provider_job_timed_out" : "provider_job_failed",
+      updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).in("status", ["queued", "processing"]).select("id").maybeSingle();
+    if (claimError) return fail("Could not claim failed video job", 500, cors);
+    if (!claimed) return json({ success: true, duplicate: true, video: job }, 200, cors);
     const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
-    const { error: failedSaveError } = await db.from("armex_video_generations").update({ status, refund_status: refunded ? "completed" : "pending", error_code: "provider_job_failed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId);
+    const { error: failedSaveError } = await db.from("armex_video_generations").update({
+      refund_status: refunded ? "completed" : "pending", updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).eq("status", status);
     if (failedSaveError || !refunded) return fail("Video failed; automatic credit refund is pending and will be retried", 500, cors);
     return json({ success: true, video: { ...job, status, refund_status: "completed" } }, 200, cors);
   }
   const update: Record<string, unknown> = {
     status, updated_at: new Date().toISOString(),
     ...(resultUrl ? { result_url: resultUrl, completed_at: new Date().toISOString() } : {}),
-    ...(status === "failed" ? { error_code: "provider_job_failed" } : {}),
   };
-  const { error: saveError } = await db.from("armex_video_generations").update(update)
-    .eq("id", job.id).eq("user_id", userId);
+  const { data: saved, error: saveError } = await db.from("armex_video_generations").update(update)
+    .eq("id", job.id).eq("user_id", userId).in("status", ["queued", "processing"]).select("id").maybeSingle();
   if (saveError) return fail("Could not save video status", 500, cors);
+  if (!saved) return json({ success: true, duplicate: true, video: job }, 200, cors);
   return json({ success: true, video: { ...job, ...update } }, 200, cors);
 };
 
