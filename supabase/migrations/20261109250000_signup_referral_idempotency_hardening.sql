@@ -50,14 +50,20 @@ begin
     end if;
   end if;
 
-  -- Include qualified rows so durable prior grants can be reconciled to state.
+  -- Either participant may be the account that has just become verified.
+  -- Pay only after BOTH the referrer and referred account are verified.
+  -- This also recovers a pending referral when the referrer verifies later.
   for r in
-    select id, referrer_user_id
-    from public.armex_referrals
-    where referred_user_id = p_user_id
-      and status in ('pending', 'qualified')
-    order by created_at, id
-    for update
+    select f.id, f.referrer_user_id
+    from public.armex_referrals f
+    join auth.users referred on referred.id = f.referred_user_id
+    join auth.users referrer on referrer.id = f.referrer_user_id
+    where (f.referred_user_id = p_user_id or f.referrer_user_id = p_user_id)
+      and f.status in ('pending', 'qualified')
+      and referred.email_confirmed_at is not null
+      and referrer.email_confirmed_at is not null
+    order by f.created_at, f.id
+    for update of f
   loop
     update public.armex_referrals
     set status = 'qualified', qualified_at = coalesce(qualified_at, now())
