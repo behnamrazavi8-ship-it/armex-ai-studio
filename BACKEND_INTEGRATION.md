@@ -1,14 +1,15 @@
 # LOKAL AI — Backend Integration Plan
 
-## Verified repository state
+## Historical planning document — current implementation supersedes this snapshot
 
-At the time this document was added, the repository contained only `index.html` and `README.md`. The frontend is a static HTML/CSS/JavaScript preview. No Supabase project configuration, migrations, Edge Function source, provider configuration, or payment integration was present in this repository.
+This file records the initial backend plan and its original repository snapshot. It is not an accurate description of the current deployed or staged system. The repository now contains Supabase migrations, Edge Function source, image/video/chat billing paths, payment callback handling, wallet ledger logic, and signup/referral hardening. The current implementation and deployment boundaries are documented in `docs/PROVIDER_INTEGRATIONS.md`, `docs/CHAT_REQUEST_RECONCILIATION.md`, and `docs/SIGNUP_REFERRAL_AUDIT.md`.
 
-The GitHub connector provides access to this repository only. It does not grant access to the user's Supabase dashboard or database. Therefore, this document is an implementation plan, not a claim that database changes have been deployed.
+The live Supabase project has been inspected read-only. Some staged migrations and workers are not deployed. A successful CI run or staged SQL test does not mean Production has changed. Do not apply the proposed schema below blindly: it is historical design guidance, not a migration plan for the current schema.
 
-## Frontend preview boundaries
+## Legacy architecture note
 
-The current page supports local prompt composition and browser-local project saving. The 500-credit display is explicitly a placeholder. There is no real sign-in, generation request, account balance, referral reward, or payment operation yet.
+The initial `profiles` / `credit_transactions` model described below is retained for historical context. The active app and `armex-api` use `armex_wallets` and `armex_credit_transactions`. The legacy Auth trigger still writes the old ledger on user creation; it has not been removed because retirement requires a complete dependency and rollback review. See `docs/SIGNUP_REFERRAL_AUDIT.md`.
+
 
 ## Target architecture
 
