@@ -315,7 +315,8 @@ const handle = async (request: Request): Promise<Response> => {
         error: error instanceof Error ? error.message : "unknown",
       });
       await releaseLease(db, row, "worker_exception");
-      summary.retry_pending++;
+      if (row.reconciliation_attempts >= 5) summary.manual_review++;
+      else summary.retry_pending++;
     }
   }
 
