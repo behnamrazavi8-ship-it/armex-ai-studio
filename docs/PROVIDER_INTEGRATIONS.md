@@ -134,3 +134,22 @@ The Zarinpal create-payment route accepts only a configured `package_id` and a U
 The server rejects the complete package configuration if any entry is malformed, has an unsafe/non-positive integer amount or credit quantity, has an invalid package ID/title, or duplicates another package ID. This avoids silently filtering a bad entry or selecting an ambiguous duplicate. The browser may display package details returned by the authenticated `payment_packages` route, but those displayed values are never accepted back as payment authority.
 
 Verification boundary: these guarantees are established by source inspection and pure policy tests in CI. They do not constitute a live Zarinpal or staging integration test. Keep production secrets, migrations, deployments, and real payment calls outside this audit.
+
+
+## Wallet RPC idempotency audit
+
+Read-only inspection of the existing Supabase project confirmed that `armex_debit_credits` and `armex_grant_credits` are `SECURITY DEFINER` functions with a pinned `search_path`, wallet-row locking, and a unique `(user_id, idempotency_key)` ledger index. Execute privileges were observed for `service_role` and the database owner; authenticated and anon roles did not have execute privileges. Wallet and ledger tables exposed only owner-scoped SELECT policies to authenticated users.
+
+The previous debit RPC treated any existing row with the same user and idempotency key as a successful debit without checking amount/type. The previous grant RPC treated any existing key as a duplicate without rejecting a conflicting amount/type. This could make an accidental or malicious key collision look like a successful retry.
+
+The staged wallet RPC migration now:
+- accepts only positive amounts, non-empty keys, and an explicit allowlist of grant transaction types;
+- treats an exact debit replay (same negative amount and `usage` type) as success;
+- treats an exact grant replay (same positive amount and grant type) as a duplicate;
+- rejects a reused key with a conflicting amount or transaction type;
+- preserves per-wallet row locking and unique ledger keys;
+- explicitly revokes RPC execution from `PUBLIC`, `anon`, and `authenticated`, retaining `service_role` execution.
+
+The API now validates ambiguous debit recovery against the exact negative amount and `usage` type, and refund recovery against amount, `refund` type, request ID, attempt ID, and reason. This prevents a ledger row with a colliding key from being accepted as proof of the requested debit/refund.
+
+CI Run #361 passed on the staged branch, including Deno policy tests and disposable PostgreSQL tests for exact retries, conflicting keys, insufficient balance, invalid grant types, RPC privileges, concurrent same-key debits, and concurrent independent debits that must not overspend. This is disposable-database verification, not a migration or test against the live Supabase project. The migration remains unapplied to production.
