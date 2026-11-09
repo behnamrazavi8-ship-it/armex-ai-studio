@@ -4,6 +4,8 @@ import {
   isDefinitiveZarinpalRequestRejection,
   isUnverifiedAuthorityForOrder,
   paymentCallbackUrlForOrder,
+  parsePaymentPackages,
+  resolvePaymentPackage,
 } from "./payment-request-policy.ts";
 
 const baseCallback = "https://project.supabase.co/functions/v1/armex-api?action=payment_callback";
@@ -144,4 +146,25 @@ Deno.test("accepts the documented unverified-transactions response shape", () =>
   assertEquals(findUnverifiedAuthorityForOrder(response, {
     orderId, amount: 100000, callbackUrl,
   }), "A-SDK-SHAPE");
+});
+
+
+Deno.test("server payment packages reject malformed entries and duplicate IDs", () => {
+  const valid = [{ id: "credits_100", amount_irr: 100000, credits: 100, title: "Starter" }];
+  assertEquals(parsePaymentPackages(valid), valid);
+  assertEquals(parsePaymentPackages([...valid, { ...valid[0], amount_irr: 200000 }]), []);
+  assertEquals(parsePaymentPackages([{ ...valid[0], amount_irr: Number.MAX_SAFE_INTEGER + 1 }]), []);
+  assertEquals(parsePaymentPackages([{ ...valid[0], credits: 0 }]), []);
+  assertEquals(parsePaymentPackages([{ ...valid[0], title: "  " }]), []);
+  assertEquals(parsePaymentPackages([{ ...valid[0], id: "../evil" }]), []);
+  assertEquals(parsePaymentPackages([{ ...valid[0], credits: "100" }]), []);
+  assertEquals(parsePaymentPackages([]), []);
+});
+
+Deno.test("payment package lookup trusts only server-owned package configuration", () => {
+  const serverPackages = [{ id: "credits_100", amount_irr: 100000, credits: 100, title: "Starter" }];
+  assertEquals(resolvePaymentPackage(serverPackages, "credits_100"), serverPackages[0]);
+  assertEquals(resolvePaymentPackage(serverPackages, "credits_100",), serverPackages[0]);
+  assertEquals(resolvePaymentPackage(serverPackages, "credits_999"), null);
+  assertEquals(resolvePaymentPackage(serverPackages, { id: "credits_100", amount_irr: 1, credits: 999999 }), null);
 });
