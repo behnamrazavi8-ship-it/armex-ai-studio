@@ -300,17 +300,19 @@ const handle = async (request: Request): Promise<Response> => {
         else summary.retry_pending++;
         continue;
       }
-      if (recovery.provider_outcome !== row.provider_outcome ||
-          recovery.debit_outcome !== row.debit_outcome ||
-          recovery.reconciliation_lease_token !== row.reconciliation_lease_token) {
+      const recoveryRecord = recovery as unknown as Json;
+      if (!isObject(recoveryRecord) ||
+          recoveryRecord.provider_outcome !== row.provider_outcome ||
+          recoveryRecord.debit_outcome !== row.debit_outcome ||
+          recoveryRecord.reconciliation_lease_token !== row.reconciliation_lease_token) {
         await markManualReview(db, row, "claimed_evidence_changed_before_processing");
         summary.manual_review++;
         continue;
       }
 
       const result = row.provider_outcome === "accepted"
-        ? await processAccepted(db, row, recovery as Json)
-        : await processRefundableFailure(db, row, recovery as Json);
+        ? await processAccepted(db, row, recoveryRecord)
+        : await processRefundableFailure(db, row, recoveryRecord);
 
       if (result === "completed") summary.completed++;
       else if (result === "failed") summary.failed++;
