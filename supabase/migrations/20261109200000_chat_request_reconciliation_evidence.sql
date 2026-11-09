@@ -55,7 +55,7 @@ begin
   where user_id = p_user_id
     and request_id = p_request_id
     and status = 'processing'
-    and (provider_outcome <> 'accepted' or p_provider_outcome = 'accepted')
+    and (provider_outcome not in ('accepted','rejected') or p_provider_outcome = provider_outcome)
     and (debit_outcome <> 'debited' or p_debit_outcome = 'debited');
 
   get diagnostics updated_count = row_count;
