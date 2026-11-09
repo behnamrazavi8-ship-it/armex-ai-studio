@@ -119,8 +119,9 @@ const markManualReview = async (
   db: SupabaseClient,
   row: ReconciliationRow,
   reason: string,
-): Promise<void> => {
-  await releaseLease(db, row, reason, true);
+): Promise<boolean> => {
+  // Only report manual review after the diagnostic and lease release are durable.
+  return await releaseLease(db, row, reason, true);
 };
 
 const processAccepted = async (
@@ -129,8 +130,8 @@ const processAccepted = async (
   recovery: Json,
 ): Promise<"completed" | "retry" | "manual_review"> => {
   if (row.debit_outcome !== "debited" || !isObject(row.provider_response_payload)) {
-    await markManualReview(db, row, "accepted_response_missing_confirmed_debit_or_snapshot");
-    return "manual_review";
+    const marked = await markManualReview(db, row, "accepted_response_missing_confirmed_debit_or_snapshot");
+    return marked ? "manual_review" : "retry";
   }
 
   const payload = deriveAcceptedChatPayload(
@@ -144,8 +145,8 @@ const processAccepted = async (
   );
   if (!payload || !Number.isSafeInteger(recovery.recovery_credits) ||
       Number(recovery.recovery_credits) < 1) {
-    await markManualReview(db, row, "accepted_response_payload_is_not_recoverable");
-    return "manual_review";
+    const marked = await markManualReview(db, row, "accepted_response_payload_is_not_recoverable");
+    return marked ? "manual_review" : "retry";
   }
 
   const { data: persisted, error } = await db.rpc("armex_persist_chat_response_atomic", {
@@ -174,8 +175,8 @@ const processRefundableFailure = async (
   recovery: Json,
 ): Promise<"failed" | "retry" | "manual_review"> => {
   if (!["rejected", "not_started"].includes(row.provider_outcome)) {
-    await markManualReview(db, row, "unsupported_provider_outcome");
-    return "manual_review";
+    const marked = await markManualReview(db, row, "unsupported_provider_outcome");
+    return marked ? "manual_review" : "retry";
   }
 
   if (["not_attempted", "not_debited"].includes(row.debit_outcome)) {
@@ -191,8 +192,8 @@ const processRefundableFailure = async (
   }
 
   if (row.debit_outcome !== "debited") {
-    await markManualReview(db, row, "refund_not_safe_debit_outcome_unknown");
-    return "manual_review";
+    const marked = await markManualReview(db, row, "refund_not_safe_debit_outcome_unknown");
+    return marked ? "manual_review" : "retry";
   }
 
   const amount = Number(recovery.recovery_credits);
@@ -204,8 +205,8 @@ const processRefundableFailure = async (
     : "pre_provider_error";
 
   if (!Number.isSafeInteger(amount) || amount <= 0 || !attemptId) {
-    await markManualReview(db, row, "confirmed_debit_missing_refund_metadata");
-    return "manual_review";
+    const marked = await markManualReview(db, row, "confirmed_debit_missing_refund_metadata");
+    return marked ? "manual_review" : "retry";
   }
 
   const refunded = await refundCredits(db, row, amount, attemptId, reason);
@@ -305,8 +306,9 @@ const handle = async (request: Request): Promise<Response> => {
           recoveryRecord.provider_outcome !== row.provider_outcome ||
           recoveryRecord.debit_outcome !== row.debit_outcome ||
           recoveryRecord.reconciliation_lease_token !== row.reconciliation_lease_token) {
-        await markManualReview(db, row, "claimed_evidence_changed_before_processing");
-        summary.manual_review++;
+        const marked = await markManualReview(db, row, "claimed_evidence_changed_before_processing");
+        if (marked) summary.manual_review++;
+        else summary.retry_pending++;
         continue;
       }
 
