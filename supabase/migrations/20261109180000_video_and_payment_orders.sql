@@ -40,7 +40,8 @@ grant all on public.armex_video_generations to service_role;
 alter table public.armex_payment_orders
   add column if not exists package_id text,
   add column if not exists idempotency_key text,
-  add column if not exists paid_at timestamptz;
+  add column if not exists paid_at timestamptz,
+  add column if not exists provider_metadata jsonb not null default '{}'::jsonb;
 
 create unique index if not exists armex_payment_orders_user_idempotency_idx
   on public.armex_payment_orders (user_id, idempotency_key)
