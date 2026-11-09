@@ -73,6 +73,14 @@ jobs:
       - name: Test deterministic chat recovery payload
         run: deno test supabase/functions/armex-chat-reconciler/recovery-payload_test.ts
 
+      - name: Build disposable payment and video PostgreSQL fixture
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/provider-callback-fixture.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109180000_video_and_payment_orders.sql
+
+      - name: Test concurrent payment and video callbacks in PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/provider-callback-concurrency.sql
+
       - name: Build disposable PostgreSQL schema fixture
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-fixture.sql
 
