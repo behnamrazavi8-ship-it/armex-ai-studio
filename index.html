@@ -56,14 +56,14 @@
 <section class="page active" id="page-home"><div class="dash-hero"><h2>فضای کار خلاقانه تو</h2><p>پرامپت بساز و پروژه‌هایت را مدیریت کن.</p><button class="btn" data-go="prompt">شروع ساخت پرامپت ←</button></div><div class="stats"><div class="stat"><span>اعتبار کیف پول</span><b id="walletStat">—</b></div><div class="stat"><span>پروژه‌های ذخیره‌شده</span><b id="projectCount">۰</b></div><div class="stat"><span>ابزار فعال</span><b>۲</b></div></div><div class="panel"><h3>ابزارهای فضای کاری</h3><div class="tools-grid"><button class="app-tool" data-go="prompt"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M11 35.5 31.8 14.7a5 5 0 0 1 7.1 7.1L18.1 42.6 9 45l2-9.5Z" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/><path d="m28 18 7 7M8 8h10M13 3v10M34 5l1.8 4.2L40 11l-4.2 1.8L34 17l-1.8-4.2L28 11l4.2-1.8L34 5Z" stroke="#69b8ff" stroke-width="1.8" stroke-linecap="round"/></svg></div><h4>Prompt Lab</h4><p>ساخت پرامپت محلی و هوشمند</p><span class="tag">فعال</span></button><button class="app-tool" data-page="image"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><rect x="6" y="8" width="36" height="32" rx="7" stroke="#67f0d0" stroke-width="2.2"/><circle cx="17" cy="19" r="3.5" stroke="#69b8ff" stroke-width="2"/><path d="m8 34 11-10 7 6 6-8 8 9" stroke="#67f0d0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m34 7 1.5-3L37 7l3 1.5L37 10l-1.5 3L34 10l-3-1.5L34 7Z" fill="#69b8ff"/></svg></div><h4>Image Studio</h4><p>تولید و ذخیره تصاویر با هوش مصنوعی</p><span class="tag">فعال</span></button><button class="app-tool" data-tool="video"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><rect x="5" y="11" width="38" height="28" rx="6" stroke="#67f0d0" stroke-width="2.2"/><path d="m20 18 12 7-12 7V18Z" stroke="#69b8ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m9 11 5-6h8l-5 6M26 11l5-6h8l-5 6" stroke="#67f0d0" stroke-width="2" stroke-linejoin="round"/></svg></div><h4>Video Prompt Lab</h4><p>ورود مستقیم به Prompt Lab با تنظیم نوع خروجی ویدئو</p><span class="tag">آماده‌سازی پرامپت</span></button><button class="app-tool" data-page="account"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="16" r="8" stroke="#69b8ff" stroke-width="2.2"/><path d="M8 41c1.8-8 7.5-12 16-12s14.2 4 16 12" stroke="#67f0d0" stroke-width="2.2" stroke-linecap="round"/><circle cx="38" cy="11" r="4" fill="#67f0d0" fill-opacity=".25" stroke="#67f0d0" stroke-width="1.6"/></svg></div><h4>Account & Wallet</h4><p>مشاهده حساب Google، موجودی و تنظیمات کیف پول</p><span class="tag">حساب کاربری</span></button><button class="app-tool" data-page="projects"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="m24 5 18 9-18 9-18-9 18-9Z" stroke="#69b8ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m6 23 18 9 18-9M6 32l18 9 18-9" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/></svg></div><h4>پروژه‌های من</h4><p>مدیریت پروژه‌های ذخیره‌شده در حساب</p><span class="tag">حساب کاربری</span></button></div></div></section><section class="page" id="page-prompt"><div class="welcome"><div class="eyebrow">PROMPT LAB</div><h1>سازنده پرامپت</h1><p>ایده‌ات را به پرامپت حرفه‌ای تبدیل کن و در صورت نیاز به Image Studio بفرست.</p></div><div class="panel" id="prompt-builder"><div class="eyebrow">PROMPT CREATOR</div><h3>سازنده پرامپت</h3><p class="muted-copy">ایده‌ات را یک‌بار وارد کن؛ پرامپت آماده را محلی بساز یا با هوش مصنوعی بهبود بده.</p><label class="field-label" for="idea">ایده یا توضیح اولیه</label><textarea id="idea" class="textarea" placeholder="مثلاً: یک خودروی اسپرت مشکی در خیابان خیس و نورهای آبی نئونی..."></textarea><div class="field-row"><div><label class="field-label" for="contentType">نوع خروجی</label><select class="select" id="contentType"><option value="image">تصویر</option><option value="video">ویدئو</option><option value="design">طراحی گرافیک</option><option value="social">محتوای شبکه اجتماعی</option></select></div><div><label class="field-label" for="style">سبک بصری</label><select class="select" id="style"><option>سینمایی و واقع‌گرایانه</option><option>مینیمال و مدرن</option><option>فانتزی و سورئال</option><option>تاریک و دراماتیک</option><option>سه‌بعدی و آینده‌نگر</option><option>تبلیغاتی و تجاری</option></select></div></div><div class="field-row"><div><label class="field-label" for="ratio">کادر تصویر</label><select class="select" id="ratio"><option>۱:۱ مربع</option><option selected>۹:۱۶ عمودی</option><option>۱۶:۹ افقی</option><option>۴:۵ پرتره</option><option>۳:۲ منظره</option></select></div><div><label class="field-label" for="language">زبان پرامپت</label><select class="select" id="language"><option value="en">انگلیسی</option><option value="fa">فارسی</option></select></div></div><div class="workspace-actions"><button class="btn" id="generatePrompt">ساخت پرامپت</button><button class="btn" id="generateAIPrompt">بهبود هوشمند · ۱ اعتبار</button><button class="btn btn-ghost" id="savePrompt">ذخیره پروژه</button><button class="btn btn-ghost" id="clearPrompt">پاک کردن</button></div><div class="result" id="aiPromptStatus" role="status" aria-live="polite"></div><div class="result" id="promptResult" aria-live="polite"></div><div class="workspace-actions" id="resultActions" style="display:none"><button class="btn btn-ghost" id="copyResult">کپی خروجی</button></div></div><div class="notice">موجودی و عملیات هوشمند از API امن خوانده می‌شوند. هزینه هر درخواست پیش از ارسال نمایش داده می‌شود.</div></section>
 
 <section class="page" id="page-projects"><div class="welcome"><h1>پروژه‌های من</h1></div><div id="projectsList" class="empty">هنوز پروژه‌ای ذخیره نشده است.</div><div class="notice" id="projectsSyncStatus">پروژه‌های جدید پس از فعال‌سازی جدول امن پروژه‌ها در حساب ذخیره و بین دستگاه‌ها همگام می‌شوند. تا آن زمان نسخه محلی حفظ می‌شود.</div></section>
-<section class="page" id="page-account"><div class="welcome"><h1>حساب و کیف پول</h1></div><div class="account-card" id="auth-session-card" hidden><div class="account-profile"><img id="auth-user-avatar" alt="" hidden><div><h3 id="auth-user-name">حساب شخصی LOKAL AI</h3><p id="auth-user-email"></p><span class="tag" id="auth-provider">روش ورود</span></div></div><div class="account-details"><div><span>موجودی فعلی</span><b id="accountWalletBalance">در حال دریافت…</b></div><div><span>شناسه حساب</span><b id="auth-user-id">—</b></div></div><p class="muted-copy" id="wallet-help">اعتبار از کیف پول امن سرور خوانده می‌شود؛ این صفحه امکان تغییر مستقیم موجودی را ندارد.</p><div class="panel"><h3>تنظیم رمز عبور برای حساب فعلی</h3><p class="muted-copy">اگر با Google ثبت‌نام کرده‌ای، می‌توانی بدون ساخت حساب تکراری برای همین حساب رمز عبور تعیین کنی.</p><label class="field-label" for="account-new-password">رمز عبور جدید</label><input class="input" id="account-new-password" type="password" minlength="8" autocomplete="new-password" placeholder="حداقل ۸ کاراکتر"><div class="workspace-actions"><button class="btn btn-ghost" id="account-set-password" type="button">ثبت رمز برای همین حساب</button></div></div><div class="workspace-actions"><button class="btn btn-ghost" id="auth-signout" type="button">خروج از حساب</button></div></div></section>
+<section class="page" id="page-account"><div class="welcome"><h1>حساب و کیف پول</h1></div><div class="account-card" id="auth-session-card" hidden><div class="account-profile"><img id="auth-user-avatar" alt="" hidden><div><h3 id="auth-user-name">حساب شخصی LOKAL AI</h3><p id="auth-user-email"></p><span class="tag" id="auth-provider">روش ورود</span></div></div><div class="account-details"><div><span>موجودی فعلی</span><b id="accountWalletBalance">در حال دریافت…</b></div><div><span>شناسه حساب</span><b id="auth-user-id">—</b></div></div><p class="muted-copy" id="wallet-help">اعتبار از کیف پول امن سرور خوانده می‌شود؛ این صفحه امکان تغییر مستقیم موجودی را ندارد.</p><div class="panel" id="wallet-topup"><h3>شارژ کیف پول</h3><p class="muted-copy">بسته‌ها و قیمت‌ها از تنظیمات امن سرور دریافت می‌شوند. اعتبار فقط پس از تأیید پرداخت زرین‌پال اضافه خواهد شد.</p><label class="field-label" for="creditPackage">بسته اعتبار</label><select class="select" id="creditPackage"><option value="">در حال دریافت بسته‌ها...</option></select><div class="workspace-actions"><button class="btn" id="startCreditPayment" type="button">پرداخت و شارژ اعتبار</button><button class="btn btn-ghost" id="reloadCreditPackages" type="button">به‌روزرسانی بسته‌ها</button></div><div class="result" id="paymentStatus" role="status" aria-live="polite"></div></div><div class="panel"><h3>تنظیم رمز عبور برای حساب فعلی</h3><p class="muted-copy">اگر با Google ثبت‌نام کرده‌ای، می‌توانی بدون ساخت حساب تکراری برای همین حساب رمز عبور تعیین کنی.</p><label class="field-label" for="account-new-password">رمز عبور جدید</label><input class="input" id="account-new-password" type="password" minlength="8" autocomplete="new-password" placeholder="حداقل ۸ کاراکتر"><div class="workspace-actions"><button class="btn btn-ghost" id="account-set-password" type="button">ثبت رمز برای همین حساب</button></div></div><div class="workspace-actions"><button class="btn btn-ghost" id="auth-signout" type="button">خروج از حساب</button></div></div></section>
 <section class="page" id="page-image"><div class="welcome"><div class="eyebrow">LOKAL AI IMAGE ENGINE</div><h1>استودیوی تصویر</h1><p class="muted-copy">ایده‌ات را بنویس و تصویر واقعی بساز؛ خروجی‌ها در گالری خصوصی حساب تو ذخیره می‌شوند.</p></div>
 <div class="panel image-studio-panel"><h3>ساخت تصویر جدید</h3><label class="field-label" for="imagePrompt">توضیح تصویر</label><textarea class="textarea" id="imagePrompt" maxlength="2048" placeholder="مثلاً: یک خودروی اسپرت مشکی در خیابان خیس توکیو، نورهای نئونی آبی، عکاسی سینمایی و واقع‌گرایانه..."></textarea>
 <div class="image-studio-controls"><div class="notice">مدل FLUX.1 Schnell در حال حاضر با ابعاد پیش‌فرض خودش تصویر می‌سازد؛ تنظیم دستی نسبت و رزولوشن در این اتصال فعال نیست.</div></div>
 <div class="image-cost-note">مدل: FLUX.1 Schnell · موتور Cloudflare Workers AI · هزینه هر تصویر: ۲۰ اعتبار · سهمیه رایگان روزانه محدود است</div><div class="workspace-actions"><button class="btn" id="generateImage" type="button">ساخت تصویر · ۲۰ اعتبار</button><button class="btn btn-ghost" id="usePromptInImage" type="button">استفاده از پرامپت Prompt Lab</button></div>
 <div class="image-status" id="imageStatus" role="status" aria-live="polite"></div><div class="image-preview" id="imagePreview" hidden><img id="generatedImage" alt="تصویر ساخته‌شده در LOKAL AI"><div class="image-preview-actions"><span class="muted-copy" id="imageMeta"></span><button class="btn btn-ghost btn-small" id="downloadGeneratedImage" type="button">دانلود تصویر</button></div><div class="download-progress" id="imageDownloadProgress" role="status" aria-live="polite" hidden><div class="download-progress-head"><span id="imageDownloadLabel">آماده‌سازی دانلود...</span><span id="imageDownloadPercent">۰٪</span></div><div class="download-progress-track"><div class="download-progress-fill" id="imageDownloadBar"></div></div></div></div></div>
 <div class="panel"><h3>گالری تصاویر من</h3><p class="muted-copy">تصاویر فقط برای حساب خودت قابل دسترسی هستند.</p><div id="imageGallery" class="image-gallery"><div class="empty">هنوز تصویری نساخته‌ای.</div></div></div></section>
-<section class="page" id="page-video"><div class="welcome"><h1>استودیوی ویدئو و صدا</h1></div><div class="empty">این بخش هنوز فعال نیست و هیچ خروجی نمایشی به‌عنوان تولید واقعی ارائه نمی‌کند.</div></section>
+<section class="page" id="page-video"><div class="welcome"><div class="eyebrow">LOKAL AI VIDEO ENGINE</div><h1>استودیوی ویدئو</h1><p>تولید ویدئو به‌صورت صف غیرهم‌زمان؛ هزینه فقط هنگام اجرای واقعی job محاسبه می‌شود.</p></div><div class="panel"><h3>ساخت ویدئوی جدید</h3><label class="field-label" for="videoPrompt">توضیح صحنه و حرکت</label><textarea class="textarea" id="videoPrompt" maxlength="6000" placeholder="مثلاً: نمای سینمایی از یک خودروی اسپرت مشکی که در جاده خیس حرکت می‌کند، دوربین از کنار خودرو تعقیب می‌کند..."></textarea><div class="field-row"><div><label class="field-label" for="videoAspectRatio">نسبت تصویر</label><select class="select" id="videoAspectRatio"><option value="16:9">افقی ۱۶:۹</option><option value="9:16">عمودی ۹:۱۶</option><option value="1:1">مربع ۱:۱</option></select></div><div><label class="field-label">مدل</label><div class="notice">Wan 2.2 TI2V-5B · کلیپ آزمایشی ۵ ثانیه</div></div></div><div class="workspace-actions"><button class="btn" id="generateVideo" type="button">ثبت درخواست ویدئو</button><button class="btn btn-ghost" id="refreshVideoStatus" type="button">بررسی وضعیت آخرین درخواست</button></div><div class="result" id="videoStatus" role="status" aria-live="polite">برای شروع، توضیح ویدئو را وارد کن. هزینه نهایی از تنظیم VIDEO_CREDIT_COST در سرور خوانده می‌شود.</div><div id="videoResult" class="empty" hidden></div></div></section>
 </main></div>
 <nav class="mobile-nav"><button class="active" data-page="home"><span>⌂</span>Dashboard</button><button data-page="prompt"><span>✍️</span>Prompt Lab</button><button data-page="image"><span>🎨</span>Image Studio</button><button data-page="projects"><span>▤</span>My Projects</button><button data-page="account"><span>◉</span>Account</button></nav>
 </div>
@@ -139,6 +139,84 @@ else{
  const setWalletBalance=balance=>{const f=balance==="—"?"—":Number(balance||0).toLocaleString("fa-IR");if(creditCount)creditCount.textContent=f;if(walletStat)walletStat.textContent=f;const accountBalance=document.getElementById("accountWalletBalance");if(accountBalance)accountBalance.textContent=f==="—"?"در دسترس نیست":f+" اعتبار"};
  const callArmexApi=async(session,path,body)=>{const response=await fetch(config.supabaseUrl.replace(/\/$/,"")+"/functions/v1/armex-api"+path,{method:body?"POST":"GET",headers:{"apikey":config.supabaseAnonKey,"Authorization":"Bearer "+session.access_token,...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||("HTTP "+response.status));return payload};
  const ensureSecureApi=async session=>{const h=await callArmexApi(session,"?action=health");if(h.api_version!=="5.0"||h.secure_api!==true)throw new Error("نسخه امن سرویس هنوز منتشر نشده است.")};
+ let lastVideoJobId="";
+ let videoPollSequence=0;
+ const videoStatusNode=document.getElementById("videoStatus");
+ const videoResultNode=document.getElementById("videoResult");
+ const showVideoStatus=(message,isError=false)=>{if(!videoStatusNode)return;videoStatusNode.textContent=message;videoStatusNode.classList.toggle("error",isError)};
+ const pollVideoJob=async(session,jobId,sequence)=>{
+  for(let attempt=0;attempt<90&&sequence===videoPollSequence;attempt++){
+   await new Promise(resolve=>setTimeout(resolve,8000));
+   if(sequence!==videoPollSequence)return;
+   try{
+    const result=await callArmexApi(session,"?action=video_status&id="+encodeURIComponent(jobId));
+    const video=result.video||{};const status=video.status||"processing";
+    if(status==="completed"&&video.result_url){
+     showVideoStatus("ویدئو آماده شد.");
+     videoResultNode.hidden=false;videoResultNode.replaceChildren();
+     const link=document.createElement("a");link.href=video.result_url;link.target="_blank";link.rel="noopener";link.textContent="مشاهده و دانلود ویدئو";videoResultNode.append(link);
+     await loadWalletBalance(session);return;
+    }
+    if(status==="failed"||status==="cancelled"){showVideoStatus(status==="failed"?"تولید ویدئو ناموفق شد؛ وضعیت بازگشت اعتبار را در کیف پول بررسی کن.":"درخواست ویدئو لغو شد.",true);await loadWalletBalance(session);return}
+    showVideoStatus(status==="queued"?"در صف انتظار موتور ویدئو هستی...":"موتور در حال تولید ویدئو است؛ این صفحه را می‌توانی باز نگه داری.");
+   }catch(error){showVideoStatus("دریافت وضعیت موقتاً ناموفق بود؛ تلاش بعدی خودکار انجام می‌شود.");}
+  }
+ };
+ document.getElementById("generateVideo")?.addEventListener("click",async()=>{
+  const prompt=document.getElementById("videoPrompt")?.value?.trim()||"";
+  if(!prompt){showVideoStatus("ابتدا توضیح ویدئو را وارد کن.",true);return}
+  const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}
+  const button=document.getElementById("generateVideo");button.disabled=true;showVideoStatus("در حال رزرو اعتبار و ارسال job به موتور ویدئو...");
+  try{
+   const result=await callArmexApi(session,"",{action:"generate_video",request_id:crypto.randomUUID(),prompt,aspect_ratio:document.getElementById("videoAspectRatio")?.value||"16:9"});
+   const video=result.video||{};lastVideoJobId=video.id||"";
+   if(result.pending&&result.request_id){showVideoStatus("درخواست ثبت شد، اما پاسخ اولیه موتور نامشخص است؛ وضعیت را بعداً بررسی کن.");return}
+   if(!lastVideoJobId)throw new Error(result.message||"شناسه job ویدئو دریافت نشد.");
+   videoPollSequence++;const sequence=videoPollSequence;
+   showVideoStatus("درخواست ثبت شد و در صف موتور قرار گرفت. وضعیت به‌صورت خودکار بررسی می‌شود.");
+   void pollVideoJob(session,lastVideoJobId,sequence);
+   await loadWalletBalance(session);
+  }catch(error){showVideoStatus(String(error?.message||"ثبت درخواست ویدئو ناموفق بود."),true);await loadWalletBalance(session)}
+  finally{button.disabled=false}
+ });
+ document.getElementById("refreshVideoStatus")?.addEventListener("click",async()=>{
+  const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}
+  if(!lastVideoJobId){showVideoStatus("هنوز شناسه درخواست ویدئو در این نشست ثبت نشده است.",true);return}
+  videoPollSequence++;void pollVideoJob(session,lastVideoJobId,videoPollSequence);
+ });
+ let paymentPackagesLoaded=false;
+ const loadPaymentPackages=async(force=false)=>{
+  const select=document.getElementById("creditPackage");if(!select)return;
+  if(paymentPackagesLoaded&&!force)return;
+  const {data:{session}}=await supabase.auth.getSession();if(!session)return;
+  select.replaceChildren(new Option("در حال دریافت بسته‌ها...",""));
+  try{
+   const data=await callArmexApi(session,"?action=payment_packages");
+   select.replaceChildren(new Option("یک بسته را انتخاب کن",""));
+   (data.packages||[]).forEach(pack=>{
+    const amount=Number(pack.amount_irr).toLocaleString("fa-IR")+" ریال";
+    const credits=Number(pack.credits).toLocaleString("fa-IR")+" اعتبار";
+    select.add(new Option((pack.title||pack.id)+" · "+credits+" · "+amount,pack.id));
+   });
+   paymentPackagesLoaded=true;
+   if(!select.options.length||select.options.length===1)select.replaceChildren(new Option("بسته‌ای در سرور تعریف نشده است",""));
+  }catch(error){select.replaceChildren(new Option("دریافت بسته‌ها ناموفق بود",""));const status=document.getElementById("paymentStatus");if(status)status.textContent=String(error?.message||"اتصال بسته‌های پرداخت آماده نیست.")}
+ };
+ document.getElementById("reloadCreditPackages")?.addEventListener("click",()=>void loadPaymentPackages(true));
+ document.getElementById("startCreditPayment")?.addEventListener("click",async()=>{
+  const select=document.getElementById("creditPackage"),status=document.getElementById("paymentStatus"),button=document.getElementById("startCreditPayment");
+  if(!select?.value){if(status)status.textContent="ابتدا یک بسته اعتبار انتخاب کن.";return}
+  const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}
+  button.disabled=true;if(status)status.textContent="در حال ساخت سفارش امن پرداخت...";
+  try{
+   const result=await callArmexApi(session,"",{action:"create_payment",package_id:select.value,request_id:crypto.randomUUID()});
+   if(!result.payment_url)throw new Error(result.error||"لینک پرداخت دریافت نشد.");
+   if(status)status.textContent="در حال انتقال به درگاه زرین‌پال...";
+   window.location.assign(result.payment_url);
+  }catch(error){if(status)status.textContent=String(error?.message||"ساخت سفارش پرداخت ناموفق بود.")}
+  finally{button.disabled=false}
+ });
+
  let walletLoadSequence=0;
  const loadWalletBalance=async session=>{
   const sequence=++walletLoadSequence;
@@ -305,7 +383,7 @@ else{
   finally{button.disabled=false}
  });
  document.getElementById("auth-signout").addEventListener("click",async()=>{const {error}=await supabase.auth.signOut();if(error)return setMessage(translateError(error),true);renderSession(null);history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+'#top');setMessage("از حساب خارج شدی.")});
- const {data:{session}}=await supabase.auth.getSession();renderSession(session);if(session){window.lokalShowPage?.("home");if(location.hash.startsWith("#access_token")||location.hash.startsWith("#refresh_token"))history.replaceState(null,"",location.pathname+location.search)}supabase.auth.onAuthStateChange((event,next)=>{renderSession(next);if(next&&(event==="SIGNED_IN"||event==="INITIAL_SESSION")){window.lokalShowPage?.("home");if(location.hash.startsWith("#access_token")||location.hash.startsWith("#refresh_token"))history.replaceState(null,"",location.pathname+location.search)}});
+ const {data:{session}}=await supabase.auth.getSession();renderSession(session);if(session){void loadPaymentPackages();window.lokalShowPage?.("home");if(location.hash.startsWith("#access_token")||location.hash.startsWith("#refresh_token"))history.replaceState(null,"",location.pathname+location.search)}supabase.auth.onAuthStateChange((event,next)=>{renderSession(next);if(next&&(event==="SIGNED_IN"||event==="INITIAL_SESSION")){window.lokalShowPage?.("home");if(location.hash.startsWith("#access_token")||location.hash.startsWith("#refresh_token"))history.replaceState(null,"",location.pathname+location.search)}});
 }
 </script>
 </body>
