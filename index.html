@@ -272,7 +272,7 @@ else{
     return;
    }
    if(result.already_paid===true){
-    pendingPaymentRequestMemory=null;
+    delete pendingPaymentRequestMemory[session.user.id];
     try{localStorage.removeItem(pendingKey)}catch{}
     if(status)status.textContent="این سفارش قبلاً پرداخت و تأیید شده است.";
     void loadWalletBalance(session);
