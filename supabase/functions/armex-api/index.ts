@@ -1,4 +1,5 @@
 import { createSupabaseContext } from "npm:@supabase/server@1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
@@ -334,6 +335,271 @@ const generateImage = async (
   } finally { clearTimeout(timeout); }
 };
 
+
+const VIDEO_CREDIT_COST = Number(Deno.env.get("VIDEO_CREDIT_COST") ?? "0");
+const RUNPOD_API = "https://api.runpod.ai/v2";
+const ZARINPAL_API = "https://api.zarinpal.com/pg/v4/payment";
+
+const safeHttpsUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" ? parsed.toString() : null;
+  } catch { return null; }
+};
+
+const videoProviderStatus = (status: string): string => ({
+  IN_QUEUE: "queued",
+  IN_PROGRESS: "processing",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+}[status] ?? "processing");
+
+const generateVideo = async (
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+): Promise<Response> => {
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const requestId = isUuid(body.request_id) ? body.request_id : "";
+  const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
+  const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
+  if (!endpointId || !token) return fail("Video generation is not configured; RunPod endpoint credentials are required", 503, cors);
+  if (!prompt || prompt.length > 6000) return fail("A prompt between 1 and 6000 characters is required", 400, cors);
+  if (!requestId) return fail("A UUID request_id is required for safe video billing", 400, cors);
+  if (!Number.isSafeInteger(VIDEO_CREDIT_COST) || VIDEO_CREDIT_COST < 1) {
+    return fail("Video billing is not configured; set VIDEO_CREDIT_COST", 503, cors);
+  }
+
+  const { data: prior, error: priorError } = await db.from("armex_video_generations")
+    .select("id,status,provider_job_id,result_url,credits_charged,created_at,updated_at")
+    .eq("user_id", userId).eq("request_id", requestId).maybeSingle();
+  if (priorError) return fail("Could not verify video request idempotency", 500, cors);
+  if (prior) return json({ success: true, duplicate: true, video: prior }, 200, cors);
+
+  const { data: job, error: insertError } = await db.from("armex_video_generations").insert({
+    user_id: userId, request_id: requestId, prompt, model: "wan2.2-ti2v-5b",
+    credits_charged: VIDEO_CREDIT_COST, status: "queued",
+  }).select("id").single();
+  if (insertError || !job) return fail("Could not create video job", insertError?.code === "23505" ? 409 : 500, cors);
+
+  const debitKey = "video_request:" + requestId;
+  const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
+    p_user_id: userId, p_amount: VIDEO_CREDIT_COST, p_idempotency_key: debitKey,
+    p_description: "رزرو اعتبار تولید ویدئو در LOKAL AI",
+    p_metadata: { request_id: requestId, model: "wan2.2-ti2v-5b", provider: "runpod" },
+  });
+  let debitConfirmed = !debitError && debited === true;
+  if (debitError) {
+    const { data: existing } = await db.from("armex_credit_transactions").select("id")
+      .eq("user_id", userId).eq("idempotency_key", debitKey).maybeSingle();
+    debitConfirmed = Boolean(existing);
+  }
+  if (!debitConfirmed) {
+    await db.from("armex_video_generations").update({ status: "failed", error_code: "credit_reservation_failed" })
+      .eq("id", job.id).eq("user_id", userId);
+    return debitError ? fail("Could not reserve video credits", 500, cors) : fail("Insufficient credits", 402, cors);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/run", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ input: {
+        task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
+        request_id: requestId, output_mode: "durable_https_url",
+      } }),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (error) {
+    // A timeout may happen after the provider accepted the job. Do not refund
+    // blindly: that could make a paid GPU job free. Keep it queued for review.
+    await db.from("armex_video_generations").update({ error_code: "provider_submission_uncertain" })
+      .eq("id", job.id).eq("user_id", userId);
+    console.error("RunPod submission outcome uncertain", { requestId, error: String(error) });
+    return json({ success: true, pending: true, request_id: requestId, message: "Job submission is being reconciled; refresh status shortly" }, 202, cors);
+  }
+
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 300);
+    console.error("RunPod rejected video job", { requestId, status: response.status, detail });
+    const refunded = await refundCredits(db, userId, VIDEO_CREDIT_COST, requestId, requestId, "video_provider_rejected");
+    await db.from("armex_video_generations").update({ status: "failed", error_code: "provider_rejected" })
+      .eq("id", job.id).eq("user_id", userId);
+    return fail(refunded ? "Video provider rejected the job; credits were returned" : "Provider rejected the job but refund could not be confirmed", refunded ? 502 : 500, cors);
+  }
+
+  const payload = await response.json();
+  const providerJobId = typeof payload.id === "string" ? payload.id : "";
+  if (!providerJobId) {
+    await db.from("armex_video_generations").update({ error_code: "provider_job_id_missing" })
+      .eq("id", job.id).eq("user_id", userId);
+    return json({ success: true, pending: true, request_id: requestId, message: "Provider accepted the request; job ID reconciliation is required" }, 202, cors);
+  }
+  const { error: updateError } = await db.from("armex_video_generations").update({
+    provider_job_id: providerJobId, status: videoProviderStatus(String(payload.status ?? "IN_QUEUE")),
+    provider_metadata: { delay_time: payload.delayTime ?? null, execution_time: payload.executionTime ?? null },
+    updated_at: new Date().toISOString(),
+  }).eq("id", job.id).eq("user_id", userId);
+  if (updateError) return fail("Provider accepted the job but its tracking record could not be saved", 500, cors);
+  return json({ success: true, video: { id: job.id, request_id: requestId, provider_job_id: providerJobId, status: "queued" } }, 202, cors);
+};
+
+const getVideoStatus = async (
+  db: SupabaseClient, userId: string, id: string, cors: HeadersInit,
+): Promise<Response> => {
+  if (!isUuid(id)) return fail("A valid video job ID is required", 400, cors);
+  const { data: job, error } = await db.from("armex_video_generations")
+    .select("id,status,provider_job_id,result_url,error_code,credits_charged,created_at,updated_at")
+    .eq("id", id).eq("user_id", userId).maybeSingle();
+  if (error || !job) return fail("Video job not found", 404, cors);
+  if (["completed", "failed", "cancelled"].includes(job.status) || !job.provider_job_id) {
+    return json({ success: true, video: job }, 200, cors);
+  }
+  const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
+  const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
+  if (!endpointId || !token) return fail("Video status provider is not configured", 503, cors);
+  const response = await fetch(RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/status/" + encodeURIComponent(job.provider_job_id), {
+    headers: { Authorization: "Bearer " + token }, signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) return fail("Could not retrieve video status", 502, cors);
+  const payload = await response.json();
+  const status = videoProviderStatus(String(payload.status ?? "IN_PROGRESS"));
+  const output = payload.output ?? {};
+  const resultUrl = status === "completed"
+    ? safeHttpsUrl(output.video_url ?? output.url)
+    : null;
+  if (status === "completed" && !resultUrl) {
+    await db.from("armex_video_generations").update({ status: "failed", error_code: "worker_did_not_return_durable_https_url" })
+      .eq("id", job.id).eq("user_id", userId);
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_missing_output");
+    return fail(refunded ? "Video worker did not return a permanent HTTPS video URL; credits were returned" : "Video output is missing and credit refund could not be confirmed", 502, cors);
+  }
+  const update: Record<string, unknown> = {
+    status, updated_at: new Date().toISOString(),
+    ...(resultUrl ? { result_url: resultUrl, completed_at: new Date().toISOString() } : {}),
+    ...(status === "failed" ? { error_code: "provider_job_failed" } : {}),
+  };
+  const { error: saveError } = await db.from("armex_video_generations").update(update)
+    .eq("id", job.id).eq("user_id", userId);
+  if (saveError) return fail("Could not save video status", 500, cors);
+  if (status === "failed") {
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_provider_failed");
+    if (!refunded) return fail("Video failed and the credit refund could not be confirmed", 500, cors);
+  }
+  return json({ success: true, video: { ...job, ...update } }, 200, cors);
+};
+
+const configuredPaymentPackages = (): Array<{id:string;amount_irr:number;credits:number;title:string}> => {
+  try {
+    const value = JSON.parse(Deno.env.get("PAYMENT_PACKAGES") ?? "[]");
+    if (!Array.isArray(value)) return [];
+    return value.filter((p) => p && typeof p.id === "string" &&
+      Number.isSafeInteger(p.amount_irr) && p.amount_irr > 0 &&
+      Number.isSafeInteger(p.credits) && p.credits > 0 &&
+      typeof p.title === "string");
+  } catch { return []; }
+};
+
+const createZarinpalPayment = async (
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+): Promise<Response> => {
+  const packageId = typeof body.package_id === "string" ? body.package_id : "";
+  const requestId = isUuid(body.request_id) ? body.request_id : "";
+  const merchantId = Deno.env.get("ZARINPAL_MERCHANT_ID")?.trim() ?? "";
+  const packages = configuredPaymentPackages();
+  const pack = packages.find((p) => p.id === packageId);
+  if (!merchantId || !pack) return fail("Zarinpal is not configured or this credit package is unavailable", 503, cors);
+  if (!requestId) return fail("A UUID request_id is required for payment idempotency", 400, cors);
+
+  const { data: prior } = await db.from("armex_payment_orders")
+    .select("id,status,provider_reference,amount,credits")
+    .eq("user_id", userId).eq("idempotency_key", requestId).maybeSingle();
+  if (prior) return json({ success: true, duplicate: true, order: prior }, 200, cors);
+
+  const { data: order, error: orderError } = await db.from("armex_payment_orders").insert({
+    user_id: userId, amount: pack.amount_irr, currency: "IRR", credits: pack.credits,
+    provider: "zarinpal", package_id: pack.id, idempotency_key: requestId, status: "pending",
+  }).select("id").single();
+  if (orderError || !order) return fail("Could not create payment order", 500, cors);
+
+  const callbackUrl = (Deno.env.get("ZARINPAL_CALLBACK_URL")?.trim() ||
+    "https://znendbwkmcldttugvwnr.supabase.co/functions/v1/armex-api?action=payment_callback");
+  const response = await fetch(ZARINPAL_API + "/request.json", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      merchant_id: merchantId, amount: pack.amount_irr, currency: "IRR",
+      description: "خرید اعتبار " + pack.title + " در LOKAL AI",
+      callback_url: callbackUrl, metadata: { order_id: order.id, user_id: userId },
+    }), signal: AbortSignal.timeout(20000),
+  });
+  const payload = await response.json().catch(() => ({}));
+  const authority = payload?.data?.authority;
+  const code = Number(payload?.data?.code);
+  if (!response.ok || code !== 100 || typeof authority !== "string") {
+    await db.from("armex_payment_orders").update({ status: "failed", updated_at: new Date().toISOString() })
+      .eq("id", order.id).eq("user_id", userId);
+    console.error("Zarinpal payment request failed", { orderId: order.id, httpStatus: response.status, code });
+    return fail("Zarinpal could not create the payment session", 502, cors);
+  }
+  await db.from("armex_payment_orders").update({ provider_reference: authority, updated_at: new Date().toISOString() })
+    .eq("id", order.id).eq("user_id", userId);
+  return json({ success: true, order_id: order.id, payment_url: "https://www.zarinpal.com/pg/StartPay/" + encodeURIComponent(authority) }, 200, cors);
+};
+
+const zarinpalCallback = async (request: Request): Promise<Response> => {
+  const url = new URL(request.url);
+  const authority = url.searchParams.get("Authority") ?? "";
+  const status = url.searchParams.get("Status") ?? "";
+  const merchantId = Deno.env.get("ZARINPAL_MERCHANT_ID")?.trim() ?? "";
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
+  if (!authority || !merchantId || !supabaseUrl || !serviceKey) {
+    return json({ success: false, error: "Payment callback is not configured" }, 503);
+  }
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: order, error } = await admin.from("armex_payment_orders")
+    .select("id,user_id,amount,credits,status")
+    .eq("provider", "zarinpal").eq("provider_reference", authority).maybeSingle();
+  if (error || !order) return json({ success: false, error: "Payment order not found" }, 404);
+  if (order.status === "paid") {
+    return json({ success: true, already_paid: true, order_id: order.id });
+  }
+  if (status !== "OK") {
+    await admin.from("armex_payment_orders").update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("id", order.id).eq("status", "pending");
+    return json({ success: false, cancelled: true, order_id: order.id }, 200);
+  }
+  const verifyResponse = await fetch(ZARINPAL_API + "/verify.json", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ merchant_id: merchantId, amount: Number(order.amount), authority }),
+    signal: AbortSignal.timeout(20000),
+  });
+  const verifyPayload = await verifyResponse.json().catch(() => ({}));
+  const verifyCode = Number(verifyPayload?.data?.code);
+  if (!verifyResponse.ok || ![100, 101].includes(verifyCode)) {
+    console.error("Zarinpal verification failed", { orderId: order.id, httpStatus: verifyResponse.status, code: verifyCode });
+    return json({ success: false, error: "Payment verification failed; no credits were added" }, 502);
+  }
+  const { error: paidError } = await admin.from("armex_payment_orders").update({
+    status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    provider_metadata: { ref_id: verifyPayload?.data?.ref_id ?? null },
+  }).eq("id", order.id).neq("status", "paid");
+  if (paidError) return json({ success: false, error: "Could not record verified payment" }, 500);
+
+  const { data: granted, error: grantError } = await admin.rpc("armex_grant_credits", {
+    p_user_id: order.user_id, p_amount: Number(order.credits), p_type: "purchase",
+    p_idempotency_key: "payment_order:" + order.id,
+    p_description: "شارژ کیف پول پس از تأیید پرداخت زرین‌پال",
+    p_metadata: { order_id: order.id, provider: "zarinpal", ref_id: verifyPayload?.data?.ref_id ?? null },
+  });
+  if (grantError || granted !== true) {
+    console.error("Verified payment credit grant failed", { orderId: order.id, code: grantError?.code });
+    return json({ success: false, error: "Payment was verified but wallet crediting needs retry" }, 500);
+  }
+  return json({ success: true, paid: true, order_id: order.id, credits: Number(order.credits) }, 200);
+};
+
 const handle = async (request: Request): Promise<Response> => {
   const origin = request.headers.get("Origin");
   const cors = corsFor(origin);
@@ -350,6 +616,9 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   const url = new URL(request.url);
+  if (request.method === "GET" && url.searchParams.get("action") === "payment_callback") {
+    return await zarinpalCallback(request);
+  }
   if (request.method === "GET" && url.searchParams.get("action") === "health") {
     return json({
       success: true,
@@ -357,7 +626,7 @@ const handle = async (request: Request): Promise<Response> => {
       status: "online",
       api_version: "5.0",
       secure_api: true,
-      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger", "image_generation", "private_image_storage"],
+      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger", "image_generation", "video_generation", "zarinpal_payments", "private_image_storage"],
     }, 200, cors);
   }
 
@@ -380,6 +649,9 @@ const handle = async (request: Request): Promise<Response> => {
 
   const db: SupabaseClient = supabaseContext.supabaseAdmin;
   const modelsAllowed = allowedModels();
+  if (request.method === "GET" && url.searchParams.get("action") === "video_status") {
+    return await getVideoStatus(db, userId, url.searchParams.get("id") ?? "", cors);
+  }
 
   if (request.method === "GET" && url.searchParams.get("action") === "balance") {
     const { data: wallet, error: walletError } = await db.from("armex_wallets")
@@ -468,6 +740,12 @@ const handle = async (request: Request): Promise<Response> => {
 
   if (body.action === "generate_image") {
     return await generateImage(db, userId, body, cors);
+  }
+  if (body.action === "generate_video") {
+    return await generateVideo(db, userId, body, cors);
+  }
+  if (body.action === "create_payment") {
+    return await createZarinpalPayment(db, userId, body, cors);
   }
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
