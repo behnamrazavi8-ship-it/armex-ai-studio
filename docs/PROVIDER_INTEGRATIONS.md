@@ -78,6 +78,21 @@ Payment flow:
 6. Once `status=paid` and a non-empty provider `ref_id` are durably stored, retries use that stored verification evidence and do not depend on another Zarinpal verification request. Wallet grants remain idempotent with `payment_order:{order_id}`.
 7. Repeated and concurrent callback paths use the same order-level grant key. A late non-OK browser return cannot cancel a durably paid order.
 
+### Ambiguous payment-request recovery
+
+The payment request path now records the order UUID, request-attempt UUID, request start time, and exact HTTPS callback URL before contacting Zarinpal. The callback URL carries that order UUID as `order_id`, so a callback can identify the order even if the initial request response was lost before the Authority was saved.
+
+If the `/request.json` call times out, the connection drops, the response is malformed, or Authority persistence cannot be confirmed, the order remains pending and is not automatically marked failed. Retrying the same request ID never calls `/request.json` again. The server may call Zarinpal's `/unVerified.json` endpoint and recover an Authority only when exactly one returned record matches all of:
+- the exact callback origin and path with this order UUID,
+- the server-configured amount,
+- one non-empty Authority.
+
+If the provider does not return a callback URL, there are zero or multiple matches, or the result cannot be durably saved, the order stays held for manual reconciliation. Matching by amount alone is explicitly forbidden. A partial unique index also prevents the same user from creating a second pending Zarinpal order with no saved provider reference, even when the client invents a new request ID.
+
+Only a structured provider validation response with an explicit negative code is treated as a definitive request rejection. Timeouts, transport failures, malformed responses, and provider 5xx responses remain ambiguous. This flow does not automatically refund, credit, or issue another provider request for an ambiguous order.
+
+The Zarinpal SDK exposes both inquiry and unverified-payment listing methods, but an inquiry requires an Authority. The unverified list is therefore used only as a cautious Authority-recovery source; when it does not contain enough order-specific evidence, support/manual review is required. This is not a live Zarinpal integration test.
+
 ## Callback recovery simulation tests
 
 The CI suite also runs `provider-callback-simulation_test.ts`, a deterministic in-memory adapter simulation covering concurrent Zarinpal callbacks, a wallet-grant transport failure after a durable ledger commit, a late non-OK callback after payment verification, duplicate RunPod failure callbacks, refund retry after an ambiguous commit, and a success/failure race. These tests exercise the callback policy decisions and simulated idempotent ledgers only; they do not connect to Supabase, Zarinpal, or RunPod and are not a substitute for staging integration tests.
