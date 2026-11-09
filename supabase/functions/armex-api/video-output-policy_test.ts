@@ -47,3 +47,12 @@ Deno.test("rejects malformed metadata and non-integer file sizes", () => {
   assertEquals(validateRunpodVideoOutput({ ...valid, file_size_bytes: "12345" }, userId, jobId), null);
   assertEquals(validateRunpodVideoOutput({ ...valid, file_size_bytes: 1.5 }, userId, jobId), null);
 });
+
+
+Deno.test("maps only the aspect ratios supported by Wan2.2 TI2V-5B", async () => {
+  const { wanSizeForAspectRatio } = await import("./video-output-policy.ts");
+  assertEquals(wanSizeForAspectRatio("16:9"), "1280*704");
+  assertEquals(wanSizeForAspectRatio("9:16"), "704*1280");
+  assertEquals(wanSizeForAspectRatio("1:1"), null);
+  assertEquals(wanSizeForAspectRatio("4:3"), null);
+});
