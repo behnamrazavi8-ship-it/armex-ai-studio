@@ -125,3 +125,12 @@ The existing `armex-api` must be redeployed after approval. This branch does not
 - [ ] Test Zarinpal in sandbox/test mode if available, then verify one real low-value transaction.
 - [ ] Test insufficient balance, provider failure, duplicate callback, refund retry, and user isolation.
 - [ ] Only then enable the new studios in production.
+
+
+## Payment trust boundary audit
+
+The Zarinpal create-payment route accepts only a configured `package_id` and a UUID `request_id` from the authenticated browser request. The amount, currency (`IRR`), credit quantity, package title, and provider merchant configuration are resolved on the server from `PAYMENT_PACKAGES` and server secrets. The owner identity is taken from the validated Supabase JWT claims; client-supplied `user_id`, `amount`, `amount_irr`, `credits`, and `currency` fields are not used to create the order or provider request.
+
+The server rejects the complete package configuration if any entry is malformed, has an unsafe/non-positive integer amount or credit quantity, has an invalid package ID/title, or duplicates another package ID. This avoids silently filtering a bad entry or selecting an ambiguous duplicate. The browser may display package details returned by the authenticated `payment_packages` route, but those displayed values are never accepted back as payment authority.
+
+Verification boundary: these guarantees are established by source inspection and pure policy tests in CI. They do not constitute a live Zarinpal or staging integration test. Keep production secrets, migrations, deployments, and real payment calls outside this audit.
