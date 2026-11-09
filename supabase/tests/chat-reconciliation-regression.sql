@@ -3,7 +3,7 @@
 begin;
 
 -- Security regression checks: the request ledger is service-role-only.
-do $
+do $privilege_test$
 declare
   fn regprocedure;
   fn_list regprocedure[] := array[
@@ -33,10 +33,10 @@ begin
       raise exception 'service_role is missing required RPC execute grant: %', fn;
     end if;
   end loop;
-end $;
+end $privilege_test$;
 
 
-do $$
+do $
 declare
   v_user uuid := gen_random_uuid();
   v_request uuid := gen_random_uuid();
