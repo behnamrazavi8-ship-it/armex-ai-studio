@@ -536,13 +536,17 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
       ? payload.output as Record<string, unknown> : {};
     const resultUrl = safeHttpsUrl(output.video_url ?? output.url);
     if (!resultUrl) {
+      const { data: claimed, error: claimError } = await admin.from("armex_video_generations").update({
+        provider_job_id: providerJobId, status: "failed", refund_status: "pending",
+        error_code: "worker_did_not_return_durable_https_url", updated_at: new Date().toISOString(),
+      }).eq("id", job.id).in("status", ["queued", "processing"]).select("id").maybeSingle();
+      if (claimError) return json({ success: false, error: "Could not claim failed video result" }, 500);
+      if (!claimed) return json({ success: true, duplicate: true }, 200);
       const refunded = await refundCredits(admin, job.user_id, Number(job.credits_charged), job.id, job.id, "video_refund");
       const { error: saveError } = await admin.from("armex_video_generations").update({
-        provider_job_id: providerJobId, status: "failed",
-        refund_status: refunded ? "completed" : "pending",
-        error_code: "worker_did_not_return_durable_https_url", updated_at: new Date().toISOString(),
-      }).eq("id", job.id);
-      if (saveError) return json({ success: false, error: "Could not persist failed video result" }, 500);
+        refund_status: refunded ? "completed" : "pending", updated_at: new Date().toISOString(),
+      }).eq("id", job.id).eq("status", "failed");
+      if (saveError) return json({ success: false, error: "Could not persist video refund status" }, 500);
       return json({ success: true, refund_status: refunded ? "completed" : "pending" }, 200);
     }
     const { data: saved, error: saveError } = await admin.from("armex_video_generations").update({
