@@ -1,0 +1,46 @@
+name: Publish RunPod Worker Image (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: lokal-ai-runpod-worker-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish worker image to GHCR
+    if: github.ref == 'refs/heads/feat/video-and-zarinpal-integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout approved worker branch
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish immutable commit image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./runpod-worker
+          file: ./runpod-worker/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/lokal-ai-runpod-worker:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.title=LOKAL AI RunPod Worker
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=lokal-ai-runpod-worker
+          cache-to: type=gha,mode=max,scope=lokal-ai-runpod-worker
