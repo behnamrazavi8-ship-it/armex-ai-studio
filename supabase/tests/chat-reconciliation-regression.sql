@@ -21,8 +21,22 @@ begin
     raise exception 'chat request ledger must have RLS enabled';
   end if;
   if has_table_privilege('anon','public.armex_chat_requests','SELECT')
-     or has_table_privilege('authenticated','public.armex_chat_requests','SELECT') then
-    raise exception 'chat request ledger must not be readable by anon/authenticated';
+     or has_table_privilege('anon','public.armex_chat_requests','INSERT')
+     or has_table_privilege('anon','public.armex_chat_requests','UPDATE')
+     or has_table_privilege('anon','public.armex_chat_requests','DELETE')
+     or has_table_privilege('anon','public.armex_chat_requests','TRUNCATE')
+     or has_table_privilege('authenticated','public.armex_chat_requests','SELECT')
+     or has_table_privilege('authenticated','public.armex_chat_requests','INSERT')
+     or has_table_privilege('authenticated','public.armex_chat_requests','UPDATE')
+     or has_table_privilege('authenticated','public.armex_chat_requests','DELETE')
+     or has_table_privilege('authenticated','public.armex_chat_requests','TRUNCATE') then
+    raise exception 'chat request ledger must not grant table privileges to anon/authenticated';
+  end if;
+  if not has_table_privilege('service_role','public.armex_chat_requests','SELECT')
+     or not has_table_privilege('service_role','public.armex_chat_requests','INSERT')
+     or not has_table_privilege('service_role','public.armex_chat_requests','UPDATE')
+     or not has_table_privilege('service_role','public.armex_chat_requests','DELETE') then
+    raise exception 'service_role is missing required chat request ledger privileges';
   end if;
   foreach fn in array fn_list loop
     if has_function_privilege('anon',fn,'EXECUTE')
