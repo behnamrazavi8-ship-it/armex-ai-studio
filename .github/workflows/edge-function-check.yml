@@ -5,14 +5,14 @@ on:
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
-      - "supabase/functions/armex-api/**"
+      - "supabase/functions/**"
       - "supabase/migrations/**"
   push:
     branches: [main]
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
-      - "supabase/functions/armex-api/**"
+      - "supabase/functions/**"
       - "supabase/migrations/**"
 
 permissions:
@@ -28,6 +28,9 @@ jobs:
           deno-version: v2.x
       - name: Type-check armex-api
         run: deno check supabase/functions/armex-api/index.ts
+
+      - name: Type-check chat reconciliation worker
+        run: deno check supabase/functions/armex-chat-reconciler/index.ts
 
       - name: Test chat request billing lifecycle
         run: deno test supabase/functions/armex-api/chat-request-lifecycle_test.ts
