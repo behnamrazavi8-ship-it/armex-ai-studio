@@ -20,7 +20,7 @@ WAN_TASK = "ti2v-5B"
 WAN_MODEL = "wan2.2-ti2v-5b"
 WAN_REPO_DIR = Path(os.getenv("WAN_REPO_DIR", "/opt/Wan2.2"))
 WAN_CHECKPOINT_DIR = Path(os.getenv("WAN_CHECKPOINT_DIR", "/runpod-volume/models/Wan2.2-TI2V-5B"))
-WAN_MODEL_REVISION = os.getenv("WAN_MODEL_REVISION", "main")
+WAN_MODEL_REVISION = os.getenv("WAN_MODEL_REVISION", "")
 GENERATION_TIMEOUT_SECONDS = 900
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", re.I)
 STORAGE_PATH_RE = re.compile(
@@ -99,7 +99,14 @@ def build_generation_command(
     ]
 
 
+def validate_model_revision(revision: str) -> str:
+    if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise RuntimeError("WAN_MODEL_REVISION must be an immutable 40-character Hugging Face commit SHA")
+    return revision
+
+
 def ensure_model() -> Path:
+    model_revision = validate_model_revision(WAN_MODEL_REVISION)
     if not WAN_REPO_DIR.joinpath("generate.py").is_file():
         raise RuntimeError("Pinned Wan2.2 source is missing from the worker image")
     if not WAN_CHECKPOINT_DIR.joinpath("Wan2.2_VAE.pth").is_file():
@@ -108,7 +115,7 @@ def ensure_model() -> Path:
         WAN_CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
         snapshot_download(
             repo_id=MODEL_ID,
-            revision=WAN_MODEL_REVISION,
+            revision=model_revision,
             local_dir=str(WAN_CHECKPOINT_DIR),
         )
     required = [
