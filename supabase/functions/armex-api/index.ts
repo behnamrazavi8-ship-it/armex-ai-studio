@@ -1018,7 +1018,7 @@ const handle = async (request: Request): Promise<Response> => {
     // New atomic writes associate both messages directly with request_id.
     // Fall back to the legacy timestamp lookup for historical rows whose
     // request_id column is still NULL.
-    let previousAnswer = null;
+    let previousAnswer: { content: string } | null = null;
     const { data: requestAnswer, error: requestAnswerError } = await db.from("armex_messages")
       .select("content")
       .eq("conversation_id", priorUsage.conversation_id)
