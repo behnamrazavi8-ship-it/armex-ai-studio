@@ -82,7 +82,7 @@ begin
     insert into public.armex_conversations (user_id, title, model)
     values (
       p_user_id,
-      left(regexp_replace(v_request.recovery_message, '\\s+', ' ', 'g'), 80),
+      left(regexp_replace(v_request.recovery_message, '\s+', ' ', 'g'), 80),
       v_result_model
     )
     returning id into v_conversation_id;
