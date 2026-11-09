@@ -63,6 +63,31 @@ do $block$ begin
  if (select count(*) from public.armex_credit_transactions where idempotency_key='payment_order:'||current_setting('test.payment_order'))<>1 then raise exception 'payment retry duplicated grant'; end if;
 end $block$;
 
+-- A user cannot create a second ambiguous pending Zarinpal order with a new request ID.
+insert into public.armex_payment_orders(user_id,amount,currency,credits,provider,status,package_id,idempotency_key,provider_metadata)
+values(:'payment_user'::uuid,150000,'IRR',700,'zarinpal','pending','starter','ambiguous-request-1','{"request_state":"ambiguous"}');
+do $block$
+begin
+  begin
+    insert into public.armex_payment_orders(user_id,amount,currency,credits,provider,status,package_id,idempotency_key,provider_metadata)
+    values(:'payment_user'::uuid,150000,'IRR',700,'zarinpal','pending','starter','ambiguous-request-2','{"request_state":"ambiguous"}');
+    raise exception 'second ambiguous pending payment order unexpectedly inserted';
+  exception when unique_violation then null;
+  end;
+end
+$block$;
+insert into auth.users(id) values(gen_random_uuid()) returning id \gset
+\set other_payment_user :id
+insert into public.armex_payment_orders(user_id,amount,currency,credits,provider,status,package_id,idempotency_key,provider_metadata)
+values(:'other_payment_user'::uuid,150000,'IRR',700,'zarinpal','pending','starter','other-user-ambiguous','{"request_state":"ambiguous"}');
+do $block$
+begin
+  if (select count(*) from public.armex_payment_orders where provider='zarinpal' and status='pending' and provider_reference is null) <> 2 then
+    raise exception 'ambiguous order guard should allow one pending order per distinct user';
+  end if;
+end
+$block$;
+
 -- Success/failure video callbacks race for one terminal transition.
 insert into public.armex_video_generations(user_id,request_id,prompt,credits_charged,status)
 values(:'payment_user'::uuid,gen_random_uuid(),'synthetic callback race',80,'queued') returning id \gset
