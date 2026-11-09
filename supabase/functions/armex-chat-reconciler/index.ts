@@ -208,7 +208,7 @@ const processRefundableFailure = async (
     const failed = await markFailed(db, row, failureCode);
     if (!failed) {
       await releaseLease(db, row, "failed_state_write_unconfirmed");
-      return "retry";
+      return row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
     }
     return "failed";
   }
@@ -243,7 +243,7 @@ const processRefundableFailure = async (
   const failed = await markFailed(db, row, failureCode);
   if (!failed) {
     await releaseLease(db, row, "refund_confirmed_but_failure_state_pending");
-    return "retry";
+    return row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
   }
   return "failed";
 };
@@ -319,7 +319,8 @@ const handle = async (request: Request): Promise<Response> => {
 
       if (recoveryError || !recovery) {
         await releaseLease(db, row, "recovery_metadata_read_failed");
-        summary.retry_pending++;
+        if (row.reconciliation_attempts >= 5) summary.manual_review++;
+        else summary.retry_pending++;
         continue;
       }
 
