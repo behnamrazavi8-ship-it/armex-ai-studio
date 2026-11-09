@@ -73,6 +73,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109200000_chat_request_reconciliation_evidence.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109210000_chat_recovery_metadata.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109220000_chat_atomic_recovery_persistence.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109230000_chat_failure_refund_guard.sql
 
       - name: Test chat recovery SQL invariants
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-regression.sql
