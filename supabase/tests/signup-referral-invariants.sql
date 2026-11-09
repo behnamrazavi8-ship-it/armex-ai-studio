@@ -5,7 +5,10 @@ insert into auth.users(id,email_confirmed_at) values
 ('10000000-0000-0000-0000-000000000003',null),
 ('10000000-0000-0000-0000-000000000004',now()),
 ('10000000-0000-0000-0000-000000000005',now()),
-('10000000-0000-0000-0000-000000000006',now());
+('10000000-0000-0000-0000-000000000006',now()),
+('10000000-0000-0000-0000-000000000007',null),
+('10000000-0000-0000-0000-000000000008',now()),
+('10000000-0000-0000-0000-000000000009',null);
 
 select public.armex_activate_user('10000000-0000-0000-0000-000000000003');
 do $unverified$
@@ -100,6 +103,55 @@ begin
   end;
 end
 $constraints$;
+
+-- Referral waits until BOTH accounts are verified.
+-- Case A: referred user verifies first; reward is recovered when referrer verifies later.
+insert into public.armex_referrals(id,referrer_user_id,referred_user_id,referral_code)
+values('20000000-0000-0000-0000-000000000005','10000000-0000-0000-0000-000000000007','10000000-0000-0000-0000-000000000008','REFCODE005');
+select public.armex_activate_user('10000000-0000-0000-0000-000000000008');
+do $wait_referrer$
+begin
+  if (select status from public.armex_referrals where id='20000000-0000-0000-0000-000000000005')<>'pending' then
+    raise exception 'referral advanced before referrer verification';
+  end if;
+  if exists(select 1 from public.armex_credit_transactions where user_id='10000000-0000-0000-0000-000000000007' and idempotency_key='referral_bonus:20000000-0000-0000-0000-000000000005') then
+    raise exception 'unverified referrer received a referral reward';
+  end if;
+end
+$wait_referrer$;
+update auth.users set email_confirmed_at=now() where id='10000000-0000-0000-0000-000000000007';
+select public.armex_activate_user('10000000-0000-0000-0000-000000000007');
+do $recover_referrer$
+begin
+  if (select balance from public.armex_wallets where user_id='10000000-0000-0000-0000-000000000007')<>200 then
+    raise exception 'referral reward was not recovered after referrer verification';
+  end if;
+  if (select status from public.armex_referrals where id='20000000-0000-0000-0000-000000000005')<>'rewarded' then
+    raise exception 'referral did not settle after referrer verification';
+  end if;
+end
+$recover_referrer$;
+
+-- Case B: referrer verifies first; reward waits for referred user verification.
+insert into public.armex_referrals(id,referrer_user_id,referred_user_id,referral_code)
+values('20000000-0000-0000-0000-000000000006','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000009','REFCODE006');
+select public.armex_activate_user('10000000-0000-0000-0000-000000000009');
+do $wait_referred$
+begin
+  if exists(select 1 from public.armex_credit_transactions where user_id='10000000-0000-0000-0000-000000000001' and idempotency_key='referral_bonus:20000000-0000-0000-0000-000000000006') then
+    raise exception 'unverified referred user triggered a referral reward';
+  end if;
+end
+$wait_referred$;
+update auth.users set email_confirmed_at=now() where id='10000000-0000-0000-0000-000000000009';
+select public.armex_activate_user('10000000-0000-0000-0000-000000000009');
+do $recover_referred$
+begin
+  if not exists(select 1 from public.armex_credit_transactions where user_id='10000000-0000-0000-0000-000000000001' and idempotency_key='referral_bonus:20000000-0000-0000-0000-000000000006' and amount=200 and transaction_type='referral_bonus') then
+    raise exception 'referral reward was not recovered after referred user verification';
+  end if;
+end
+$recover_referred$;
 
 -- Concurrent activations for one referred user grant one signup and one referral reward.
 insert into public.armex_referrals(id,referrer_user_id,referred_user_id,referral_code)
