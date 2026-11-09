@@ -7,6 +7,7 @@ import { findUnverifiedAuthorityForOrder, isDefinitiveZarinpalRequestRejection, 
 import {
   decideRunpodCallbackAction,
   isDefinitiveRunpodRejection,
+  isMatchingRunpodStatusSnapshot,
   runpodRefundIdempotencyKey,
 } from "./runpod-callback-policy.ts";
 import { isMatchingCreditDebit, isMatchingCreditRefund } from "./credit-ledger-policy.ts";
@@ -576,13 +577,39 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   if (!supabaseUrl || !serviceKey) return json({ success: false, error: "Webhook storage is not configured" }, 503);
   const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
   const providerJobId = typeof payload?.id === "string" ? payload.id : "";
-  const providerStatus = typeof payload?.status === "string" ? payload.status : "";
+  const callbackStatus = typeof payload?.status === "string" ? payload.status : "";
   const callbackInput = payload?.input && typeof payload.input === "object"
     ? payload.input as Record<string, unknown> : {};
   if (!payload || !providerJobId || callbackInput.request_id !== requestId ||
-      !["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(providerStatus)) {
+      !["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(callbackStatus)) {
     return json({ success: false, error: "Invalid terminal job payload" }, 400);
   }
+
+  // The signed callback URL authenticates the route, not the webhook body.
+  // Verify the provider job independently and use only its status/output data.
+  const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
+  const runpodToken = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
+  if (!endpointId || !runpodToken) {
+    return json({ success: false, error: "RunPod callback verification is not configured" }, 503);
+  }
+  let statusResponse: Response;
+  try {
+    statusResponse = await fetch(
+      RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/status/" + encodeURIComponent(providerJobId),
+      { headers: { Authorization: runpodToken }, signal: AbortSignal.timeout(15000) },
+    );
+  } catch {
+    return json({ success: false, pending: true, error: "RunPod status verification is temporarily unavailable" }, 503);
+  }
+  if (!statusResponse.ok) {
+    return json({ success: false, pending: true, error: "RunPod status verification could not be completed" }, 503);
+  }
+  const providerSnapshot = await statusResponse.json().catch(() => null);
+  if (!isMatchingRunpodStatusSnapshot(payload, providerSnapshot, requestId)) {
+    return json({ success: false, error: "Webhook does not match the current RunPod job status" }, 409);
+  }
+  const verifiedPayload = providerSnapshot as Record<string, unknown>;
+  const providerStatus = String(verifiedPayload.status);
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: job, error } = await admin.from("armex_video_generations")
@@ -598,8 +625,8 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   }
 
   if (providerStatus === "COMPLETED") {
-    const output = payload?.output && typeof payload.output === "object"
-      ? payload.output as Record<string, unknown> : {};
+    const output = verifiedPayload.output && typeof verifiedPayload.output === "object"
+      ? verifiedPayload.output as Record<string, unknown> : {};
     const resultUrl = safeHttpsUrl(output.video_url ?? output.url);
     if (!resultUrl) {
       const { data: claimed, error: claimError } = await admin.from("armex_video_generations").update({

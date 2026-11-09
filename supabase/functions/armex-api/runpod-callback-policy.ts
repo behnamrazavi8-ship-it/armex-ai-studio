@@ -38,3 +38,31 @@ export const runpodRefundIdempotencyKey = (jobId: string): string =>
  */
 export const isDefinitiveRunpodRejection = (status: number): boolean =>
   [400, 401, 403, 404, 422].includes(status);
+
+/**
+ * A webhook URL token authenticates the callback route, but it does not
+ * authenticate the callback body. Require the body to agree with an
+ * independently fetched RunPod status snapshot before trusting its output.
+ */
+export const isMatchingRunpodStatusSnapshot = (
+  callbackPayload: unknown,
+  statusPayload: unknown,
+  expectedRequestId: string,
+): boolean => {
+  if (!callbackPayload || typeof callbackPayload !== "object" || Array.isArray(callbackPayload) ||
+      !statusPayload || typeof statusPayload !== "object" || Array.isArray(statusPayload) ||
+      !expectedRequestId.trim()) return false;
+  const callback = callbackPayload as Record<string, unknown>;
+  const snapshot = statusPayload as Record<string, unknown>;
+  const callbackInput = callback.input && typeof callback.input === "object" &&
+      !Array.isArray(callback.input)
+    ? callback.input as Record<string, unknown>
+    : null;
+  const terminalStatuses = ["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"];
+  return typeof callback.id === "string" && callback.id.length > 0 &&
+    callback.id === snapshot.id &&
+    typeof callback.status === "string" &&
+    callback.status === snapshot.status &&
+    terminalStatuses.includes(callback.status) &&
+    callbackInput?.request_id === expectedRequestId;
+};

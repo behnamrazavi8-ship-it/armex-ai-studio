@@ -47,3 +47,37 @@ Deno.test("only explicit RunPod request/auth/endpoint rejection statuses are ref
     assertEquals(isDefinitiveRunpodRejection(status), false);
   }
 });
+
+import { isMatchingRunpodStatusSnapshot } from "./runpod-callback-policy.ts";
+
+Deno.test("RunPod webhook must match an independently fetched terminal status snapshot", () => {
+  const callback = {
+    id: "rp-job-1",
+    status: "COMPLETED",
+    input: { request_id: "11111111-1111-4111-8111-111111111111" },
+    output: { video_url: "https://attacker.example/fake.mp4" },
+  };
+  const verified = {
+    id: "rp-job-1",
+    status: "COMPLETED",
+    output: { video_url: "https://storage.example/real.mp4" },
+  };
+  assertEquals(isMatchingRunpodStatusSnapshot(
+    callback, verified, "11111111-1111-4111-8111-111111111111",
+  ), true);
+  assertEquals(isMatchingRunpodStatusSnapshot(
+    callback, { ...verified, id: "rp-job-other" }, "11111111-1111-4111-8111-111111111111",
+  ), false);
+  assertEquals(isMatchingRunpodStatusSnapshot(
+    callback, { ...verified, status: "FAILED" }, "11111111-1111-4111-8111-111111111111",
+  ), false);
+  assertEquals(isMatchingRunpodStatusSnapshot(
+    { ...callback, input: { request_id: "wrong-request" } }, verified,
+    "11111111-1111-4111-8111-111111111111",
+  ), false);
+  assertEquals(isMatchingRunpodStatusSnapshot(
+    { ...callback, status: "IN_PROGRESS" }, { ...verified, status: "IN_PROGRESS" },
+    "11111111-1111-4111-8111-111111111111",
+  ), false);
+  assertEquals(isMatchingRunpodStatusSnapshot(null, verified, "request"), false);
+});
