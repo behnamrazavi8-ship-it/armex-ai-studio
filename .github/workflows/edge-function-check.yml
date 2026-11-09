@@ -53,6 +53,8 @@ jobs:
         run: |
           createdb lokal_core_baseline_test
           psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/tests/core-baseline-fixture.sql
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261107000000_lokal_user_projects.sql
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261107010000_lokal_image_generation.sql
           psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261108000000_lokal_core_schema_baseline.sql
           psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/tests/core-baseline-invariants.sql
 
