@@ -5,6 +5,7 @@ import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
 import { hasDurableVerifiedPayment, isMatchingPaymentGrant, isValidProviderReference, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
 import { findUnverifiedAuthorityForOrder, isDefinitiveZarinpalRequestRejection, isUnverifiedAuthorityForOrder, parsePaymentPackages, paymentCallbackUrlForOrder } from "./payment-request-policy.ts";
 import { decideRunpodCallbackAction, runpodRefundIdempotencyKey } from "./runpod-callback-policy.ts";
+import { isMatchingCreditDebit, isMatchingCreditRefund } from "./credit-ledger-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -119,11 +120,11 @@ const refundCredits = async (
 
     const { data: existing, error: lookupError } = await db
       .from("armex_credit_transactions")
-      .select("id")
+      .select("amount,transaction_type,metadata")
       .eq("user_id", userId)
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
-    if (!lookupError && existing) return true;
+    if (!lookupError && isMatchingCreditRefund(existing, amount, { requestId, attemptId, reason })) return true;
 
     if (error) {
       console.error("Credit refund attempt failed", {
@@ -252,11 +253,11 @@ const generateImage = async (
     // idempotency key before deciding whether a refund or retry is required.
     const { data: existingDebit, error: debitLookupError } = await db
       .from("armex_credit_transactions")
-      .select("id")
+      .select("amount,transaction_type")
       .eq("user_id", userId)
       .eq("idempotency_key", "image_request:" + requestId)
       .maybeSingle();
-    debitConfirmed = !debitLookupError && Boolean(existingDebit);
+    debitConfirmed = !debitLookupError && isMatchingCreditDebit(existingDebit, IMAGE_CREDIT_COST);
   }
   if (!debitConfirmed) {
     await db.from("armex_image_generations").update({
@@ -427,9 +428,9 @@ const generateVideo = async (
   });
   let debitConfirmed = !debitError && debited === true;
   if (debitError) {
-    const { data: existing } = await db.from("armex_credit_transactions").select("id")
+    const { data: existing } = await db.from("armex_credit_transactions").select("amount,transaction_type")
       .eq("user_id", userId).eq("idempotency_key", debitKey).maybeSingle();
-    debitConfirmed = Boolean(existing);
+    debitConfirmed = isMatchingCreditDebit(existing, VIDEO_CREDIT_COST);
   }
   if (!debitConfirmed) {
     await db.from("armex_video_generations").update({ status: "failed", error_code: "credit_reservation_failed" })
@@ -1562,7 +1563,7 @@ const handle = async (request: Request): Promise<Response> => {
       });
       const { data: existingDebit, error: debitLookupError } = await db
         .from("armex_credit_transactions")
-        .select("id")
+        .select("amount,transaction_type")
         .eq("user_id", userId)
         .eq("idempotency_key", "ai_request:" + requestId)
         .maybeSingle();
@@ -1572,7 +1573,7 @@ const handle = async (request: Request): Promise<Response> => {
         return fail("Credit reservation outcome is uncertain; this request is held for reconciliation", 503, cors);
       }
       debitOutcomeKnown = true;
-      if (!existingDebit) {
+      if (!isMatchingCreditDebit(existingDebit, chatCreditCost)) {
         await markChatRequestFailed(db, userId, requestId, "credit_reservation_failed");
         return fail("Could not reserve credits", 500, cors);
       }
