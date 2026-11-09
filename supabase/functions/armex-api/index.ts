@@ -1065,12 +1065,37 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
   // depend on Zarinpal being available again.
   const alreadyVerified = hasDurableVerifiedPayment(order.status, existingMetadata);
   if (shouldCancelUnverifiedPayment(status, order.status)) {
-    await admin.from("armex_payment_orders").update({
-      status: "cancelled",
-      provider_reference: authority,
-      provider_metadata: { ...existingMetadata, request_state: "cancelled", callback_status: status },
-      updated_at: new Date().toISOString(),
-    }).eq("id", order.id).eq("status", "pending");
+    const { data: cancelledOrder, error: cancelError } = await admin.from("armex_payment_orders")
+      .update({
+        status: "cancelled",
+        provider_reference: authority,
+        provider_metadata: { ...existingMetadata, request_state: "cancelled", callback_status: status },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", order.id).eq("status", "pending")
+      .select("id,status").maybeSingle();
+    if (cancelError) {
+      console.error("Could not persist Zarinpal cancellation", { orderId: order.id, code: cancelError.code });
+      return json({ success: false, pending: true, error: "Payment cancellation could not be durably recorded" }, 500);
+    }
+    if (!cancelledOrder) {
+      const { data: latestOrder, error: latestError } = await admin.from("armex_payment_orders")
+        .select("status").eq("id", order.id).maybeSingle();
+      if (latestError || !latestOrder) {
+        return json({ success: false, pending: true, error: "Payment status requires reconciliation" }, 500);
+      }
+      if (latestOrder.status === "cancelled") {
+        return json({ success: false, cancelled: true, order_id: order.id }, 200);
+      }
+      return json({
+        success: false,
+        pending: true,
+        order_id: order.id,
+        error: latestOrder.status === "paid"
+          ? "The order was already verified by another callback"
+          : "Payment status changed concurrently and requires reconciliation",
+      }, 409);
+    }
     return json({ success: false, cancelled: true, order_id: order.id }, 200);
   }
 
