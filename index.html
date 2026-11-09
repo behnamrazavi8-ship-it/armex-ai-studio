@@ -247,13 +247,33 @@ else{
   const select=document.getElementById("creditPackage"),status=document.getElementById("paymentStatus"),button=document.getElementById("startCreditPayment");
   if(!select?.value){if(status)status.textContent="ابتدا یک بسته اعتبار انتخاب کن.";return}
   const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}
-  button.disabled=true;if(status)status.textContent="در حال ساخت سفارش امن پرداخت...";
+  const pendingKey="lokal-ai-pending-payment:"+session.user.id;
+  let pending=null;
+  try{pending=JSON.parse(localStorage.getItem(pendingKey)||"null")}catch{}
+  if(pending?.request_id&&pending.package_id!==select.value){
+   if(status)status.textContent="یک سفارش پرداخت قبلی هنوز در حال بررسی است؛ ابتدا همان بسته را برای پیگیری انتخاب کن.";
+   return;
+  }
+  const requestId=pending?.request_id||crypto.randomUUID();
+  try{localStorage.setItem(pendingKey,JSON.stringify({request_id:requestId,package_id:select.value}))}catch{}
+  button.disabled=true;if(status)status.textContent="در حال ساخت یا پیگیری سفارش امن پرداخت...";
   try{
-   const result=await callArmexApi(session,"",{action:"create_payment",package_id:select.value,request_id:crypto.randomUUID()});
-   if(!result.payment_url)throw new Error(result.error||"لینک پرداخت دریافت نشد.");
+   const result=await callArmexApi(session,"",{action:"create_payment",package_id:select.value,request_id:requestId});
+   if(result.pending===true){
+    if(status)status.textContent=result.message||"وضعیت سفارش هنوز قطعی نیست؛ همین سفارش را دوباره پیگیری کن و سفارش تازه نساز.";
+    return;
+   }
+   if(result.already_paid===true){
+    try{localStorage.removeItem(pendingKey)}catch{}
+    if(status)status.textContent="این سفارش قبلاً پرداخت و تأیید شده است.";
+    void loadWalletBalance(session);
+    return;
+   }
+   if(!result.payment_url)throw new Error(result.error||result.message||"لینک پرداخت دریافت نشد.");
+   try{localStorage.removeItem(pendingKey)}catch{}
    if(status)status.textContent="در حال انتقال به درگاه زرین‌پال...";
    window.location.assign(result.payment_url);
-  }catch(error){if(status)status.textContent=String(error?.message||"ساخت سفارش پرداخت ناموفق بود.")}
+  }catch(error){if(status)status.textContent=String(error?.message||"ساخت یا پیگیری سفارش پرداخت ناموفق بود.")}
   finally{button.disabled=false}
  });
 
