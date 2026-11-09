@@ -148,7 +148,7 @@ const processAccepted = async (
     return "manual_review";
   }
 
-  const { error } = await db.rpc("armex_persist_chat_response_atomic", {
+  const { data: persisted, error } = await db.rpc("armex_persist_chat_response_atomic", {
     p_user_id: row.user_id,
     p_request_id: row.request_id,
     p_lease_token: row.reconciliation_lease_token,
@@ -161,8 +161,8 @@ const processAccepted = async (
     p_finish_reason: payload.finishReason,
   });
 
-  if (error) {
-    await releaseLease(db, row, "atomic_persistence_failed:" + (error.code || "unknown"));
+  if (error || !isObject(persisted) || persisted.success !== true) {
+    await releaseLease(db, row, "atomic_persistence_failed:" + (error?.code || "invalid_result"));
     return row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
   }
   return "completed";
