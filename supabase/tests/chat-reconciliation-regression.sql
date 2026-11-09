@@ -50,6 +50,33 @@ begin
 end $privilege_test$;
 
 
+-- Lease claim parameters must be bounded even when callers pass explicit NULL.
+do $lease_parameter_regression$
+declare
+  v_rejected boolean := false;
+begin
+  begin
+    perform * from public.armex_claim_chat_reconciliation(null, 120);
+  exception when others then
+    if sqlerrm <> 'invalid reconciliation lease parameters' then raise; end if;
+    v_rejected := true;
+  end;
+  if not v_rejected then
+    raise exception 'NULL batch limit must be rejected';
+  end if;
+
+  v_rejected := false;
+  begin
+    perform * from public.armex_claim_chat_reconciliation(5, null);
+  exception when others then
+    if sqlerrm <> 'invalid reconciliation lease parameters' then raise; end if;
+    v_rejected := true;
+  end;
+  if not v_rejected then
+    raise exception 'NULL lease duration must be rejected';
+  end if;
+end $lease_parameter_regression$;
+
 do $main_regression$
 declare
   v_user uuid := gen_random_uuid();
