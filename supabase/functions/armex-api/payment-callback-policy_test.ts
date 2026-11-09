@@ -22,3 +22,20 @@ Deno.test("malformed metadata is never trusted as payment evidence", () => {
   assertEquals(hasDurableVerifiedPayment("paid", []), false);
   assertEquals(hasDurableVerifiedPayment("paid", "987654"), false);
 });
+
+Deno.test("a late non-OK callback cannot cancel an already paid order", () => {
+  assertEquals(shouldCancelUnverifiedPayment("NOK", "paid"), false);
+  assertEquals(shouldCancelUnverifiedPayment("OK", "paid"), false);
+});
+
+Deno.test("non-OK callbacks cancel only orders that are not durably paid", () => {
+  assertEquals(shouldCancelUnverifiedPayment("NOK", "pending"), true);
+  assertEquals(shouldCancelUnverifiedPayment("NOK", "cancelled"), true);
+  assertEquals(shouldCancelUnverifiedPayment("OK", "pending"), false);
+});
+
+Deno.test("concurrent and repeated payment callbacks share one wallet grant key", () => {
+  const orderId = "order-123";
+  assertEquals(paymentGrantIdempotencyKey(orderId), "payment_order:order-123");
+  assertEquals(paymentGrantIdempotencyKey(orderId), paymentGrantIdempotencyKey(orderId));
+});
