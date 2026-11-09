@@ -649,6 +649,9 @@ const handle = async (request: Request): Promise<Response> => {
 
   const db: SupabaseClient = supabaseContext.supabaseAdmin;
   const modelsAllowed = allowedModels();
+  if (request.method === "GET" && url.searchParams.get("action") === "payment_packages") {
+    return json({ success: true, packages: configuredPaymentPackages().map(({id,title,amount_irr,credits}) => ({id,title,amount_irr,credits})) }, 200, cors);
+  }
   if (request.method === "GET" && url.searchParams.get("action") === "video_status") {
     return await getVideoStatus(db, userId, url.searchParams.get("id") ?? "", cors);
   }
