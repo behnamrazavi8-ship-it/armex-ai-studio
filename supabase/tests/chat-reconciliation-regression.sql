@@ -36,7 +36,7 @@ begin
 end $privilege_test$;
 
 
-do $
+do $main_regression$
 declare
   v_user uuid := gen_random_uuid();
   v_request uuid := gen_random_uuid();
@@ -126,10 +126,10 @@ begin
 
   select count(*) into v_count from public.armex_claim_chat_reconciliation(5, 120);
   if v_count <> 0 then raise exception 'completed request must not be claimable'; end if;
-end $$;
+end $main_regression$;
 
 -- Separate request proves ambiguous provider outcomes are excluded from claims.
-do $$
+do $ambiguous_regression$
 declare
   v_user uuid := gen_random_uuid();
   v_request uuid := gen_random_uuid();
@@ -146,6 +146,6 @@ begin
   if v_claim.request_id is not null then
     raise exception 'ambiguous provider outcome must not be automatically claimed';
   end if;
-end $$;
+end $ambiguous_regression$;
 
 rollback;
