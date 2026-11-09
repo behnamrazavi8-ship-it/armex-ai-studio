@@ -513,7 +513,9 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
   const providerJobId = typeof payload?.id === "string" ? payload.id : "";
   const providerStatus = typeof payload?.status === "string" ? payload.status : "";
-  if (!payload || !providerJobId ||
+  const callbackInput = payload?.input && typeof payload.input === "object"
+    ? payload.input as Record<string, unknown> : {};
+  if (!payload || !providerJobId || callbackInput.request_id !== requestId ||
       !["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(providerStatus)) {
     return json({ success: false, error: "Invalid terminal job payload" }, 400);
   }
