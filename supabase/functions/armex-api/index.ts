@@ -15,7 +15,7 @@ import {
 import { isMatchingCreditDebit, isMatchingCreditRefund } from "./credit-ledger-policy.ts";
 import { resolveVideoDebitOutcome } from "./video-debit-policy.ts";
 import { assessVideoRecovery } from "./video-recovery-policy.ts";
-import { validateRunpodVideoOutput } from "./video-output-policy.ts";
+import { validateRunpodVideoOutput, wanSizeForAspectRatio } from "./video-output-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -430,7 +430,9 @@ const generateVideo = async (
   db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
 ): Promise<Response> => {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
-  const aspectRatio = ["16:9", "9:16", "1:1"].includes(String(body.aspect_ratio)) ? String(body.aspect_ratio) : "16:9";
+  const aspectRatio = body.aspect_ratio === undefined ? "16:9" : body.aspect_ratio;
+  const wanSize = wanSizeForAspectRatio(aspectRatio);
+  if (!wanSize) return fail("Wan 2.2 TI2V-5B supports only 16:9 or 9:16 video output", 400, cors);
   const requestId = isUuid(body.request_id) ? body.request_id : "";
   const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
   const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
@@ -554,7 +556,7 @@ const generateVideo = async (
       body: JSON.stringify({
         input: {
           task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
-          request_id: requestId, aspect_ratio: aspectRatio, duration_seconds: 5,
+          request_id: requestId, aspect_ratio: aspectRatio, size: wanSize, duration_seconds: 5,
           storage_upload: {
             signed_url: storageUploadUrl,
             apikey: supabaseAnonKey,
