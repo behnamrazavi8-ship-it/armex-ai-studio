@@ -123,6 +123,10 @@ begin
   if public.armex_fail_chat_request(v_user, v_accepted_request, 'operator_failure') then
     raise exception 'accepted provider request must not be failed through generic RPC';
   end if;
+  -- Keep this deliberately held accepted request out of the later happy-path claim.
+  update public.armex_chat_requests
+  set diagnostic_code = 'manual_review:accepted_failure_guard_test'
+  where user_id = v_user and request_id = v_accepted_request;
 end $failure_refund_guard_regression$;
 
 -- Lease claim parameters must be bounded even when callers pass explicit NULL.
