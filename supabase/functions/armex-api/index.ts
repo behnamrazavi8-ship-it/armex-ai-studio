@@ -15,6 +15,7 @@ import {
 import { isMatchingCreditDebit, isMatchingCreditRefund } from "./credit-ledger-policy.ts";
 import { resolveVideoDebitOutcome } from "./video-debit-policy.ts";
 import { assessVideoRecovery } from "./video-recovery-policy.ts";
+import { validateRunpodVideoOutput } from "./video-output-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -373,7 +374,39 @@ const generateImage = async (
 
 
 const VIDEO_CREDIT_COST = Number(Deno.env.get("VIDEO_CREDIT_COST") ?? "0");
+const VIDEO_BUCKET = "lokal-ai-videos";
+const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 const RUNPOD_API = "https://api.runpod.ai/v2";
+
+const createVideoAdminClient = (): SupabaseClient => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
+  if (!supabaseUrl || !serviceKey) throw new Error("VIDEO_STORAGE_ADMIN_NOT_CONFIGURED");
+  return createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+};
+
+const verifyStoredVideo = async (
+  admin: SupabaseClient,
+  expected: { storagePath: string; mimeType: string; fileSizeBytes: number },
+): Promise<boolean | null> => {
+  const { data, error } = await admin.storage.from(VIDEO_BUCKET).info(expected.storagePath);
+  if (error) {
+    const status = Number((error as { statusCode?: string | number }).statusCode ?? 0);
+    return status === 404 ? false : null;
+  }
+  if (!data) return false;
+  return data.mimetype === expected.mimeType && Number(data.size) === expected.fileSizeBytes &&
+    Number(data.size) <= VIDEO_MAX_BYTES;
+};
+
+const signedVideoUrl = async (storagePath: string): Promise<string> => {
+  const admin = createVideoAdminClient();
+  const { data, error } = await admin.storage.from(VIDEO_BUCKET).createSignedUrl(storagePath, 3600);
+  if (error || !data?.signedUrl) throw new Error("VIDEO_SIGNING_FAILED");
+  return data.signedUrl;
+};
 const ZARINPAL_API = "https://api.zarinpal.com/pg/v4/payment";
 
 const safeHttpsUrl = (value: unknown): string | null => {
@@ -427,6 +460,27 @@ const generateVideo = async (
       status: "failed", error_code: "webhook_not_configured",
     }).eq("id", job.id).eq("user_id", userId);
     return fail("Video completion webhook is not configured", 503, cors);
+  }
+
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")?.trim() ?? "";
+  let storageUploadUrl = "";
+  const storagePath = userId + "/" + job.id + ".mp4";
+  try {
+    if (!supabaseAnonKey) throw new Error("SUPABASE_ANON_KEY_NOT_CONFIGURED");
+    const storageAdmin = createVideoAdminClient();
+    const { data: signedUpload, error: signedUploadError } = await storageAdmin.storage
+      .from(VIDEO_BUCKET).createSignedUploadUrl(storagePath, { upsert: true });
+    if (signedUploadError || !signedUpload?.signedUrl) throw new Error("VIDEO_SIGNED_UPLOAD_FAILED");
+    storageUploadUrl = signedUpload.signedUrl;
+  } catch (error) {
+    await db.from("armex_video_generations").update({
+      status: "failed", error_code: "video_storage_upload_not_configured",
+      updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+    console.error("Video storage upload authorization could not be prepared", {
+      requestId, reason: error instanceof Error ? error.message : "unknown",
+    });
+    return fail("Persistent video storage is not configured; no credits were charged", 503, cors);
   }
 
   const debitKey = "video_request:" + requestId;
@@ -500,7 +554,14 @@ const generateVideo = async (
       body: JSON.stringify({
         input: {
           task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
-          request_id: requestId, aspect_ratio: aspectRatio, duration_seconds: 5, output_mode: "durable_https_url",
+          request_id: requestId, aspect_ratio: aspectRatio, duration_seconds: 5,
+          storage_upload: {
+            signed_url: storageUploadUrl,
+            apikey: supabaseAnonKey,
+            authorization: "Bearer " + supabaseAnonKey,
+            content_type: "video/mp4",
+            max_bytes: VIDEO_MAX_BYTES,
+          },
         },
         // Reconciles jobs even when the /run response is lost after provider acceptance.
         webhook: webhookUrl,
@@ -662,7 +723,7 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: job, error } = await admin.from("armex_video_generations")
-    .select("id,user_id,provider_job_id,status,credits_charged,refund_status")
+    .select("id,user_id,provider_job_id,status,credits_charged,refund_status,storage_path,mime_type,file_size_bytes")
     .eq("id", jobId).eq("request_id", requestId).maybeSingle();
   if (error || !job) return json({ success: false, error: "Video job not found" }, 404);
   if (job.provider_job_id && job.provider_job_id !== providerJobId) {
@@ -676,11 +737,15 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   if (providerStatus === "COMPLETED") {
     const output = verifiedPayload.output && typeof verifiedPayload.output === "object"
       ? verifiedPayload.output as Record<string, unknown> : {};
-    const resultUrl = safeHttpsUrl(output.video_url ?? output.url);
-    if (!resultUrl) {
+    const durableOutput = validateRunpodVideoOutput(output, job.user_id, job.id);
+    const stored = durableOutput ? await verifyStoredVideo(admin, durableOutput) : false;
+    if (stored === null) {
+      return json({ success: false, pending: true, error: "Persistent video storage verification is temporarily unavailable" }, 503);
+    }
+    if (!durableOutput || !stored) {
       const { data: claimed, error: claimError } = await admin.from("armex_video_generations").update({
         provider_job_id: providerJobId, status: "failed", refund_status: "pending",
-        error_code: "worker_did_not_return_durable_https_url", updated_at: new Date().toISOString(),
+        error_code: "worker_did_not_upload_durable_mp4", updated_at: new Date().toISOString(),
       }).eq("id", job.id).in("status", ["queued", "processing"]).select("id").maybeSingle();
       if (claimError) return json({ success: false, error: "Could not claim failed video result" }, 500);
       if (!claimed) return json({ success: true, duplicate: true }, 200);
@@ -692,7 +757,9 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
       return json({ success: true, refund_status: refunded ? "completed" : "pending" }, 200);
     }
     const { data: saved, error: saveError } = await admin.from("armex_video_generations").update({
-      provider_job_id: providerJobId, status: "completed", result_url: resultUrl,
+      provider_job_id: providerJobId, status: "completed", result_url: null,
+      storage_path: durableOutput.storagePath, mime_type: durableOutput.mimeType,
+      file_size_bytes: durableOutput.fileSizeBytes,
       completed_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }).eq("id", job.id).in("status", ["queued", "processing"]).select("id").maybeSingle();
     if (saveError) return json({ success: false, error: "Could not persist video result" }, 500);
@@ -724,7 +791,7 @@ const getVideoStatus = async (
 ): Promise<Response> => {
   if (!isUuid(id)) return fail("A valid video job ID is required", 400, cors);
   const { data: job, error } = await db.from("armex_video_generations")
-    .select("id,request_id,status,provider_job_id,result_url,error_code,credits_charged,refund_status,provider_metadata,created_at,updated_at")
+    .select("id,request_id,status,provider_job_id,result_url,storage_path,mime_type,file_size_bytes,error_code,credits_charged,refund_status,provider_metadata,created_at,updated_at")
     .eq("id", id).eq("user_id", userId).maybeSingle();
   if (error || !job) return fail("Video job not found", 404, cors);
   if (["failed", "cancelled"].includes(job.status) && job.refund_status === "pending") {
@@ -761,7 +828,7 @@ const getVideoStatus = async (
         if (markError) return fail("Could not save video recovery marker", 500, cors);
         if (!marked) {
           const { data: latest, error: latestError } = await db.from("armex_video_generations")
-            .select("id,request_id,status,provider_job_id,result_url,error_code,credits_charged,refund_status,provider_metadata,created_at,updated_at")
+            .select("id,request_id,status,provider_job_id,result_url,storage_path,mime_type,file_size_bytes,error_code,credits_charged,refund_status,provider_metadata,created_at,updated_at")
             .eq("id", job.id).eq("user_id", userId).maybeSingle();
           if (latestError || !latest) return fail("Could not refresh video recovery status", 500, cors);
           return json({ success: true, video: latest }, 200, cors);
@@ -773,7 +840,16 @@ const getVideoStatus = async (
       }, 200, cors);
     }
   }
-  if (["completed", "failed", "cancelled"].includes(job.status) || !job.provider_job_id) {
+  if (job.status === "completed") {
+    if (!job.storage_path) return json({ success: true, video: job }, 200, cors);
+    try {
+      const resultUrl = await signedVideoUrl(job.storage_path);
+      return json({ success: true, video: { ...job, result_url: resultUrl } }, 200, cors);
+    } catch {
+      return fail("Video is stored but its private download link could not be created", 503, cors);
+    }
+  }
+  if (["failed", "cancelled"].includes(job.status) || !job.provider_job_id) {
     return json({ success: true, video: job }, 200, cors);
   }
   const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
@@ -789,13 +865,20 @@ const getVideoStatus = async (
     return fail("RunPod returned a status snapshot that does not match this video request", 502, cors);
   }
   const status = videoProviderStatus(String(payload.status));
-  const output = payload.output ?? {};
-  const resultUrl = status === "completed"
-    ? safeHttpsUrl(output.video_url ?? output.url)
+  const output = payload.output && typeof payload.output === "object"
+    ? payload.output as Record<string, unknown> : {};
+  const durableOutput = status === "completed"
+    ? validateRunpodVideoOutput(output, userId, job.id)
     : null;
-  if (status === "completed" && !resultUrl) {
+  let storageVerified: boolean | null = null;
+  if (status === "completed" && durableOutput) {
+    try { storageVerified = await verifyStoredVideo(createVideoAdminClient(), durableOutput); }
+    catch { storageVerified = null; }
+    if (storageVerified === null) return fail("Persistent video storage verification is temporarily unavailable", 503, cors);
+  }
+  if (status === "completed" && (!durableOutput || !storageVerified)) {
     const { data: claimed, error: claimError } = await db.from("armex_video_generations").update({
-      status: "failed", refund_status: "pending", error_code: "worker_did_not_return_durable_https_url",
+      status: "failed", refund_status: "pending", error_code: "worker_did_not_upload_durable_mp4",
       updated_at: new Date().toISOString(),
     }).eq("id", job.id).eq("user_id", userId).in("status", ["queued", "processing"]).select("id").maybeSingle();
     if (claimError) return fail("Could not claim failed video result", 500, cors);
@@ -803,7 +886,7 @@ const getVideoStatus = async (
     const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
     await db.from("armex_video_generations").update({ refund_status: refunded ? "completed" : "pending", updated_at: new Date().toISOString() })
       .eq("id", job.id).eq("user_id", userId).eq("status", "failed");
-    return fail(refunded ? "Video worker did not return a permanent HTTPS video URL; credits were returned" : "Video output is missing and credit refund could not be confirmed", 502, cors);
+    return fail(refunded ? "Video worker did not upload a durable MP4; credits were returned" : "Video output is missing and credit refund could not be confirmed", 502, cors);
   }
   if (status === "failed" || status === "cancelled") {
     const { data: claimed, error: claimError } = await db.from("armex_video_generations").update({
@@ -822,13 +905,22 @@ const getVideoStatus = async (
   }
   const update: Record<string, unknown> = {
     status, updated_at: new Date().toISOString(),
-    ...(resultUrl ? { result_url: resultUrl, completed_at: new Date().toISOString() } : {}),
+    ...(durableOutput ? {
+      result_url: null, storage_path: durableOutput.storagePath,
+      mime_type: durableOutput.mimeType, file_size_bytes: durableOutput.fileSizeBytes,
+      completed_at: new Date().toISOString(),
+    } : {}),
   };
   const { data: saved, error: saveError } = await db.from("armex_video_generations").update(update)
     .eq("id", job.id).eq("user_id", userId).in("status", ["queued", "processing"]).select("id").maybeSingle();
   if (saveError) return fail("Could not save video status", 500, cors);
   if (!saved) return json({ success: true, duplicate: true, video: job }, 200, cors);
-  return json({ success: true, video: { ...job, ...update } }, 200, cors);
+  const refreshed = { ...job, ...update };
+  if (durableOutput) {
+    try { refreshed.result_url = await signedVideoUrl(durableOutput.storagePath); }
+    catch { return fail("Video is stored but its private download link could not be created", 503, cors); }
+  }
+  return json({ success: true, video: refreshed }, 200, cors);
 };
 
 const configuredPaymentPackages = () => {
