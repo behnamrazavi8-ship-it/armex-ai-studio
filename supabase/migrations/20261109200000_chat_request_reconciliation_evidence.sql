@@ -56,7 +56,7 @@ begin
     and request_id = p_request_id
     and status = 'processing'
     and (provider_outcome not in ('accepted','rejected') or p_provider_outcome = provider_outcome)
-    and (debit_outcome <> 'debited' or p_debit_outcome = 'debited');
+    and (debit_outcome not in ('debited','not_debited','not_attempted') or p_debit_outcome = debit_outcome);
 
   get diagnostics updated_count = row_count;
   return updated_count = 1;
