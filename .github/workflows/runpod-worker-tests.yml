@@ -1,0 +1,31 @@
+name: RunPod Worker Unit Tests
+
+on:
+  pull_request:
+    paths:
+      - "runpod-worker/**"
+      - ".github/workflows/runpod-worker-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  worker-tests:
+    name: Test worker contract without GPU
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Compile worker source
+        run: python -m compileall -q runpod-worker
+
+      - name: Run worker contract tests
+        run: python -m unittest discover -s runpod-worker/tests -v
