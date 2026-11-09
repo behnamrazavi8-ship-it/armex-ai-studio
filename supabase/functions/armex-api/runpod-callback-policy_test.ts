@@ -36,3 +36,14 @@ Deno.test("webhook, polling, and refund retries share one idempotency key", () =
   assertEquals(runpodRefundIdempotencyKey(jobId), "ai_refund:video-job-123:video-job-123:video_refund");
   assertEquals(runpodRefundIdempotencyKey(jobId), runpodRefundIdempotencyKey(jobId));
 });
+
+import { isDefinitiveRunpodRejection } from "./runpod-callback-policy.ts";
+
+Deno.test("only explicit RunPod request/auth/endpoint rejection statuses are refundable", () => {
+  for (const status of [400, 401, 403, 404, 422]) {
+    assertEquals(isDefinitiveRunpodRejection(status), true);
+  }
+  for (const status of [408, 409, 425, 429, 500, 502, 503, 504]) {
+    assertEquals(isDefinitiveRunpodRejection(status), false);
+  }
+});

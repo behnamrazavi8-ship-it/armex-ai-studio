@@ -60,6 +60,7 @@ declare
   v_debited_request uuid := gen_random_uuid();
   v_accepted_request uuid := gen_random_uuid();
   v_attempt uuid := gen_random_uuid();
+  v_accepted_attempt uuid := gen_random_uuid();
   v_failed boolean;
   v_status text;
 begin
@@ -83,8 +84,12 @@ begin
   ) then
     raise exception 'rejected provider evidence should persist';
   end if;
-  insert into public.armex_credit_transactions(user_id, idempotency_key)
-  values (v_user, 'ai_request:' || v_debited_request::text);
+  insert into public.armex_credit_transactions(
+    user_id, amount, transaction_type, idempotency_key, metadata
+  ) values (
+    v_user, -1, 'usage', 'ai_request:' || v_debited_request::text,
+    jsonb_build_object('request_id', v_debited_request::text, 'attempt_id', v_attempt::text)
+  );
 
   v_failed := public.armex_fail_chat_request(v_user, v_debited_request, 'provider_rejected_400');
   if v_failed then
@@ -96,19 +101,37 @@ begin
     raise exception 'request without refund must remain processing';
   end if;
 
-  insert into public.armex_credit_transactions(user_id, idempotency_key)
-  values (
-    v_user,
-    'ai_refund:' || v_debited_request::text || ':' || v_attempt::text || ':provider_error'
+  -- A matching key with the wrong type/metadata is not refund evidence.
+  insert into public.armex_credit_transactions(
+    user_id, amount, transaction_type, idempotency_key, metadata
+  ) values (
+    v_user, 1, 'purchase',
+    'ai_refund:' || v_debited_request::text || ':' || v_attempt::text || ':provider_error',
+    '{}'::jsonb
   );
+  if public.armex_fail_chat_request(v_user, v_debited_request, 'provider_rejected_400') then
+    raise exception 'refund key with wrong type or metadata must not authorize failure';
+  end if;
+
+  -- Only an exact refund matching amount, type, request, attempt and reason is accepted.
+  update public.armex_credit_transactions
+  set transaction_type = 'refund',
+      metadata = jsonb_build_object(
+        'request_id', v_debited_request::text,
+        'attempt_id', v_attempt::text,
+        'reason', 'provider_error'
+      )
+  where user_id = v_user
+    and idempotency_key =
+      'ai_refund:' || v_debited_request::text || ':' || v_attempt::text || ':provider_error';
   if not public.armex_fail_chat_request(v_user, v_debited_request, 'provider_rejected_400') then
-    raise exception 'request may fail after exact refund record is durable';
+    raise exception 'request may fail after exact refund evidence is durable';
   end if;
 
   -- Even a refund record cannot authorize failing an accepted provider result.
   perform public.armex_claim_chat_request(v_user, v_accepted_request);
   if not public.armex_set_chat_recovery_metadata(
-    v_user, v_accepted_request, 'prompt', 'test/model', null, 1, gen_random_uuid(), null, null, 1
+    v_user, v_accepted_request, 'prompt', 'test/model', null, 1, v_accepted_attempt, null, null, 1
   ) then
     raise exception 'accepted guard metadata should persist';
   end if;
@@ -118,8 +141,12 @@ begin
   ) then
     raise exception 'accepted guard evidence should persist';
   end if;
-  insert into public.armex_credit_transactions(user_id, idempotency_key)
-  values (v_user, 'ai_request:' || v_accepted_request::text);
+  insert into public.armex_credit_transactions(
+    user_id, amount, transaction_type, idempotency_key, metadata
+  ) values (
+    v_user, -1, 'usage', 'ai_request:' || v_accepted_request::text,
+    jsonb_build_object('request_id', v_accepted_request::text, 'attempt_id', v_accepted_attempt::text)
+  );
   if public.armex_fail_chat_request(v_user, v_accepted_request, 'operator_failure') then
     raise exception 'accepted provider request must not be failed through generic RPC';
   end if;

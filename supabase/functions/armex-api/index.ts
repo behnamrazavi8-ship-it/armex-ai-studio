@@ -4,7 +4,11 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
 import { hasDurableVerifiedPayment, isMatchingPaymentGrant, isValidProviderReference, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
 import { findUnverifiedAuthorityForOrder, isDefinitiveZarinpalRequestRejection, isUnverifiedAuthorityForOrder, parsePaymentPackages, paymentCallbackUrlForOrder } from "./payment-request-policy.ts";
-import { decideRunpodCallbackAction, runpodRefundIdempotencyKey } from "./runpod-callback-policy.ts";
+import {
+  decideRunpodCallbackAction,
+  isDefinitiveRunpodRejection,
+  runpodRefundIdempotencyKey,
+} from "./runpod-callback-policy.ts";
 import { isMatchingCreditDebit, isMatchingCreditRefund } from "./credit-ledger-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
@@ -463,12 +467,45 @@ const generateVideo = async (
   }
 
   if (!response.ok) {
-    const detail = (await response.text()).slice(0, 300);
-    console.error("RunPod rejected video job", { requestId, status: response.status, detail });
+    const detail = (await response.text().catch(() => "")).slice(0, 300);
+    const definitiveRejection = isDefinitiveRunpodRejection(response.status);
+    console.error("RunPod submission returned a non-success response", {
+      requestId, status: response.status, definitiveRejection, detail,
+    });
+
+    if (!definitiveRejection) {
+      // 408/409/425/429/5xx and unknown statuses cannot prove that RunPod did
+      // not accept the job. Keep the reservation and let webhook/polling/manual
+      // reconciliation resolve the outcome; never refund an ambiguous submit.
+      await db.from("armex_video_generations").update({
+        error_code: "provider_submission_uncertain",
+      }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+      return json({
+        success: true,
+        pending: true,
+        request_id: requestId,
+        video: {
+          id: job.id,
+          status: "queued",
+          error_code: "provider_submission_uncertain",
+        },
+        message: "Provider submission outcome is uncertain; credits remain reserved while the job is reconciled",
+      }, 202, cors);
+    }
+
     const refunded = await refundCredits(db, userId, VIDEO_CREDIT_COST, job.id, job.id, "video_refund");
-    await db.from("armex_video_generations").update({ status: "failed", refund_status: refunded ? "completed" : "pending", error_code: "provider_rejected" })
-      .eq("id", job.id).eq("user_id", userId);
-    return fail(refunded ? "Video provider rejected the job; credits were returned" : "Provider rejected the job but refund could not be confirmed", refunded ? 502 : 500, cors);
+    await db.from("armex_video_generations").update({
+      status: "failed",
+      refund_status: refunded ? "completed" : "pending",
+      error_code: "provider_rejected",
+    }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+    return fail(
+      refunded
+        ? "Video provider rejected the job; credits were returned"
+        : "Provider rejected the job but refund could not be confirmed",
+      refunded ? 502 : 500,
+      cors,
+    );
   }
 
   const payload = await response.json();

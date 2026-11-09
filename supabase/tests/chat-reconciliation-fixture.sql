@@ -18,7 +18,10 @@ create table if not exists auth.users (
 create table if not exists public.armex_credit_transactions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  idempotency_key text not null unique
+  amount bigint,
+  transaction_type text,
+  idempotency_key text not null unique,
+  metadata jsonb not null default '{}'::jsonb
 );
 
 create table if not exists public.armex_conversations (

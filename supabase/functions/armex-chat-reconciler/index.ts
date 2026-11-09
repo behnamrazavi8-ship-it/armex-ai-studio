@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { isMatchingCreditRefund } from "../armex-api/credit-ledger-policy.ts";
 import { deriveAcceptedChatPayload } from "./recovery-payload.ts";
 
 type Json = Record<string, unknown>;
@@ -70,11 +71,15 @@ const refundCredits = async (
 
   const { data: existing, error: lookupError } = await db
     .from("armex_credit_transactions")
-    .select("id")
+    .select("amount,transaction_type,metadata")
     .eq("user_id", row.user_id)
     .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
-  return !lookupError && Boolean(existing);
+  return !lookupError && isMatchingCreditRefund(existing, amount, {
+    requestId: row.request_id,
+    attemptId,
+    reason,
+  });
 };
 
 const releaseLease = async (

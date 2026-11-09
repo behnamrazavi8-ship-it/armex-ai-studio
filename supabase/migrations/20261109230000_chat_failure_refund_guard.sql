@@ -35,17 +35,41 @@ begin
         where d.user_id = p_user_id
           and d.idempotency_key = 'ai_request:' || p_request_id::text
       )
-      or exists (
-        select 1
-        from public.armex_credit_transactions refund
-        where refund.user_id = p_user_id
-          and refund.idempotency_key =
-            'ai_refund:' || p_request_id::text || ':' ||
-            r.recovery_attempt_id::text || ':' ||
-            case
-              when r.provider_outcome = 'rejected' then 'provider_error'
-              else 'pre_provider_error'
-            end
+      or (
+        r.recovery_credits is not null
+        and r.recovery_credits > 0
+        and r.recovery_attempt_id is not null
+        and exists (
+          select 1
+          from public.armex_credit_transactions debit
+          where debit.user_id = p_user_id
+            and debit.idempotency_key = 'ai_request:' || p_request_id::text
+            and debit.amount = -r.recovery_credits
+            and debit.transaction_type = 'usage'
+            and debit.metadata ->> 'request_id' = p_request_id::text
+            and debit.metadata ->> 'attempt_id' = r.recovery_attempt_id::text
+        )
+        and exists (
+          select 1
+          from public.armex_credit_transactions refund
+          where refund.user_id = p_user_id
+            and refund.idempotency_key =
+              'ai_refund:' || p_request_id::text || ':' ||
+              r.recovery_attempt_id::text || ':' ||
+              case
+                when r.provider_outcome = 'rejected' then 'provider_error'
+                else 'pre_provider_error'
+              end
+            and refund.amount = r.recovery_credits
+            and refund.transaction_type = 'refund'
+            and refund.metadata ->> 'request_id' = p_request_id::text
+            and refund.metadata ->> 'attempt_id' = r.recovery_attempt_id::text
+            and refund.metadata ->> 'reason' =
+              case
+                when r.provider_outcome = 'rejected' then 'provider_error'
+                else 'pre_provider_error'
+              end
+        )
       )
     );
 

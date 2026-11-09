@@ -30,3 +30,11 @@ export const decideRunpodCallbackAction = (
 /** Stable refund identity shared by webhook, polling, and retry paths. */
 export const runpodRefundIdempotencyKey = (jobId: string): string =>
   "ai_refund:" + jobId + ":" + jobId + ":video_refund";
+
+/**
+ * Only explicit request/auth/endpoint validation responses are treated as
+ * definitive rejection. Timeouts, throttling, conflicts, and all 5xx responses
+ * remain ambiguous because provider acceptance cannot be disproved safely.
+ */
+export const isDefinitiveRunpodRejection = (status: number): boolean =>
+  [400, 401, 403, 404, 422].includes(status);
