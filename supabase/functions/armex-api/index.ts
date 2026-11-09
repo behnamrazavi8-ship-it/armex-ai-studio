@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
 import { hasDurableVerifiedPayment, isMatchingPaymentGrant, isValidProviderReference, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
-import { findUnverifiedAuthorityForOrder, isDefinitiveZarinpalRequestRejection, isUnverifiedAuthorityForOrder, paymentCallbackUrlForOrder } from "./payment-request-policy.ts";
+import { findUnverifiedAuthorityForOrder, isDefinitiveZarinpalRequestRejection, isUnverifiedAuthorityForOrder, parsePaymentPackages, paymentCallbackUrlForOrder } from "./payment-request-policy.ts";
 import { decideRunpodCallbackAction, runpodRefundIdempotencyKey } from "./runpod-callback-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
@@ -672,14 +672,9 @@ const getVideoStatus = async (
   return json({ success: true, video: { ...job, ...update } }, 200, cors);
 };
 
-const configuredPaymentPackages = (): Array<{id:string;amount_irr:number;credits:number;title:string}> => {
+const configuredPaymentPackages = () => {
   try {
-    const value = JSON.parse(Deno.env.get("PAYMENT_PACKAGES") ?? "[]");
-    if (!Array.isArray(value)) return [];
-    return value.filter((p) => p && typeof p.id === "string" &&
-      Number.isSafeInteger(p.amount_irr) && p.amount_irr > 0 &&
-      Number.isSafeInteger(p.credits) && p.credits > 0 &&
-      typeof p.title === "string");
+    return parsePaymentPackages(JSON.parse(Deno.env.get("PAYMENT_PACKAGES") ?? "[]"));
   } catch { return []; }
 };
 
