@@ -1240,6 +1240,29 @@ const handle = async (request: Request): Promise<Response> => {
 
     if (!providerResponse.ok) {
       const providerError = await providerResponse.text();
+      const providerIsDefinitiveRejection =
+        providerResponse.status >= 400 &&
+        providerResponse.status < 500 &&
+        providerResponse.status !== 408;
+      const { data: rejectionEvidenceSaved, error: rejectionEvidenceError } = await db.rpc(
+        "armex_record_chat_provider_evidence",
+        {
+          p_user_id: userId,
+          p_request_id: requestId,
+          p_provider_outcome: providerIsDefinitiveRejection ? "rejected" : "unknown",
+          p_debit_outcome: "debited",
+          p_provider_http_status: providerResponse.status,
+          p_provider_response_payload: null,
+          p_diagnostic_code: "openrouter_http_" + providerResponse.status,
+        },
+      );
+      if (rejectionEvidenceError || rejectionEvidenceSaved !== true) {
+        debitCompleted = false;
+        return json({
+          success: true, pending: true, request_id: requestId,
+          message: "The provider response was received but its evidence could not be saved; billing remains held",
+        }, 202, cors);
+      }
       console.error("OpenRouter request failed", {
         requestId,
         status: providerResponse.status,
