@@ -105,3 +105,13 @@ Deno.test("simulation: missing order-specific provider evidence remains manual r
   assertEquals(providerRequestCalls, 1);
 });
 
+
+Deno.test("unverified callback must preserve every configured callback query parameter", () => {
+  const expected = { orderId, amount: 100000, callbackUrl };
+  const wrongAction = baseCallback.replace("payment_callback", "other_action") + "&order_id=" + orderId;
+  assertEquals(findUnverifiedAuthorityForOrder({
+    data: { authorities: [
+      { authority: "A-WRONG-ROUTE", amount: 100000, callback_url: wrongAction },
+    ] },
+  }, expected), null);
+});
