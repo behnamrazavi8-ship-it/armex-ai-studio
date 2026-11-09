@@ -708,6 +708,10 @@ const createZarinpalPayment = async (
     json({ success: true, pending: true, reconciliation_required: true, order_id: orderId, message }, 202, cors);
 
   if (prior) {
+    const priorMetadata = prior.provider_metadata && typeof prior.provider_metadata === "object" &&
+        !Array.isArray(prior.provider_metadata)
+      ? prior.provider_metadata as Record<string, unknown>
+      : {};
     const packageMatches = prior.provider === "zarinpal" &&
       prior.currency === "IRR" &&
       Number(prior.amount) === pack.amount_irr &&
@@ -715,6 +719,17 @@ const createZarinpalPayment = async (
       (!prior.package_id || prior.package_id === pack.id);
     if (!packageMatches) {
       return fail("This request ID is already bound to a different payment package; no new payment was created", 409, cors);
+    }
+    if (prior.status === "failed" && priorMetadata.request_state === "rejected" &&
+        Number.isSafeInteger(priorMetadata.provider_code) &&
+        Number(priorMetadata.provider_code) < 0) {
+      return json({
+        success: false,
+        request_closed: true,
+        retry_allowed: true,
+        order_id: prior.id,
+        message: "Zarinpal definitively rejected the previous request; you may start a new payment request",
+      }, 200, cors);
     }
     if (prior.status === "pending" && isValidProviderReference(prior.provider_reference)) {
       return json({ success: true, duplicate: true, order_id: prior.id,
@@ -732,10 +747,7 @@ const createZarinpalPayment = async (
 
     // A previous request may have reached Zarinpal even though its response was
     // lost. Never send another /request call for this idempotency key.
-    const metadata = prior.provider_metadata && typeof prior.provider_metadata === "object" &&
-        !Array.isArray(prior.provider_metadata)
-      ? prior.provider_metadata as Record<string, unknown>
-      : {};
+    const metadata = priorMetadata;
     const savedCallbackUrl = typeof metadata.callback_url === "string"
       ? metadata.callback_url
       : "";
