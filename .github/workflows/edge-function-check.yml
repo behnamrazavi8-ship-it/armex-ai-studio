@@ -70,6 +70,9 @@ jobs:
       - name: Type-check Zarinpal payment request recovery policy
         run: deno check supabase/functions/armex-api/payment-request-policy.ts
 
+      - name: Test durable RunPod video output contract
+        run: deno test supabase/functions/armex-api/video-output-policy_test.ts
+
       - name: Test RunPod callback and refund retry policy
         run: deno test supabase/functions/armex-api/runpod-callback-policy_test.ts
 
