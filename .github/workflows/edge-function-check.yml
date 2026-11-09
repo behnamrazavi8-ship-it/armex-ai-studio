@@ -90,11 +90,12 @@ jobs:
       - name: Test concurrent payment and video callbacks in PostgreSQL
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/provider-callback-concurrency.sql
 
-      - name: Test wallet RPCs in disposable PostgreSQL
+      - name: Test wallet RPCs in isolated disposable PostgreSQL database
         run: |
-          psql -v ON_ERROR_STOP=1 -f supabase/tests/wallet-rpc-fixture.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109240000_wallet_rpc_idempotency_hardening.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/tests/wallet-rpc-invariants.sql
+          createdb lokal_wallet_rpc_test
+          psql -d lokal_wallet_rpc_test -v ON_ERROR_STOP=1 -f supabase/tests/wallet-rpc-fixture.sql
+          psql -d lokal_wallet_rpc_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261109240000_wallet_rpc_idempotency_hardening.sql
+          psql -d lokal_wallet_rpc_test -v ON_ERROR_STOP=1 -f supabase/tests/wallet-rpc-invariants.sql
 
       - name: Build disposable PostgreSQL schema fixture
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-fixture.sql
