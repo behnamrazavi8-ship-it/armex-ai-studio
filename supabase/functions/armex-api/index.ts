@@ -1023,6 +1023,32 @@ const handle = async (request: Request): Promise<Response> => {
     return fail("This request_id was already processed; use a new UUID for a new message", 409, cors);
   }
 
+  // Atomically claim this user/request pair before any provider invocation.
+  // A request left in "processing" is fail-closed: retries cannot trigger a second
+  // provider call. Recovery of ambiguous provider outcomes must be reconciled explicitly.
+  const { data: claimData, error: claimError } = await db.rpc("armex_claim_chat_request", {
+    p_user_id: userId,
+    p_request_id: requestId,
+  });
+  if (claimError) {
+    console.error("Chat request claim failed", { requestId, code: claimError.code });
+    return fail("Could not safely claim this chat request", 500, cors);
+  }
+  const claim = Array.isArray(claimData) ? claimData[0] : claimData;
+  if (!claim || claim.outcome !== "claimed") {
+    if (claim?.outcome === "completed" && claim.response_payload &&
+        typeof claim.response_payload === "object" && !Array.isArray(claim.response_payload)) {
+      return json(claim.response_payload as Json, 200, cors);
+    }
+    return fail(
+      claim?.outcome === "failed"
+        ? "This request has already failed; use a new request_id to retry"
+        : "This request is already processing; do not resubmit it",
+      409,
+      cors,
+    );
+  }
+
   let conversation: { id: string } | null = null;
   let createdConversation = false;
   let context: Array<{ role: "user" | "assistant"; content: string }> = [];
@@ -1080,7 +1106,7 @@ const handle = async (request: Request): Promise<Response> => {
     const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
       p_user_id: userId,
       p_amount: chatCreditCost,
-      p_idempotency_key: "ai_request:" + requestId + ":" + attemptId,
+      p_idempotency_key: "ai_request:" + requestId,
       p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
       p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation?.id ?? null },
     });
@@ -1260,8 +1286,7 @@ const handle = async (request: Request): Promise<Response> => {
       .eq("id", conversation.id)
       .eq("user_id", userId);
 
-    debitCompleted = false;
-    return json({
+    const responsePayload: Json = {
       success: true,
       request_id: requestId,
       conversation_id: conversation.id,
@@ -1275,7 +1300,20 @@ const handle = async (request: Request): Promise<Response> => {
         credits_charged: chatCreditCost,
       },
       finish_reason: result.choices?.[0]?.finish_reason ?? null,
-    }, 200, cors);
+    };
+    const { data: completedRequest, error: completeRequestError } = await db.rpc("armex_complete_chat_request", {
+      p_user_id: userId,
+      p_request_id: requestId,
+      p_response_payload: responsePayload,
+    });
+    if (completeRequestError || completedRequest !== true) {
+      console.error("Chat request completion record failed", { requestId, code: completeRequestError?.code });
+      // armex_usage and messages are already persisted; retries can recover through priorUsage.
+      debitCompleted = false;
+      return fail("The answer was generated and saved, but request finalization needs recovery", 500, cors);
+    }
+    debitCompleted = false;
+    return json(responsePayload, 200, cors);
   } catch (error) {
     console.error("armex-api request failed", {
       requestId,
