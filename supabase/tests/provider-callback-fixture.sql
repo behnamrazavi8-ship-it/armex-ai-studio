@@ -8,6 +8,7 @@ do $$ begin
 end $$;
 create schema if not exists auth;
 create table if not exists auth.users(id uuid primary key default gen_random_uuid());
+create or replace function auth.uid() returns uuid language sql stable as $ select null::uuid $;
 create table if not exists public.armex_payment_orders(
  id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade,
  amount bigint not null check(amount>0), currency text not null, credits bigint not null check(credits>0),
