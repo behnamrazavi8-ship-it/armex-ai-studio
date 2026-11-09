@@ -138,7 +138,7 @@ jobs:
               "pendingPaymentRequestMemory", "allowPending=false",
               "request_closed===true", "retry_allowed===true",
               "result.pending===true", "pendingPaymentRequestMemory[session.user.id]",
-              "provider callback resolves order"
+              "until the callback resolves the order"
           ]
           missing_payment = [item for item in payment_contract if item not in html]
           if missing_payment:
