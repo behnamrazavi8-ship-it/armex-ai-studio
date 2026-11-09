@@ -81,3 +81,9 @@ Deno.test("RunPod webhook must match an independently fetched terminal status sn
   ), false);
   assertEquals(isMatchingRunpodStatusSnapshot(null, verified, "request"), false);
 });
+
+import { runpodAuthorizationHeader } from "./runpod-callback-policy.ts";
+
+Deno.test("RunPod API keys are sent using the Bearer authorization scheme", () => {
+  assertEquals(runpodAuthorizationHeader("  rp_test_key  "), "Bearer rp_test_key");
+});

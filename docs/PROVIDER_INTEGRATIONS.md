@@ -11,7 +11,7 @@ The Edge Function calls RunPod Serverless v2 invoke endpoints:
 
 Configure these Supabase Edge Function secrets:
 
-- `RUNPOD_API_KEY`: RunPod API key (server-side only).
+- `RUNPOD_API_KEY`: RunPod API key (server-side only); send it with the `Authorization: Bearer <API key>` scheme.
 - `RUNPOD_ENDPOINT_ID`: ID of a queue-based Serverless endpoint running the Wan 2.2 TI2V-5B worker.
 - `RUNPOD_WEBHOOK_SECRET`: long random secret used to authenticate RunPod completion callbacks. Generate it privately and store only as a Supabase Edge Function secret.
 - `RUNPOD_WEBHOOK_CALLBACK_URL`: optional public HTTPS override; defaults to the `armex-api?action=runpod_callback` Edge Function URL.

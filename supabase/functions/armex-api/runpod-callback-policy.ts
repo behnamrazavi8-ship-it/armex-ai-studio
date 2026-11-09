@@ -66,3 +66,7 @@ export const isMatchingRunpodStatusSnapshot = (
     terminalStatuses.includes(callback.status) &&
     callbackInput?.request_id === expectedRequestId;
 };
+
+/** RunPod Serverless API requests use the Bearer token authorization scheme. */
+export const runpodAuthorizationHeader = (apiKey: string): string =>
+  "Bearer " + apiKey.trim();

@@ -447,7 +447,7 @@ const generateVideo = async (
   try {
     response = await fetch(RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/run", {
       method: "POST",
-      headers: { Authorization: token, "Content-Type": "application/json" },
+      headers: { Authorization: runpodAuthorizationHeader(token), "Content-Type": "application/json" },
       body: JSON.stringify({
         input: {
           task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
@@ -596,7 +596,7 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   try {
     statusResponse = await fetch(
       RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/status/" + encodeURIComponent(providerJobId),
-      { headers: { Authorization: runpodToken }, signal: AbortSignal.timeout(15000) },
+      { headers: { Authorization: runpodAuthorizationHeader(runpodToken) }, signal: AbortSignal.timeout(15000) },
     );
   } catch {
     return json({ success: false, pending: true, error: "RunPod status verification is temporarily unavailable" }, 503);
