@@ -2,7 +2,7 @@ import { createSupabaseContext } from "npm:@supabase/server@1";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
-import { hasDurableVerifiedPayment, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
+import { hasDurableVerifiedPayment, isValidProviderReference, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
 import { decideRunpodCallbackAction, runpodRefundIdempotencyKey } from "./runpod-callback-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
@@ -785,7 +785,14 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
       return json({ success: false, error: "Payment verification failed; no credits were added" }, 502);
     }
     const providerRef = verifyPayload?.data?.ref_id;
-    refId = typeof providerRef === "string" || typeof providerRef === "number" ? providerRef : null;
+    if (!isValidProviderReference(providerRef)) {
+      console.error("Zarinpal verification returned no durable provider reference", {
+        orderId: order.id,
+        code: verifyCode,
+      });
+      return json({ success: false, error: "Payment verification returned incomplete evidence; no credits were added" }, 502);
+    }
+    refId = providerRef;
     const { error: paidError } = await admin.from("armex_payment_orders").update({
       status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       provider_metadata: { ref_id: refId },
