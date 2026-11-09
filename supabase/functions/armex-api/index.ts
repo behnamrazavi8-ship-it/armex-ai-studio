@@ -1,6 +1,7 @@
 import { createSupabaseContext } from "npm:@supabase/server@1";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -129,6 +130,26 @@ const refundCredits = async (
   }
   console.error("Credit refund could not be confirmed", { requestId, reason });
   return false;
+};
+
+const markChatRequestFailed = async (
+  db: SupabaseClient,
+  userId: string,
+  requestId: string,
+  failureCode: string,
+): Promise<boolean> => {
+  const { data, error } = await db.rpc("armex_fail_chat_request", {
+    p_user_id: userId,
+    p_request_id: requestId,
+    p_failure_code: failureCode,
+  });
+  if (error || data !== true) {
+    console.error("Chat request failure state could not be saved", {
+      requestId, failureCode, code: error?.code,
+    });
+    return false;
+  }
+  return true;
 };
 
 
@@ -1059,7 +1080,10 @@ const handle = async (request: Request): Promise<Response> => {
       .eq("id", conversationId)
       .eq("user_id", userId)
       .maybeSingle();
-    if (error || !data) return fail("Conversation not found", 404, cors);
+    if (error || !data) {
+      await markChatRequestFailed(db, userId, requestId, "conversation_not_found");
+      return fail("Conversation not found", 404, cors);
+    }
     conversation = data as { id: string };
 
     const { data: history, error: historyError } = await db.from("armex_messages")
@@ -1069,7 +1093,10 @@ const handle = async (request: Request): Promise<Response> => {
       .in("role", ["user", "assistant"])
       .order("created_at", { ascending: false })
       .limit(MAX_CONTEXT_MESSAGES);
-    if (historyError) return fail("Could not load conversation history", 500, cors);
+    if (historyError) {
+      await markChatRequestFailed(db, userId, requestId, "conversation_history_failed");
+      return fail("Could not load conversation history", 500, cors);
+    }
     const chronological = (history ?? []).reverse().map((row: { role: string; content: string }) => ({
       role: row.role as "user" | "assistant",
       content: row.content,
@@ -1088,7 +1115,10 @@ const handle = async (request: Request): Promise<Response> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+  let debitAttempted = false;
+  let debitOutcomeKnown = false;
   let debitCompleted = false;
+  let providerRequestStarted = false;
   try {
     let modelInfo: ModelInfo | null = null;
     const catalogController = new AbortController();
@@ -1103,6 +1133,7 @@ const handle = async (request: Request): Promise<Response> => {
     const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
     const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
 
+    debitAttempted = true;
     const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
       p_user_id: userId,
       p_amount: chatCreditCost,
@@ -1111,18 +1142,34 @@ const handle = async (request: Request): Promise<Response> => {
       p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation?.id ?? null },
     });
     if (debitError) {
-      console.error("Credit debit failed", { requestId, code: debitError.code });
-      return fail("Could not reserve credits", 500, cors);
-    }
-    if (debited !== true) {
-      await db.rpc("armex_fail_chat_request", {
-        p_user_id: userId,
-        p_request_id: requestId,
-        p_failure_code: "insufficient_credits",
+      console.error("Credit debit returned an error; verifying its idempotency record", {
+        requestId, code: debitError.code,
       });
-      return fail("Insufficient credits", 402, cors);
+      const { data: existingDebit, error: debitLookupError } = await db
+        .from("armex_credit_transactions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("idempotency_key", "ai_request:" + requestId)
+        .maybeSingle();
+      if (debitLookupError) {
+        // The debit may have committed despite the transport error. Keep the
+        // request claimed until its billing outcome can be reconciled.
+        return fail("Credit reservation outcome is uncertain; this request is held for reconciliation", 503, cors);
+      }
+      debitOutcomeKnown = true;
+      if (!existingDebit) {
+        await markChatRequestFailed(db, userId, requestId, "credit_reservation_failed");
+        return fail("Could not reserve credits", 500, cors);
+      }
+      debitCompleted = true;
+    } else {
+      debitOutcomeKnown = true;
+      if (debited !== true) {
+        await markChatRequestFailed(db, userId, requestId, "insufficient_credits");
+        return fail("Insufficient credits", 402, cors);
+      }
+      debitCompleted = true;
     }
-    debitCompleted = true;
 
     const providerMessages = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -1130,6 +1177,9 @@ const handle = async (request: Request): Promise<Response> => {
       { role: "user", content: message },
     ];
 
+    // From this point onward, a thrown fetch/timeout is ambiguous: OpenRouter
+    // may have accepted and billed the request before the connection failed.
+    providerRequestStarted = true;
     const providerResponse = await fetch(OPENROUTER_URL + "/chat/completions", {
       method: "POST",
       signal: controller.signal,
@@ -1154,25 +1204,34 @@ const handle = async (request: Request): Promise<Response> => {
         status: providerResponse.status,
         body: providerError.slice(0, 500),
       });
-      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "provider_error");
+      const action = chatRequestFailureAction(true, providerResponse.status);
+      if (action === "refund_and_fail") {
+        const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "provider_error");
+        debitCompleted = false;
+        if (refunded) await markChatRequestFailed(db, userId, requestId, "provider_rejected_" + providerResponse.status);
+        return fail(
+          refunded ? "AI provider rejected the request; the charged credit was returned" : "AI provider rejected the request but the credit refund could not be confirmed",
+          refunded ? 502 : 500,
+          cors,
+        );
+      }
       debitCompleted = false;
-      return fail(
-        refunded ? "AI provider request failed; the charged credit was returned" : "AI provider failed and the credit refund could not be confirmed",
-        refunded ? 502 : 500,
-        cors,
-      );
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "The provider returned an ambiguous server response; billing and request status are held for reconciliation",
+      }, 202, cors);
     }
 
     const result = await providerResponse.json();
     const answer = result.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {
-      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "invalid_provider_response");
+      // A successful provider HTTP response means the model may already have
+      // incurred cost. Do not refund on malformed/empty response payloads.
       debitCompleted = false;
-      return fail(
-        refunded ? "AI returned an invalid response; the charged credit was returned" : "AI response was invalid and the credit refund could not be confirmed",
-        refunded ? 502 : 500,
-        cors,
-      );
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "The provider response could not be validated; the request is held for reconciliation",
+      }, 202, cors);
     }
 
     const usage = result.usage ?? {};
@@ -1197,13 +1256,13 @@ const handle = async (request: Request): Promise<Response> => {
         .select("id")
         .single();
       if (conversationError || !newConversation) {
-        const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "conversation_persistence_failed");
+        // The provider has already returned a billable response. Keep the debit
+        // and leave the idempotency row processing for reconciliation.
         debitCompleted = false;
-        return fail(
-          refunded ? "Could not create the conversation; the charged credit was returned" : "Conversation creation failed and the credit refund could not be confirmed",
-          500,
-          cors,
-        );
+        return json({
+          success: true, pending: true, request_id: requestId,
+          message: "The AI response was received but the conversation could not be saved; reconciliation is required",
+        }, 202, cors);
       }
       conversation = newConversation as { id: string };
       createdConversation = true;
@@ -1243,13 +1302,13 @@ const handle = async (request: Request): Promise<Response> => {
           .eq("id", conversation.id)
           .eq("user_id", userId);
       }
-      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "message_persistence_failed");
+      // Provider execution may already be billable. Do not refund after a
+      // successful provider response merely because local persistence failed.
       debitCompleted = false;
-      return fail(
-        refunded ? "Could not save the conversation; the charged credit was returned" : "Conversation save failed and the credit refund could not be confirmed",
-        500,
-        cors,
-      );
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "The AI response was received but message storage failed; reconciliation is required",
+      }, 202, cors);
     }
 
     const { error: usageError } = await db.from("armex_usage").insert({
@@ -1276,16 +1335,15 @@ const handle = async (request: Request): Promise<Response> => {
           .eq("id", conversation.id)
           .eq("user_id", userId);
       }
-      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "usage_persistence_failed");
+      // Keep the debit: a successful OpenRouter response may have incurred
+      // provider cost even when usage persistence fails. Never refund here.
       debitCompleted = false;
-      if (usageError.code === "23505" && refunded) {
-        return fail("This request_id has already completed; the duplicate attempt was refunded", 409, cors);
-      }
-      return fail(
-        refunded ? "Could not record usage; the charged credit was returned" : "Usage recording failed and the credit refund could not be confirmed",
-        500,
-        cors,
-      );
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: usageError.code === "23505"
+          ? "Usage already exists for this request; response recovery is required"
+          : "The AI response was received but usage storage failed; reconciliation is required",
+      }, 202, cors);
     }
 
     await db.from("armex_conversations")
@@ -1326,14 +1384,29 @@ const handle = async (request: Request): Promise<Response> => {
       requestId,
       error: error instanceof Error ? error.message : "unknown",
     });
-    const refunded = debitCompleted
-      ? await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "server_error")
-      : true;
     const timedOut = error instanceof Error && error.name === "AbortError";
+    const debitOutcomeUncertain = debitAttempted && !debitOutcomeKnown;
+    const providerOutcome = chatRequestFailureAction(providerRequestStarted);
+    if (providerOutcome === "keep_pending" || debitOutcomeUncertain) {
+      // Never refund or release a request if the provider may have accepted it,
+      // or if the debit RPC may have committed despite a transport failure.
+      debitCompleted = false;
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: timedOut
+          ? "The AI request timed out with an uncertain provider outcome; billing reconciliation is required"
+          : "The request outcome is uncertain and has been held for reconciliation",
+      }, 202, cors);
+    }
+    const refunded = debitCompleted
+      ? await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "pre_provider_error")
+      : true;
+    if (refunded) await markChatRequestFailed(db, userId, requestId, timedOut ? "pre_provider_timeout" : "pre_provider_error");
+    debitCompleted = false;
     return fail(
       timedOut
-        ? (refunded ? "AI request timed out; the charged credit was returned" : "AI request timed out and the credit refund could not be confirmed")
-        : (refunded ? "Internal server error" : "Internal server error; the credit refund could not be confirmed"),
+        ? (refunded ? "AI request timed out before provider submission; the charged credit was returned" : "AI request timed out and the credit refund could not be confirmed")
+        : (refunded ? "Internal server error before provider submission" : "Internal server error; the credit refund could not be confirmed"),
       timedOut ? 504 : 500,
       cors,
     );
