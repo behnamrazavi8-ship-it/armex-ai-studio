@@ -50,7 +50,10 @@ begin
       debit_outcome = p_debit_outcome,
       provider_http_status = p_provider_http_status,
       provider_response_payload = coalesce(p_provider_response_payload, provider_response_payload),
-      diagnostic_code = left(p_diagnostic_code, 80),
+      diagnostic_code = case
+        when diagnostic_code like 'manual_review:%' then diagnostic_code
+        else coalesce(left(p_diagnostic_code, 80), diagnostic_code)
+      end,
       updated_at = now()
   where user_id = p_user_id
     and request_id = p_request_id
