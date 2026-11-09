@@ -1072,6 +1072,19 @@ const handle = async (request: Request): Promise<Response> => {
 
   // Persist the minimum request context needed to recover a billable
   // provider response locally. This write happens before debit/provider work.
+  let modelInfo: ModelInfo | null = null;
+  const catalogController = new AbortController();
+  const catalogTimeout = setTimeout(() => catalogController.abort(), 10000);
+  try {
+    modelInfo = await getModelInfo(openRouterKey, model, catalogController.signal);
+  } catch {
+    console.warn("Model pricing metadata unavailable; actual_cost_usd may be null", { model });
+  } finally {
+    clearTimeout(catalogTimeout);
+  }
+  const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
+  const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
+
   const { data: recoveryMetadataSaved, error: recoveryMetadataError } = await db.rpc(
     "armex_set_chat_recovery_metadata",
     {
@@ -1082,6 +1095,8 @@ const handle = async (request: Request): Promise<Response> => {
       p_conversation_id: conversationId ?? null,
       p_credits: chatCreditCost,
       p_attempt_id: attemptId,
+      p_prompt_price: promptPrice >= 0 ? promptPrice : null,
+      p_completion_price: completionPrice >= 0 ? completionPrice : null,
     },
   );
   if (recoveryMetadataError || recoveryMetadataSaved !== true) {
@@ -1138,19 +1153,6 @@ const handle = async (request: Request): Promise<Response> => {
   let debitCompleted = false;
   let providerRequestStarted = false;
   try {
-    let modelInfo: ModelInfo | null = null;
-    const catalogController = new AbortController();
-    const catalogTimeout = setTimeout(() => catalogController.abort(), 10000);
-    try {
-      modelInfo = await getModelInfo(openRouterKey, model, catalogController.signal);
-    } catch {
-      console.warn("Model pricing metadata unavailable; actual_cost_usd will be null", { model });
-    } finally {
-      clearTimeout(catalogTimeout);
-    }
-    const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
-    const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
-
     debitAttempted = true;
     const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
       p_user_id: userId,
