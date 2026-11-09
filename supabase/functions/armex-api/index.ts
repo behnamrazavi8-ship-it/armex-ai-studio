@@ -360,6 +360,7 @@ const generateVideo = async (
   db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
 ): Promise<Response> => {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const aspectRatio = ["16:9", "9:16", "1:1"].includes(String(body.aspect_ratio)) ? String(body.aspect_ratio) : "16:9";
   const requestId = isUuid(body.request_id) ? body.request_id : "";
   const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
   const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
@@ -378,7 +379,7 @@ const generateVideo = async (
 
   const { data: job, error: insertError } = await db.from("armex_video_generations").insert({
     user_id: userId, request_id: requestId, prompt, model: "wan2.2-ti2v-5b",
-    credits_charged: VIDEO_CREDIT_COST, status: "queued",
+    credits_charged: VIDEO_CREDIT_COST, status: "queued", provider_metadata: { aspect_ratio: aspectRatio, duration_seconds: 5 },
   }).select("id").single();
   if (insertError || !job) return fail("Could not create video job", insertError?.code === "23505" ? 409 : 500, cors);
 
@@ -407,7 +408,7 @@ const generateVideo = async (
       headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
       body: JSON.stringify({ input: {
         task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
-        request_id: requestId, output_mode: "durable_https_url",
+        request_id: requestId, aspect_ratio: aspectRatio, duration_seconds: 5, output_mode: "durable_https_url",
       } }),
       signal: AbortSignal.timeout(20000),
     });
