@@ -77,7 +77,7 @@ Deno.test("insecure callback URLs are rejected", () => {
 
 Deno.test("simulation: lost provider response is recovered without issuing a second request", () => {
   const expected = { orderId, amount: 100000, callbackUrl };
-  let providerRequestCalls = 1;
+  const providerRequestCalls = 1;
   let savedAuthority: string | null = null;
   // The provider accepted the request, but the application lost its response.
   const retryResult = findUnverifiedAuthorityForOrder({
@@ -89,7 +89,6 @@ Deno.test("simulation: lost provider response is recovered without issuing a sec
   assertEquals(savedAuthority, "A-RECOVERED");
   assertEquals(providerRequestCalls, 1);
   // A subsequent retry reuses the durable Authority rather than calling /request.
-  if (savedAuthority) providerRequestCalls = providerRequestCalls;
   assertEquals(providerRequestCalls, 1);
 });
 
