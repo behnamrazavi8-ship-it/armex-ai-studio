@@ -1015,15 +1015,31 @@ const handle = async (request: Request): Promise<Response> => {
     return fail("Could not verify request idempotency", 500, cors);
   }
   if (priorUsage) {
-    const { data: previousAnswer } = await db.from("armex_messages")
+    // New atomic writes associate both messages directly with request_id.
+    // Fall back to the legacy timestamp lookup for historical rows whose
+    // request_id column is still NULL.
+    let previousAnswer = null;
+    const { data: requestAnswer, error: requestAnswerError } = await db.from("armex_messages")
       .select("content")
       .eq("conversation_id", priorUsage.conversation_id)
       .eq("user_id", userId)
+      .eq("request_id", requestId)
       .eq("role", "assistant")
-      .lte("created_at", priorUsage.created_at)
-      .order("created_at", { ascending: false })
-      .limit(1)
       .maybeSingle();
+    if (!requestAnswerError && requestAnswer?.content) {
+      previousAnswer = requestAnswer;
+    } else {
+      const { data: legacyAnswer } = await db.from("armex_messages")
+        .select("content")
+        .eq("conversation_id", priorUsage.conversation_id)
+        .eq("user_id", userId)
+        .eq("role", "assistant")
+        .lte("created_at", priorUsage.created_at)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      previousAnswer = legacyAnswer;
+    }
     if (previousAnswer?.content) {
       return json({
         success: true,
