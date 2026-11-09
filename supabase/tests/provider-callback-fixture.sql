@@ -75,7 +75,7 @@ grant usage on schema public, auth to service_role;
 grant select on auth.users to service_role;
 
 -- Match existing server-side ledger access; payment-order grants are added by the migration.
-grant select, insert, update, delete on public.armex_credit_transactions to service_role;
+grant select on public.armex_credit_transactions to service_role;
 revoke all on public.armex_payment_orders from service_role;
 
 -- Minimal Storage catalog fixture for the staged private-video bucket migration.
