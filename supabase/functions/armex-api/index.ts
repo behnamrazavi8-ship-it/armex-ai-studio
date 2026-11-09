@@ -1176,6 +1176,8 @@ const handle = async (request: Request): Promise<Response> => {
       createdConversation = true;
     }
 
+    const userMessageAt = new Date();
+    const assistantMessageAt = new Date(userMessageAt.getTime() + 1);
     const messageRows = [
       {
         conversation_id: conversation.id,
@@ -1183,6 +1185,7 @@ const handle = async (request: Request): Promise<Response> => {
         role: "user",
         content: message,
         model,
+        created_at: userMessageAt.toISOString(),
       },
       {
         conversation_id: conversation.id,
@@ -1192,6 +1195,7 @@ const handle = async (request: Request): Promise<Response> => {
         model: result.model || model,
         input_tokens: inputTokens,
         output_tokens: outputTokens,
+        created_at: assistantMessageAt.toISOString(),
       },
     ];
     const { data: savedMessages, error: messageError } = await db
