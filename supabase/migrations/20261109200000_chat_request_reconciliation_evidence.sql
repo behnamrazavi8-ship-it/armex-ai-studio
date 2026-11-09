@@ -99,8 +99,8 @@ begin
       and (r.reconciliation_lease_expires_at is null
            or r.reconciliation_lease_expires_at < now())
     order by r.updated_at asc
-    for update skip locked
     limit p_limit
+    for update skip locked
   ),
   claimed as (
     update public.armex_chat_requests r
