@@ -720,15 +720,18 @@ const createZarinpalPayment = async (
     if (!packageMatches) {
       return fail("This request ID is already bound to a different payment package; no new payment was created", 409, cors);
     }
-    if (prior.status === "failed" && priorMetadata.request_state === "rejected" &&
-        Number.isSafeInteger(priorMetadata.provider_code) &&
-        Number(priorMetadata.provider_code) < 0) {
+    if (prior.status === "cancelled" ||
+        (prior.status === "failed" && priorMetadata.request_state === "rejected" &&
+          Number.isSafeInteger(priorMetadata.provider_code) &&
+          Number(priorMetadata.provider_code) < 0)) {
       return json({
         success: false,
         request_closed: true,
         retry_allowed: true,
         order_id: prior.id,
-        message: "Zarinpal definitively rejected the previous request; you may start a new payment request",
+        message: prior.status === "cancelled"
+          ? "The previous payment was cancelled; you may start a new payment request"
+          : "Zarinpal definitively rejected the previous request; you may start a new payment request",
       }, 200, cors);
     }
     if (prior.status === "pending" && isValidProviderReference(prior.provider_reference)) {
@@ -828,14 +831,14 @@ const createZarinpalPayment = async (
     }, 200, cors);
   }
 
-  // Do not let a different request ID create a second provider session while
-  // this user's previous request has no durable Authority.
-  const { data: ambiguousOrder, error: ambiguousOrderError } = await db.from("armex_payment_orders")
+  // Do not create another provider session while any earlier Zarinpal
+  // order is pending, whether its Authority is known or still ambiguous.
+  const { data: pendingOrder, error: pendingOrderError } = await db.from("armex_payment_orders")
     .select("id").eq("user_id", userId).eq("provider", "zarinpal")
-    .eq("status", "pending").is("provider_reference", null).maybeSingle();
-  if (ambiguousOrderError) return fail("Could not check for an earlier unresolved payment", 500, cors);
-  if (ambiguousOrder) {
-    return fail("An earlier payment request is still being reconciled; retry that same request or contact support before starting another", 409, cors);
+    .eq("status", "pending").maybeSingle();
+  if (pendingOrderError) return fail("Could not check for an earlier unresolved payment", 500, cors);
+  if (pendingOrder) {
+    return fail("An earlier Zarinpal payment is still pending; retry that same request or wait for its confirmed callback before starting another", 409, cors);
   }
 
   const orderId = crypto.randomUUID();
