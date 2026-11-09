@@ -89,3 +89,21 @@ import { runpodAuthorizationHeader } from "./runpod-callback-policy.ts";
 Deno.test("RunPod API keys are sent using the Bearer authorization scheme", () => {
   assertEquals(runpodAuthorizationHeader("  rp_test_key  "), "Bearer rp_test_key");
 });
+
+import { isMatchingRunpodJobSnapshot } from "./runpod-callback-policy.ts";
+
+Deno.test("RunPod polling snapshot must match provider job and original application request", () => {
+  const requestId = "11111111-1111-4111-8111-111111111111";
+  const snapshot = {
+    id: "rp-job-1",
+    status: "IN_PROGRESS",
+    input: { request_id: requestId },
+    output: {},
+  };
+  assertEquals(isMatchingRunpodJobSnapshot(snapshot, "rp-job-1", requestId), true);
+  assertEquals(isMatchingRunpodJobSnapshot({ ...snapshot, id: "rp-job-other" }, "rp-job-1", requestId), false);
+  assertEquals(isMatchingRunpodJobSnapshot({ ...snapshot, input: { request_id: "wrong-request" } }, "rp-job-1", requestId), false);
+  assertEquals(isMatchingRunpodJobSnapshot({ ...snapshot, status: "UNKNOWN" }, "rp-job-1", requestId), false);
+  assertEquals(isMatchingRunpodJobSnapshot(null, "rp-job-1", requestId), false);
+  assertEquals(isMatchingRunpodJobSnapshot({ ...snapshot, input: undefined }, "rp-job-1", requestId), false);
+});
