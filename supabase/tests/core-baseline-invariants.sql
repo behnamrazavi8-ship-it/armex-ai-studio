@@ -73,6 +73,60 @@ begin
 end
 $test$;
 
+-- The two earlier repository migrations must combine with the core baseline
+-- to reproduce the full 13-table / 20-policy Production public surface.
+do $extended$
+declare
+  v_tables integer;
+  v_policies integer;
+begin
+  select count(*) into v_tables
+  from pg_class c join pg_namespace n on n.oid=c.relnamespace
+  where n.nspname='public' and c.relkind='r';
+  if v_tables <> 13 then
+    raise exception 'expected 13 public application tables after the three migrations, found %', v_tables;
+  end if;
+
+  select count(*) into v_policies from pg_policies where schemaname='public';
+  if v_policies <> 20 then
+    raise exception 'expected 20 public RLS policies after the three migrations, found %', v_policies;
+  end if;
+
+  if not exists (
+    select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relname='armex_image_generations'
+      and c.relrowsecurity and not c.relforcerowsecurity
+  ) then
+    raise exception 'image-generation table is missing or has incorrect RLS state';
+  end if;
+
+  if not exists (
+    select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relname='lokal_user_projects'
+      and c.relrowsecurity and not c.relforcerowsecurity
+  ) then
+    raise exception 'LOKAL user-project table is missing or has incorrect RLS state';
+  end if;
+
+  if not exists (
+    select 1 from storage.buckets
+    where id='lokal-ai-images' and public=false
+      and file_size_limit=20971520
+      and allowed_mime_types=array['image/png','image/jpeg','image/webp']::text[]
+  ) then
+    raise exception 'private image bucket configuration does not match Production';
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='storage' and tablename='objects'
+      and policyname='Users can view their own LOKAL AI images'
+  ) then
+    raise exception 'user-folder scoped image Storage policy is missing';
+  end if;
+end
+$extended$;
+
 -- The event trigger must protect future public tables too.
 create table public.baseline_rls_probe(id integer primary key);
 do $probe$
