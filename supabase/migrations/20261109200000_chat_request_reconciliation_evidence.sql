@@ -148,7 +148,10 @@ begin
   update public.armex_chat_requests
   set reconciliation_lease_token = null,
       reconciliation_lease_expires_at = null,
-      diagnostic_code = left(p_diagnostic_code, 80),
+      diagnostic_code = case
+        when diagnostic_code like 'manual_review:%' then diagnostic_code
+        else coalesce(left(p_diagnostic_code, 80), diagnostic_code)
+      end,
       updated_at = now()
   where user_id = p_user_id
     and request_id = p_request_id
