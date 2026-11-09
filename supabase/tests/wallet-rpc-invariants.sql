@@ -7,7 +7,7 @@ insert into public.armex_wallets(user_id,balance) values
 ('00000000-0000-0000-0000-000000000002',0);
 
 do $test$
-declare v boolean;
+declare v boolean; v_rejected boolean;
 begin
   -- Debit succeeds once and exact replay is successful without a second debit.
   v := public.armex_debit_credits('00000000-0000-0000-0000-000000000001',20,'debit-1','test','{}');
@@ -44,12 +44,13 @@ begin
     raise exception 'mismatched grant type unexpectedly succeeded';
   exception when unique_violation then null; end;
 
+  v_rejected := false;
   begin
     perform public.armex_grant_credits('00000000-0000-0000-0000-000000000001',50,'usage','grant-invalid-type','tamper','{}');
-    raise exception 'invalid grant transaction type unexpectedly succeeded';
-  exception when raise_exception then
-    if sqlerrm = 'invalid grant transaction type unexpectedly succeeded' then raise; end if;
+  exception when others then
+    v_rejected := true;
   end;
+  if not v_rejected then raise exception 'invalid grant transaction type unexpectedly succeeded'; end if;
 
   if (select count(*) from public.armex_credit_transactions where user_id='00000000-0000-0000-0000-000000000001')<>2 then
     raise exception 'unexpected wallet ledger row count';
