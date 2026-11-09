@@ -2,6 +2,7 @@ import { assertEquals } from "jsr:@std/assert";
 import {
   findUnverifiedAuthorityForOrder,
   isDefinitiveZarinpalRequestRejection,
+  isUnverifiedAuthorityForOrder,
   paymentCallbackUrlForOrder,
 } from "./payment-request-policy.ts";
 
@@ -28,6 +29,12 @@ Deno.test("only one exact order, amount and callback match can recover an author
   assertEquals(findUnverifiedAuthorityForOrder(response, {
     orderId, amount: 100000, callbackUrl,
   }), "A-EXACT");
+  assertEquals(isUnverifiedAuthorityForOrder(response, {
+    orderId, amount: 100000, callbackUrl, authority: "A-EXACT",
+  }), true);
+  assertEquals(isUnverifiedAuthorityForOrder(response, {
+    orderId, amount: 100000, callbackUrl, authority: "A-OTHER",
+  }), false);
 });
 
 Deno.test("ambiguous, incomplete or mismatched unverified results never recover an authority", () => {
