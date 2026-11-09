@@ -49,11 +49,8 @@ def validate_job_input(value: Any) -> dict[str, Any]:
         raise ValueError("A signed private Storage upload is required")
     path = upload.get("path")
     match = STORAGE_PATH_RE.fullmatch(path) if isinstance(path, str) else None
-    if not match or match.group(2).lower() != request_id.lower():
-        # The path's second UUID is the internal video job id; request_id is
-        # separately validated and is intentionally not assumed to equal it.
-        if not match:
-            raise ValueError("Invalid deterministic video storage path")
+    if not match:
+        raise ValueError("Invalid deterministic video storage path")
     signed_url = upload.get("signed_url")
     parsed = urlparse(signed_url) if isinstance(signed_url, str) else None
     if not parsed or parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith(".supabase.co"):
