@@ -74,5 +74,27 @@ export const isMatchingRunpodStatusSnapshot = (
 };
 
 /** RunPod Serverless API requests use the Bearer token authorization scheme. */
+
+/**
+ * Polling must bind a provider status response to the exact persisted job
+ * and application request before any status, output URL, or refund is trusted.
+ */
+export const isMatchingRunpodJobSnapshot = (
+  statusPayload: unknown,
+  expectedProviderJobId: string,
+  expectedRequestId: string,
+): boolean => {
+  if (!statusPayload || typeof statusPayload !== "object" || Array.isArray(statusPayload) ||
+      !expectedProviderJobId.trim() || !expectedRequestId.trim()) return false;
+  const snapshot = statusPayload as Record<string, unknown>;
+  const input = snapshot.input && typeof snapshot.input === "object" && !Array.isArray(snapshot.input)
+    ? snapshot.input as Record<string, unknown>
+    : null;
+  return snapshot.id === expectedProviderJobId &&
+    typeof snapshot.status === "string" &&
+    ["IN_QUEUE", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(snapshot.status) &&
+    input?.request_id === expectedRequestId;
+};
+
 export const runpodAuthorizationHeader = (apiKey: string): string =>
   "Bearer " + apiKey.trim();
