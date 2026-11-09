@@ -102,6 +102,14 @@ begin
     end if;
   end if;
 
+  select count(*),
+         count(*) filter (where m.conversation_id = v_conversation_id and m.role = 'user' and m.content = v_request.recovery_message),
+         count(*) filter (where m.conversation_id = v_conversation_id and m.role = 'assistant' and m.content = p_answer)
+  into v_message_count, v_user_message_count, v_assistant_message_count
+  from public.armex_messages m
+  where m.user_id = p_user_id
+    and m.request_id = p_request_id;
+
   select u.*
   into v_existing_usage
   from public.armex_usage u
