@@ -1,5 +1,23 @@
 import { assertEquals } from "jsr:@std/assert";
-import { hasDurableVerifiedPayment, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
+import {
+  hasDurableVerifiedPayment,
+  isValidProviderReference,
+  paymentGrantIdempotencyKey,
+  shouldCancelUnverifiedPayment,
+} from "./payment-callback-policy.ts";
+
+Deno.test("provider references must be non-empty strings or positive finite numbers", () => {
+  assertEquals(isValidProviderReference("987654"), true);
+  assertEquals(isValidProviderReference(" 987654 "), true);
+  assertEquals(isValidProviderReference(987654), true);
+  assertEquals(isValidProviderReference(""), false);
+  assertEquals(isValidProviderReference("   "), false);
+  assertEquals(isValidProviderReference(0), false);
+  assertEquals(isValidProviderReference(-1), false);
+  assertEquals(isValidProviderReference(Number.NaN), false);
+  assertEquals(isValidProviderReference(Number.POSITIVE_INFINITY), false);
+  assertEquals(isValidProviderReference(null), false);
+});
 
 Deno.test("previously verified paid order can recover wallet grant without provider re-verification", () => {
   assertEquals(hasDurableVerifiedPayment("paid", { ref_id: "987654" }), true);
@@ -11,10 +29,12 @@ Deno.test("pending or cancelled orders are not treated as durably verified", () 
   assertEquals(hasDurableVerifiedPayment("cancelled", { ref_id: "987654" }), false);
 });
 
-Deno.test("paid order without a provider reference must be re-verified", () => {
+Deno.test("paid order without a valid provider reference must be re-verified", () => {
   assertEquals(hasDurableVerifiedPayment("paid", {}), false);
   assertEquals(hasDurableVerifiedPayment("paid", { ref_id: null }), false);
   assertEquals(hasDurableVerifiedPayment("paid", { ref_id: "" }), false);
+  assertEquals(hasDurableVerifiedPayment("paid", { ref_id: "   " }), false);
+  assertEquals(hasDurableVerifiedPayment("paid", { ref_id: 0 }), false);
 });
 
 Deno.test("malformed metadata is never trusted as payment evidence", () => {
