@@ -29,3 +29,26 @@ stable
 as $function$
   select null::uuid
 $function$;
+
+-- Minimal Storage catalog surface required by the existing image migration.
+create schema if not exists storage;
+create table storage.buckets (
+  id text primary key,
+  name text not null,
+  public boolean not null default false,
+  file_size_limit bigint,
+  allowed_mime_types text[]
+);
+create table storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text not null,
+  name text not null
+);
+alter table storage.objects enable row level security;
+create or replace function storage.foldername(p_name text)
+returns text[]
+language sql
+immutable
+as $function$
+  select string_to_array(p_name, '/')
+$function$;
