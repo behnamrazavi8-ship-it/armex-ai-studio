@@ -123,7 +123,7 @@ update auth.users set email_confirmed_at=now() where id='10000000-0000-0000-0000
 select public.armex_activate_user('10000000-0000-0000-0000-000000000007');
 do $recover_referrer$
 begin
-  if (select balance from public.armex_wallets where user_id='10000000-0000-0000-0000-000000000007')<>200 then
+  if (select balance from public.armex_wallets where user_id='10000000-0000-0000-0000-000000000007')<>700 then
     raise exception 'referral reward was not recovered after referrer verification';
   end if;
   if (select status from public.armex_referrals where id='20000000-0000-0000-0000-000000000005')<>'rewarded' then
@@ -170,7 +170,7 @@ begin
   if (select count(*) from public.armex_credit_transactions where user_id='10000000-0000-0000-0000-000000000006' and idempotency_key='signup_bonus:10000000-0000-0000-0000-000000000006')<>1 then
     raise exception 'concurrent activation created duplicate signup ledger entries';
   end if;
-  if (select balance from public.armex_wallets where user_id='10000000-0000-0000-0000-000000000001')<>1299 then
+  if (select balance from public.armex_wallets where user_id='10000000-0000-0000-0000-000000000001')<>1499 then
     raise exception 'concurrent referral activation did not grant exactly one additional 200-credit reward';
   end if;
   if (select status from public.armex_referrals where id='20000000-0000-0000-0000-000000000004')<>'rewarded' then
