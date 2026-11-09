@@ -95,6 +95,7 @@ begin
     from public.armex_chat_requests r
     where r.status = 'processing'
       and r.provider_outcome in ('not_started','accepted','rejected')
+      and (r.diagnostic_code is null or r.diagnostic_code not like 'manual_review:%')
       and (r.reconciliation_lease_expires_at is null
            or r.reconciliation_lease_expires_at < now())
     order by r.updated_at asc
