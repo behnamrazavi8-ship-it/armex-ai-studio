@@ -47,6 +47,8 @@ Do not return a short-lived RunPod result URL: RunPod retains completed job resu
 
 The app sends RunPod's top-level `webhook` field so RunPod POSTs the full terminal job payload to the authenticated Edge Function callback. The callback correlates by the UUID `input.request_id`, validates the provider job ID, persists the durable result URL, and applies idempotent refunds for terminal failures. Polling remains as a fallback. This also reconciles a lost `/run` response when the provider accepted the job but the app never received its job ID. The actual GPU worker image/model weights and durable object storage still need to be deployed/configured in the RunPod account.
 
+**Webhook reliability limitation:** RunPod webhook delivery is best-effort and retries a failed delivery only a limited number of times. When the `/run` response is lost and the callback is also never delivered, the app has no provider job ID to poll and cannot automatically discover that job. Such a record remains pending for manual reconciliation; do not blindly refund it because the GPU job may have run. When a provider job ID is available, the app's authenticated status endpoint can fall back to RunPod polling. The webhook signature is carried in the callback URL query string; redact query strings (especially the `token` parameter) from any proxy, analytics, and request logs.
+
 ## Zarinpal credit top-ups
 
 Configure these Supabase Edge Function secrets:
