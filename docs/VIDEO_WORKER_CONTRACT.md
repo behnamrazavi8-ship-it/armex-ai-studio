@@ -11,7 +11,7 @@ The `webhook` property is a top-level sibling of `input`, not part of the model 
 
 - `task: "text_to_video"`
 - `model: "wan2.2-ti2v-5b"`
-- `prompt`, `request_id`, `aspect_ratio`, and `duration_seconds: 5`
+- `prompt`, `request_id`, `aspect_ratio`, mapped `size` (`1280*704` or `704*1280`), and `duration_seconds: 5`
 - `storage_upload.signed_url`: one job-scoped Supabase Storage signed upload URL
 - `storage_upload.apikey` and `storage_upload.authorization`: the public anon key headers only
 - `storage_upload.content_type: "video/mp4"`
