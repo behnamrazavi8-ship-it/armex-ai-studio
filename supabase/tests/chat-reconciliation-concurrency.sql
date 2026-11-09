@@ -104,7 +104,7 @@ select * from dblink_get_result('claim_b') as t(
   reconciliation_attempts integer
 );
 
-do $
+do $$
 declare
   v_total integer;
   v_distinct integer;
@@ -206,7 +206,7 @@ select * from dblink_get_result('claim_b') as t(payload jsonb);
 select * from dblink_get_result('claim_a') as t(payload jsonb);
 select * from dblink_get_result('claim_b') as t(payload jsonb);
 
-do $
+do $$
 declare
   v_user uuid := current_setting('test.race_user')::uuid;
   v_request uuid := current_setting('test.race_request')::uuid;
