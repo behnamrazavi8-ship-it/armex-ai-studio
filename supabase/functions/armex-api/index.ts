@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
 import { hasDurableVerifiedPayment, isMatchingPaymentGrant, isValidProviderReference, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
-import { findUnverifiedAuthorityForOrder, isDefinitiveZarinpalRequestRejection, paymentCallbackUrlForOrder } from "./payment-request-policy.ts";
+import { findUnverifiedAuthorityForOrder, isDefinitiveZarinpalRequestRejection, isUnverifiedAuthorityForOrder, paymentCallbackUrlForOrder } from "./payment-request-policy.ts";
 import { decideRunpodCallbackAction, runpodRefundIdempotencyKey } from "./runpod-callback-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
@@ -717,12 +717,12 @@ const createZarinpalPayment = async (
       return fail("This request ID is already bound to a different payment package; no new payment was created", 409, cors);
     }
     if (prior.status === "pending" && isValidProviderReference(prior.provider_reference)) {
-      return json({ success: true, duplicate: true, order: prior,
+      return json({ success: true, duplicate: true, order_id: prior.id,
         payment_url: paymentUrl(String(prior.provider_reference)) }, 200, cors);
     }
     if (prior.status === "paid") {
       if (hasDurableVerifiedPayment(prior.status, prior.provider_metadata)) {
-        return json({ success: true, duplicate: true, order: prior, already_paid: true }, 200, cors);
+        return json({ success: true, duplicate: true, order_id: prior.id, already_paid: true }, 200, cors);
       }
       return pendingResponse(prior.id, "The order is marked paid without complete provider evidence; it is held for manual reconciliation");
     }
@@ -994,6 +994,57 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
       !Array.isArray(order.provider_metadata)
     ? order.provider_metadata as Record<string, unknown>
     : {};
+
+  // The order_id query parameter is not a cryptographic proof by itself.
+  // When the Authority was not saved before the callback arrived, bind it to
+  // this order only through an exact provider-side unverified record.
+  if (!order.provider_reference) {
+    const savedCallbackUrl = typeof existingMetadata.callback_url === "string"
+      ? existingMetadata.callback_url
+      : "";
+    if (!orderId || !savedCallbackUrl) {
+      return json({ success: false, pending: true, error: "Payment authority cannot yet be safely bound to this order" }, 409);
+    }
+    let unverifiedResponse: Response;
+    try {
+      unverifiedResponse = await fetch(ZARINPAL_API + "/unVerified.json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ merchant_id: merchantId }),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch {
+      return json({ success: false, pending: true, error: "Payment order requires provider reconciliation" }, 503);
+    }
+    const unverifiedPayload = await unverifiedResponse.json().catch(() => null);
+    if (!unverifiedResponse.ok || !isUnverifiedAuthorityForOrder(unverifiedPayload, {
+      orderId: order.id,
+      amount: Number(order.amount),
+      callbackUrl: savedCallbackUrl,
+      authority,
+    })) {
+      return json({ success: false, pending: true, error: "Provider evidence did not safely match this payment order" }, 409);
+    }
+    const { data: boundOrder, error: bindError } = await admin.from("armex_payment_orders")
+      .update({
+        provider_reference: authority,
+        provider_metadata: {
+          ...existingMetadata,
+          request_state: "authority_bound_to_callback",
+          authority_bound_at: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", order.id).is("provider_reference", null)
+      .select("id,provider_reference").maybeSingle();
+    if (bindError || !boundOrder) {
+      const { data: persistedOrder, error: lookupError } = await admin.from("armex_payment_orders")
+        .select("provider_reference").eq("id", order.id).maybeSingle();
+      if (lookupError || persistedOrder?.provider_reference !== authority) {
+        return json({ success: false, pending: true, error: "Payment authority binding needs manual reconciliation" }, 500);
+      }
+    }
+  }
 
   // Once verification is durably recorded, wallet-credit retries must not
   // depend on Zarinpal being available again.
