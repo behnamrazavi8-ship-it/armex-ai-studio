@@ -83,3 +83,49 @@ export const isUnverifiedAuthorityForOrder = (
   if (!expected.authority.trim()) return false;
   return findUnverifiedAuthorityForOrder(response, expected) === expected.authority;
 };
+
+
+export type ConfiguredPaymentPackage = {
+  id: string;
+  amount_irr: number;
+  credits: number;
+  title: string;
+};
+
+/**
+ * Parse the server-owned PAYMENT_PACKAGES value fail-closed.
+ * A malformed entry or duplicate ID invalidates the whole configuration;
+ * silently dropping entries could make displayed and charged packages diverge.
+ */
+export const parsePaymentPackages = (value: unknown): ConfiguredPaymentPackage[] => {
+  if (!Array.isArray(value) || value.length === 0) return [];
+  const ids = new Set<string>();
+  const packages: ConfiguredPaymentPackage[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const row = item as Record<string, unknown>;
+    if (typeof row.id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(row.id) ||
+        ids.has(row.id) ||
+        !Number.isSafeInteger(row.amount_irr) || (row.amount_irr as number) <= 0 ||
+        !Number.isSafeInteger(row.credits) || (row.credits as number) <= 0 ||
+        typeof row.title !== "string" || !row.title.trim() || row.title.length > 100) {
+      return [];
+    }
+    ids.add(row.id);
+    packages.push({
+      id: row.id,
+      amount_irr: row.amount_irr as number,
+      credits: row.credits as number,
+      title: row.title.trim(),
+    });
+  }
+  return packages;
+};
+
+export const resolvePaymentPackage = (
+  serverConfiguration: unknown,
+  packageId: unknown,
+): ConfiguredPaymentPackage | null => {
+  if (typeof packageId !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(packageId)) return null;
+  return parsePaymentPackages(serverConfiguration).find((item) => item.id === packageId) ?? null;
+};
