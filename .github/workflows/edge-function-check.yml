@@ -6,6 +6,7 @@ on:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
+      - "supabase/migrations/**"
   push:
     branches: [main]
     paths:
