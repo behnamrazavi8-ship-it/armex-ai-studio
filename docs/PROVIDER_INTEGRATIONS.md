@@ -78,6 +78,10 @@ Payment flow:
 6. Once `status=paid` and a non-empty provider `ref_id` are durably stored, retries use that stored verification evidence and do not depend on another Zarinpal verification request. Wallet grants remain idempotent with `payment_order:{order_id}`.
 7. Repeated and concurrent callback paths use the same order-level grant key. A late non-OK browser return cannot cancel a durably paid order.
 
+## Callback recovery simulation tests
+
+The CI suite also runs `provider-callback-simulation_test.ts`, a deterministic in-memory adapter simulation covering concurrent Zarinpal callbacks, a wallet-grant transport failure after a durable ledger commit, a late non-OK callback after payment verification, duplicate RunPod failure callbacks, refund retry after an ambiguous commit, and a success/failure race. These tests exercise the callback policy decisions and simulated idempotent ledgers only; they do not connect to Supabase, Zarinpal, or RunPod and are not a substitute for staging integration tests.
+
 ## Database and rollout
 
 The staged migration adds `armex_video_generations`, owner-only read access, refund retry state, and payment order package/idempotency metadata. Apply it only after reviewing the diff and approving the production migration.
