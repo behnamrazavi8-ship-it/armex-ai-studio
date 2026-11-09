@@ -67,6 +67,30 @@ as $$
 declare
   updated_count integer;
 begin
+  if p_response_payload is null
+     or jsonb_typeof(p_response_payload) <> 'object'
+     or not exists (
+       select 1
+       from public.armex_chat_requests r
+       where r.user_id = p_user_id
+         and r.request_id = p_request_id
+         and r.status = 'processing'
+         and r.provider_outcome = 'accepted'
+         and r.debit_outcome = 'debited'
+         and r.provider_response_payload is not null
+         and r.recovery_message is not null
+         and exists (
+           select 1 from public.armex_usage u
+           where u.user_id = p_user_id and u.request_id = p_request_id
+         )
+         and (
+           select count(*) from public.armex_messages m
+           where m.user_id = p_user_id and m.request_id = p_request_id
+         ) = 2
+     ) then
+    raise exception 'chat request is not eligible for completion';
+  end if;
+
   update public.armex_chat_requests
   set status = 'completed',
       response_payload = p_response_payload,
