@@ -2,7 +2,8 @@ import { createSupabaseContext } from "npm:@supabase/server@1";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
-import { hasDurableVerifiedPayment } from "./payment-callback-policy.ts";
+import { hasDurableVerifiedPayment, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
+import { decideRunpodCallbackAction, runpodRefundIdempotencyKey } from "./runpod-callback-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -101,7 +102,9 @@ const refundCredits = async (
   reason: string,
 ) => {
   if (amount <= 0) return true;
-  const idempotencyKey = "ai_refund:" + requestId + ":" + attemptId + ":" + reason;
+  const idempotencyKey = reason === "video_refund" && requestId === attemptId
+    ? runpodRefundIdempotencyKey(requestId)
+    : "ai_refund:" + requestId + ":" + attemptId + ":" + reason;
   for (let attempt = 0; attempt < 2; attempt++) {
     const { data, error } = await db.rpc("armex_grant_credits", {
       p_user_id: userId,
@@ -550,8 +553,8 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   if (job.provider_job_id && job.provider_job_id !== providerJobId) {
     return json({ success: false, error: "Provider job ID mismatch" }, 409);
   }
-  if (["completed", "failed", "cancelled"].includes(job.status) &&
-      !(["failed", "cancelled"].includes(job.status) && job.refund_status === "pending")) {
+  const callbackAction = decideRunpodCallbackAction(job.status, job.refund_status, providerStatus);
+  if (callbackAction === "duplicate") {
     return json({ success: true, duplicate: true }, 200);
   }
 
@@ -582,7 +585,7 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
     return json({ success: true }, 200);
   }
 
-  if (!(job.status === "failed" && job.refund_status === "pending")) {
+  if (callbackAction !== "retry_refund") {
     const terminalStatus = providerStatus === "CANCELLED" ? "cancelled" : "failed";
     const { data: claimed, error: claimError } = await admin.from("armex_video_generations")
       .update({
@@ -759,7 +762,7 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
   // Once verification is durably recorded, wallet-credit retries must not
   // depend on Zarinpal being available again.
   const alreadyVerified = hasDurableVerifiedPayment(order.status, order.provider_metadata);
-  if (status !== "OK" && order.status !== "paid") {
+  if (shouldCancelUnverifiedPayment(status, order.status)) {
     await admin.from("armex_payment_orders").update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("id", order.id).eq("status", "pending");
     return json({ success: false, cancelled: true, order_id: order.id }, 200);
@@ -792,7 +795,7 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
 
   const { data: granted, error: grantError } = await admin.rpc("armex_grant_credits", {
     p_user_id: order.user_id, p_amount: Number(order.credits), p_type: "purchase",
-    p_idempotency_key: "payment_order:" + order.id,
+    p_idempotency_key: paymentGrantIdempotencyKey(order.id),
     p_description: "شارژ کیف پول پس از تأیید پرداخت زرین‌پال",
     p_metadata: { order_id: order.id, provider: "zarinpal", ref_id: refId },
   });
