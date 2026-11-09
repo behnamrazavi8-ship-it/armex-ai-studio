@@ -280,29 +280,6 @@ const generateImage = async (
     });
     if (!providerResponse.ok) {
       const providerError = await providerResponse.text();
-      const providerIsDefinitiveRejection =
-        providerResponse.status >= 400 &&
-        providerResponse.status < 500 &&
-        providerResponse.status !== 408;
-      const { data: providerEvidenceSaved, error: providerEvidenceError } = await db.rpc(
-        "armex_record_chat_provider_evidence",
-        {
-          p_user_id: userId,
-          p_request_id: requestId,
-          p_provider_outcome: providerIsDefinitiveRejection ? "rejected" : "unknown",
-          p_debit_outcome: "debited",
-          p_provider_http_status: providerResponse.status,
-          p_provider_response_payload: null,
-          p_diagnostic_code: "provider_http_" + providerResponse.status,
-        },
-      );
-      if (providerEvidenceError || providerEvidenceSaved !== true) {
-        debitCompleted = false;
-        return json({
-          success: true, pending: true, request_id: requestId,
-          message: "Provider response was received but its recovery evidence could not be saved; billing remains held",
-        }, 202, cors);
-      }
       console.error("Cloudflare Workers AI image request failed", { requestId, status: providerResponse.status, body: providerError.slice(0, 500) });
       const refunded = await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_provider_error");
       debitCompleted = false;
