@@ -1449,17 +1449,21 @@ const handle = async (request: Request): Promise<Response> => {
     if (providerRequestStarted) {
       // The provider may have accepted/billed the request. Preserve an
       // ambiguous outcome; never convert a transport error into a refund.
-      await db.rpc("armex_record_chat_provider_evidence", {
-        p_user_id: userId,
-        p_request_id: requestId,
-        p_provider_outcome: "unknown",
-        p_debit_outcome: debitOutcomeKnown && debitCompleted ? "debited" : "unknown",
-        p_provider_http_status: null,
-        p_provider_response_payload: null,
-        p_diagnostic_code: error instanceof Error && error.name === "AbortError"
-          ? "provider_timeout"
-          : "provider_transport_error",
-      }).catch(() => undefined);
+      try {
+        await db.rpc("armex_record_chat_provider_evidence", {
+          p_user_id: userId,
+          p_request_id: requestId,
+          p_provider_outcome: "unknown",
+          p_debit_outcome: debitOutcomeKnown && debitCompleted ? "debited" : "unknown",
+          p_provider_http_status: null,
+          p_provider_response_payload: null,
+          p_diagnostic_code: error instanceof Error && error.name === "AbortError"
+            ? "provider_timeout"
+            : "provider_transport_error",
+        });
+      } catch {
+        // Evidence write failure is itself a manual-review condition.
+      }
     }
     console.error("armex-api request failed", {
       requestId,
