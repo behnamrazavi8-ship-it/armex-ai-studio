@@ -1070,6 +1070,25 @@ const handle = async (request: Request): Promise<Response> => {
     );
   }
 
+  // Persist the minimum request context needed to recover a billable
+  // provider response locally. This write happens before debit/provider work.
+  const { data: recoveryMetadataSaved, error: recoveryMetadataError } = await db.rpc(
+    "armex_set_chat_recovery_metadata",
+    {
+      p_user_id: userId,
+      p_request_id: requestId,
+      p_message: message,
+      p_model: model,
+      p_conversation_id: conversationId ?? null,
+      p_credits: chatCreditCost,
+      p_attempt_id: attemptId,
+    },
+  );
+  if (recoveryMetadataError || recoveryMetadataSaved !== true) {
+    await markChatRequestFailed(db, userId, requestId, "recovery_metadata_failed");
+    return fail("Could not safely prepare chat recovery metadata", 500, cors);
+  }
+
   let conversation: { id: string } | null = null;
   let createdConversation = false;
   let context: Array<{ role: "user" | "assistant"; content: string }> = [];
