@@ -1,5 +1,20 @@
 -- Real independent-session races against disposable PostgreSQL only.
 create extension if not exists dblink;
+
+-- The staged migration must explicitly grant the callback's service role access.
+do $block$
+begin
+ if not has_table_privilege('service_role','public.armex_payment_orders','SELECT')
+    or not has_table_privilege('service_role','public.armex_payment_orders','INSERT')
+    or not has_table_privilege('service_role','public.armex_payment_orders','UPDATE') then
+   raise exception 'service_role is missing required payment-order privileges';
+ end if;
+ if has_table_privilege('anon','public.armex_payment_orders','SELECT')
+    or has_table_privilege('authenticated','public.armex_payment_orders','INSERT')
+    or has_table_privilege('authenticated','public.armex_payment_orders','UPDATE') then
+   raise exception 'untrusted roles have excessive payment-order privileges';
+ end if;
+end $block$;
 insert into auth.users(id) values(gen_random_uuid()) returning id \gset
 \set payment_user :id
 insert into public.armex_payment_orders(user_id,amount,currency,credits,provider,status)
