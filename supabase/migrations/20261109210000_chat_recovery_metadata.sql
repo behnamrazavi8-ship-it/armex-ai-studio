@@ -22,7 +22,7 @@ create or replace function public.armex_set_chat_recovery_metadata(
 )
 returns boolean
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
