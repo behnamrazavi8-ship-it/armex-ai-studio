@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ARG WAN_REPO_COMMIT=1ea34ff48f87168174e12956e200b1d908b1c5ff
+ARG WAN_MODEL_REVISION
+RUN echo "${WAN_MODEL_REVISION}" | grep -Eq "^[0-9a-f]{40}$"
+ENV WAN_MODEL_REVISION=${WAN_MODEL_REVISION}
 RUN git clone https://github.com/Wan-Video/Wan2.2.git /opt/Wan2.2 \
     && git -C /opt/Wan2.2 checkout ${WAN_REPO_COMMIT}
 
