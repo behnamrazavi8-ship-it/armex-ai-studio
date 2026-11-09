@@ -94,7 +94,7 @@ begin
   end;
   begin
     insert into public.armex_referrals(referrer_user_id,referred_user_id,referral_code)
-    values('10000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000001','DUPLICATE');
+    values('10000000-0000-0000-0000-000000000004','10000000-0000-0000-0000-000000000002','DUPLICATE');
     raise exception 'duplicate referred user unexpectedly accepted';
   exception when unique_violation then null;
   end;
