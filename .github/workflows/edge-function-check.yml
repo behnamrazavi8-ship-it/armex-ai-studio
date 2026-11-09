@@ -58,6 +58,9 @@ jobs:
       - name: Test chat request billing lifecycle
         run: deno test supabase/functions/armex-api/chat-request-lifecycle_test.ts
 
+      - name: Test credit ledger evidence matching
+        run: deno test supabase/functions/armex-api/credit-ledger-policy_test.ts
+
       - name: Test Zarinpal payment callback recovery policy
         run: deno test supabase/functions/armex-api/payment-callback-policy_test.ts
 
@@ -86,6 +89,12 @@ jobs:
 
       - name: Test concurrent payment and video callbacks in PostgreSQL
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/provider-callback-concurrency.sql
+
+      - name: Test wallet RPCs in disposable PostgreSQL
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/wallet-rpc-fixture.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109240000_wallet_rpc_idempotency_hardening.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/wallet-rpc-invariants.sql
 
       - name: Build disposable PostgreSQL schema fixture
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-fixture.sql
