@@ -14,6 +14,7 @@ import {
 } from "./runpod-callback-policy.ts";
 import { isMatchingCreditDebit, isMatchingCreditRefund } from "./credit-ledger-policy.ts";
 import { resolveVideoDebitOutcome } from "./video-debit-policy.ts";
+import { assessVideoRecovery } from "./video-recovery-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -723,13 +724,54 @@ const getVideoStatus = async (
 ): Promise<Response> => {
   if (!isUuid(id)) return fail("A valid video job ID is required", 400, cors);
   const { data: job, error } = await db.from("armex_video_generations")
-    .select("id,request_id,status,provider_job_id,result_url,error_code,credits_charged,refund_status,created_at,updated_at")
+    .select("id,request_id,status,provider_job_id,result_url,error_code,credits_charged,refund_status,provider_metadata,created_at,updated_at")
     .eq("id", id).eq("user_id", userId).maybeSingle();
   if (error || !job) return fail("Video job not found", 404, cors);
   if (["failed", "cancelled"].includes(job.status) && job.refund_status === "pending") {
     const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
     if (refunded) await db.from("armex_video_generations").update({ refund_status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId).in("status", ["failed", "cancelled"]);
     return json({ success: refunded, video: { ...job, refund_status: refunded ? "completed" : "pending" } }, refunded ? 200 : 500, cors);
+  }
+  if (!job.provider_job_id) {
+    const recovery = assessVideoRecovery({
+      status: job.status,
+      providerJobId: job.provider_job_id,
+      errorCode: job.error_code,
+      createdAt: job.created_at,
+      nowMs: Date.now(),
+    });
+    if (recovery?.action === "manual_review") {
+      const metadata = job.provider_metadata && typeof job.provider_metadata === "object" &&
+          !Array.isArray(job.provider_metadata)
+        ? job.provider_metadata as Record<string, unknown>
+        : {};
+      let markedMetadata = metadata;
+      if (metadata.recovery_status !== recovery.recoveryStatus) {
+        markedMetadata = {
+          ...metadata,
+          recovery_status: recovery.recoveryStatus,
+          recovery_reason: recovery.reason,
+          recovery_marked_at: new Date().toISOString(),
+        };
+        const { data: marked, error: markError } = await db.from("armex_video_generations")
+          .update({ provider_metadata: markedMetadata })
+          .eq("id", job.id).eq("user_id", userId).eq("status", "queued")
+          .is("provider_job_id", null).eq("error_code", job.error_code)
+          .select("id").maybeSingle();
+        if (markError) return fail("Could not save video recovery marker", 500, cors);
+        if (!marked) {
+          const { data: latest, error: latestError } = await db.from("armex_video_generations")
+            .select("id,request_id,status,provider_job_id,result_url,error_code,credits_charged,refund_status,provider_metadata,created_at,updated_at")
+            .eq("id", job.id).eq("user_id", userId).maybeSingle();
+          if (latestError || !latest) return fail("Could not refresh video recovery status", 500, cors);
+          return json({ success: true, video: latest }, 200, cors);
+        }
+      }
+      return json({
+        success: true,
+        video: { ...job, provider_metadata: markedMetadata, recovery_status: recovery.recoveryStatus },
+      }, 200, cors);
+    }
   }
   if (["completed", "failed", "cancelled"].includes(job.status) || !job.provider_job_id) {
     return json({ success: true, video: job }, 200, cors);
