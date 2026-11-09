@@ -8,6 +8,7 @@ import {
   decideRunpodCallbackAction,
   isDefinitiveRunpodRejection,
   isMatchingRunpodStatusSnapshot,
+  isMatchingRunpodJobSnapshot,
   runpodRefundIdempotencyKey,
   runpodAuthorizationHeader,
 } from "./runpod-callback-policy.ts";
@@ -722,7 +723,7 @@ const getVideoStatus = async (
 ): Promise<Response> => {
   if (!isUuid(id)) return fail("A valid video job ID is required", 400, cors);
   const { data: job, error } = await db.from("armex_video_generations")
-    .select("id,status,provider_job_id,result_url,error_code,credits_charged,refund_status,created_at,updated_at")
+    .select("id,request_id,status,provider_job_id,result_url,error_code,credits_charged,refund_status,created_at,updated_at")
     .eq("id", id).eq("user_id", userId).maybeSingle();
   if (error || !job) return fail("Video job not found", 404, cors);
   if (["failed", "cancelled"].includes(job.status) && job.refund_status === "pending") {
@@ -741,7 +742,11 @@ const getVideoStatus = async (
   });
   if (!response.ok) return fail("Could not retrieve video status", 502, cors);
   const payload = await response.json();
-  const status = videoProviderStatus(String(payload.status ?? "IN_PROGRESS"));
+  if (!isMatchingRunpodJobSnapshot(payload, job.provider_job_id, job.request_id)) {
+    console.error("RunPod polling snapshot did not match the persisted video job", { videoJobId: job.id });
+    return fail("RunPod returned a status snapshot that does not match this video request", 502, cors);
+  }
+  const status = videoProviderStatus(String(payload.status));
   const output = payload.output ?? {};
   const resultUrl = status === "completed"
     ? safeHttpsUrl(output.video_url ?? output.url)
