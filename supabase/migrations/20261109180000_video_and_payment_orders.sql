@@ -58,9 +58,9 @@ create unique index if not exists armex_payment_orders_provider_reference_idx
   where provider is not null and provider_reference is not null;
 
 
--- A payment request without a saved Authority is ambiguous. Permit only one
--- such pending Zarinpal order per user so a new request_id cannot create a
--- second provider session while the first request is being reconciled.
+-- A pending order with a known Authority is still an open payment session.
+-- Permit only one pending Zarinpal order per user until callback verification
+-- or a confirmed cancellation resolves it. Existing duplicates need review.
 do $block$
 begin
   if exists (
@@ -68,17 +68,15 @@ begin
     from public.armex_payment_orders
     where provider = 'zarinpal'
       and status = 'pending'
-      and provider_reference is null
     group by user_id
     having count(*) > 1
   ) then
-    raise exception 'Cannot add ambiguous Zarinpal order guard: duplicate pending orders without provider references require manual reconciliation first';
+    raise exception 'Cannot add Zarinpal pending-order guard: duplicate pending orders require manual reconciliation first';
   end if;
 end
 $block$;
 
-create unique index if not exists armex_payment_orders_one_ambiguous_pending_per_user_idx
+create unique index if not exists armex_payment_orders_one_pending_per_user_idx
   on public.armex_payment_orders (user_id)
   where provider = 'zarinpal'
-    and status = 'pending'
-    and provider_reference is null;
+    and status = 'pending';
