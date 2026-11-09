@@ -556,7 +556,8 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   const { error: saveError } = await admin.from("armex_video_generations").update({
     provider_job_id: providerJobId, status: providerStatus === "CANCELLED" ? "cancelled" : "failed",
     refund_status: refunded ? "completed" : "pending",
-    error_code: "provider_job_failed", updated_at: new Date().toISOString(),
+    error_code: providerStatus === "TIMED_OUT" ? "provider_job_timed_out" : "provider_job_failed",
+    updated_at: new Date().toISOString(),
   }).eq("id", job.id);
   if (saveError) return json({ success: false, error: "Could not persist failed video result" }, 500);
   return json({ success: true, refund_status: refunded ? "completed" : "pending" }, 200);
