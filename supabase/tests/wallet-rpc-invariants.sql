@@ -1,7 +1,10 @@
 -- Behavioral tests for strict, atomic wallet RPC idempotency.
+create extension if not exists dblink;
 insert into auth.users(id) values
 ('00000000-0000-0000-0000-000000000001'),
-('00000000-0000-0000-0000-000000000002');
+('00000000-0000-0000-0000-000000000002'),
+('00000000-0000-0000-0000-000000000003'),
+('00000000-0000-0000-0000-000000000004');
 insert into public.armex_wallets(user_id,balance) values
 ('00000000-0000-0000-0000-000000000001',100),
 ('00000000-0000-0000-0000-000000000002',0);
@@ -72,3 +75,60 @@ begin
   end if;
 end
 $acl$;
+
+
+-- Independent PostgreSQL sessions: same-key debit retries must debit once.
+insert into public.armex_wallets(user_id,balance)
+values('00000000-0000-0000-0000-000000000003',100);
+select dblink_connect('wallet_a','dbname='||current_database());
+select dblink_connect('wallet_b','dbname='||current_database());
+select dblink_send_query('wallet_a',
+  $$select public.armex_debit_credits('00000000-0000-0000-0000-000000000003',40,'race-same-key','race','{}')$$);
+select dblink_send_query('wallet_b',
+  $$select public.armex_debit_credits('00000000-0000-0000-0000-000000000003',40,'race-same-key','race','{}')$$);
+create temp table wallet_same_key_results(result boolean);
+insert into wallet_same_key_results select * from dblink_get_result('wallet_a') as t(result boolean);
+insert into wallet_same_key_results select * from dblink_get_result('wallet_b') as t(result boolean);
+select * from dblink_get_result('wallet_a') as t(result boolean);
+select * from dblink_get_result('wallet_b') as t(result boolean);
+do $race$
+begin
+  if (select balance from public.armex_wallets where user_id='00000000-0000-0000-0000-000000000003')<>60 then
+    raise exception 'concurrent same-key debit changed balance more than once';
+  end if;
+  if (select count(*) from public.armex_credit_transactions where user_id='00000000-0000-0000-0000-000000000003' and idempotency_key='race-same-key')<>1 then
+    raise exception 'concurrent same-key debit created multiple ledger rows';
+  end if;
+  if (select count(*) from wallet_same_key_results where result is true)<>2 then
+    raise exception 'both same-key debit retries should resolve as success';
+  end if;
+end
+$race$;
+
+-- Independent requests cannot overspend a wallet under concurrent load.
+insert into public.armex_wallets(user_id,balance)
+values('00000000-0000-0000-0000-000000000004',30);
+select dblink_send_query('wallet_a',
+  $$select public.armex_debit_credits('00000000-0000-0000-0000-000000000004',20,'race-key-a','race','{}')$$);
+select dblink_send_query('wallet_b',
+  $$select public.armex_debit_credits('00000000-0000-0000-0000-000000000004',20,'race-key-b','race','{}')$$);
+create temp table wallet_overspend_results(result boolean);
+insert into wallet_overspend_results select * from dblink_get_result('wallet_a') as t(result boolean);
+insert into wallet_overspend_results select * from dblink_get_result('wallet_b') as t(result boolean);
+select * from dblink_get_result('wallet_a') as t(result boolean);
+select * from dblink_get_result('wallet_b') as t(result boolean);
+do $overspend$
+begin
+  if (select balance from public.armex_wallets where user_id='00000000-0000-0000-0000-000000000004')<>10 then
+    raise exception 'concurrent debit overspent wallet or lost balance update';
+  end if;
+  if (select count(*) from wallet_overspend_results where result is true)<>1 then
+    raise exception 'exactly one concurrent debit should succeed with insufficient combined balance';
+  end if;
+  if (select count(*) from public.armex_credit_transactions where user_id='00000000-0000-0000-0000-000000000004')<>1 then
+    raise exception 'unexpected concurrent overspend ledger row count';
+  end if;
+end
+$overspend$;
+select dblink_disconnect('wallet_a');
+select dblink_disconnect('wallet_b');
