@@ -397,7 +397,7 @@ const verifyStoredVideo = async (
     return status === 404 ? false : null;
   }
   if (!data) return false;
-  return data.mimetype === expected.mimeType && Number(data.size) === expected.fileSizeBytes &&
+  return data.contentType === expected.mimeType && Number(data.size) === expected.fileSizeBytes &&
     Number(data.size) <= VIDEO_MAX_BYTES;
 };
 
