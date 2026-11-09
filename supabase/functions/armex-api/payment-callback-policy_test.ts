@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert";
 import {
   hasDurableVerifiedPayment,
+  isMatchingPaymentGrant,
   isValidProviderReference,
   paymentGrantIdempotencyKey,
   shouldCancelUnverifiedPayment,
@@ -58,4 +59,18 @@ Deno.test("concurrent and repeated payment callbacks share one wallet grant key"
   const orderId = "order-123";
   assertEquals(paymentGrantIdempotencyKey(orderId), "payment_order:order-123");
   assertEquals(paymentGrantIdempotencyKey(orderId), paymentGrantIdempotencyKey(orderId));
+});
+
+Deno.test("a duplicate grant is successful only when the ledger matches the exact purchase", () => {
+  const valid = {
+    amount: 500,
+    transaction_type: "purchase",
+    metadata: { order_id: "order-123", provider: "zarinpal" },
+  };
+  assertEquals(isMatchingPaymentGrant(valid, { orderId: "order-123", credits: 500 }), true);
+  assertEquals(isMatchingPaymentGrant({ ...valid, amount: 501 }, { orderId: "order-123", credits: 500 }), false);
+  assertEquals(isMatchingPaymentGrant({ ...valid, transaction_type: "refund" }, { orderId: "order-123", credits: 500 }), false);
+  assertEquals(isMatchingPaymentGrant({ ...valid, metadata: { order_id: "other-order" } }, { orderId: "order-123", credits: 500 }), false);
+  assertEquals(isMatchingPaymentGrant({ ...valid, metadata: null }, { orderId: "order-123", credits: 500 }), false);
+  assertEquals(isMatchingPaymentGrant(null, { orderId: "order-123", credits: 500 }), false);
 });
