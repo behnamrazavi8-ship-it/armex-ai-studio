@@ -2,6 +2,40 @@
 -- Runs only against the disposable PostgreSQL service in GitHub Actions.
 begin;
 
+-- Security regression checks: the request ledger is service-role-only.
+do $
+declare
+  fn regprocedure;
+  fn_list regprocedure[] := array[
+    'public.armex_claim_chat_request(uuid,uuid)'::regprocedure,
+    'public.armex_complete_chat_request(uuid,uuid,jsonb)'::regprocedure,
+    'public.armex_fail_chat_request(uuid,uuid,text)'::regprocedure,
+    'public.armex_record_chat_provider_evidence(uuid,uuid,text,text,integer,jsonb,text)'::regprocedure,
+    'public.armex_claim_chat_reconciliation(integer,integer)'::regprocedure,
+    'public.armex_release_chat_reconciliation(uuid,uuid,uuid,text)'::regprocedure,
+    'public.armex_set_chat_recovery_metadata(uuid,uuid,text,text,uuid,integer,uuid,numeric,numeric,integer)'::regprocedure,
+    'public.armex_persist_chat_response_atomic(uuid,uuid,uuid,text,text,integer,integer,integer,numeric,text)'::regprocedure
+  ];
+begin
+  if not (select c.relrowsecurity from pg_class c where c.oid='public.armex_chat_requests'::regclass) then
+    raise exception 'chat request ledger must have RLS enabled';
+  end if;
+  if has_table_privilege('anon','public.armex_chat_requests','SELECT')
+     or has_table_privilege('authenticated','public.armex_chat_requests','SELECT') then
+    raise exception 'chat request ledger must not be readable by anon/authenticated';
+  end if;
+  foreach fn in array fn_list loop
+    if has_function_privilege('anon',fn,'EXECUTE')
+       or has_function_privilege('authenticated',fn,'EXECUTE') then
+      raise exception 'untrusted role can execute privileged RPC: %', fn;
+    end if;
+    if not has_function_privilege('service_role',fn,'EXECUTE') then
+      raise exception 'service_role is missing required RPC execute grant: %', fn;
+    end if;
+  end loop;
+end $;
+
+
 do $$
 declare
   v_user uuid := gen_random_uuid();
