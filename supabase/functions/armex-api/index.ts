@@ -12,6 +12,7 @@ import {
   runpodAuthorizationHeader,
 } from "./runpod-callback-policy.ts";
 import { isMatchingCreditDebit, isMatchingCreditRefund } from "./credit-ledger-policy.ts";
+import { resolveVideoDebitOutcome } from "./video-debit-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -432,16 +433,61 @@ const generateVideo = async (
     p_description: "رزرو اعتبار تولید ویدئو در LOKAL AI",
     p_metadata: { request_id: requestId, model: "wan2.2-ti2v-5b", provider: "runpod" },
   });
-  let debitConfirmed = !debitError && debited === true;
+  let debitOutcome: "confirmed" | "insufficient" | "rejected" | "uncertain" | "conflict";
   if (debitError) {
-    const { data: existing } = await db.from("armex_credit_transactions").select("amount,transaction_type")
+    const { data: existing, error: ledgerError } = await db.from("armex_credit_transactions")
+      .select("amount,transaction_type")
       .eq("user_id", userId).eq("idempotency_key", debitKey).maybeSingle();
-    debitConfirmed = isMatchingCreditDebit(existing, VIDEO_CREDIT_COST);
+    debitOutcome = resolveVideoDebitOutcome({
+      rpcError: true,
+      rpcData: debited,
+      ledgerError: Boolean(ledgerError),
+      ledgerFound: existing !== null,
+      ledgerMatches: isMatchingCreditDebit(existing, VIDEO_CREDIT_COST),
+    });
+  } else {
+    debitOutcome = resolveVideoDebitOutcome({
+      rpcError: false,
+      rpcData: debited,
+      ledgerError: false,
+      ledgerFound: false,
+      ledgerMatches: false,
+    });
   }
-  if (!debitConfirmed) {
-    await db.from("armex_video_generations").update({ status: "failed", error_code: "credit_reservation_failed" })
-      .eq("id", job.id).eq("user_id", userId);
-    return debitError ? fail("Could not reserve video credits", 500, cors) : fail("Insufficient credits", 402, cors);
+
+  if (debitOutcome === "uncertain" || debitOutcome === "conflict") {
+    const errorCode = debitOutcome === "conflict"
+      ? "credit_reservation_ledger_conflict"
+      : "credit_reservation_uncertain";
+    const { error: pendingError } = await db.from("armex_video_generations").update({
+      error_code: errorCode, updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+    if (pendingError) {
+      console.error("Video debit outcome is uncertain and pending marker failed", {
+        requestId, code: pendingError.code,
+      });
+    }
+    // Do not submit to RunPod until the reservation is positively confirmed.
+    // Keep the request queued so retries cannot create a second debit or GPU job.
+    return json({
+      success: true,
+      pending: true,
+      request_id: requestId,
+      video: { id: job.id, status: "queued", error_code: errorCode },
+      message: "Credit reservation needs reconciliation; no video job was submitted",
+    }, 202, cors);
+  }
+
+  if (debitOutcome !== "confirmed") {
+    const errorCode = debitOutcome === "insufficient"
+      ? "insufficient_credits"
+      : "credit_reservation_failed";
+    await db.from("armex_video_generations").update({
+      status: "failed", error_code: errorCode, updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+    return debitOutcome === "insufficient"
+      ? fail("Insufficient credits", 402, cors)
+      : fail("Could not reserve video credits", 500, cors);
   }
 
   let response: Response;
