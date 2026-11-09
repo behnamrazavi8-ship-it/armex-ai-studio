@@ -364,6 +364,9 @@ const generateVideo = async (
   const requestId = isUuid(body.request_id) ? body.request_id : "";
   const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
   const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
+  let webhookUrl = "";
+  try { webhookUrl = runpodWebhookUrl(); }
+  catch { return fail("Video completion webhook is not configured", 503, cors); }
   if (!endpointId || !token) return fail("Video generation is not configured; RunPod endpoint credentials are required", 503, cors);
   if (!prompt || prompt.length > 6000) return fail("A prompt between 1 and 6000 characters is required", 400, cors);
   if (!requestId) return fail("A UUID request_id is required for safe video billing", 400, cors);
@@ -412,7 +415,7 @@ const generateVideo = async (
           request_id: requestId, aspect_ratio: aspectRatio, duration_seconds: 5, output_mode: "durable_https_url",
         },
         // Reconciles jobs even when the /run response is lost after provider acceptance.
-        webhook: runpodWebhookUrl(),
+        webhook: webhookUrl,
       }),
       signal: AbortSignal.timeout(20000),
     });
