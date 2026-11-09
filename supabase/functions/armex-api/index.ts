@@ -432,7 +432,7 @@ const generateVideo = async (
     await db.from("armex_video_generations").update({ error_code: "provider_submission_uncertain" })
       .eq("id", job.id).eq("user_id", userId);
     console.error("RunPod submission outcome uncertain", { requestId, error: String(error) });
-    return json({ success: true, pending: true, request_id: requestId, message: "Job submission is being reconciled; refresh status shortly" }, 202, cors);
+    return json({ success: true, pending: true, request_id: requestId, video: { id: job.id, status: "queued", error_code: "provider_submission_uncertain" }, message: "Job submission is being reconciled; refresh status shortly" }, 202, cors);
   }
 
   if (!response.ok) {
@@ -449,7 +449,7 @@ const generateVideo = async (
   if (!providerJobId) {
     await db.from("armex_video_generations").update({ error_code: "provider_job_id_missing" })
       .eq("id", job.id).eq("user_id", userId);
-    return json({ success: true, pending: true, request_id: requestId, message: "Provider accepted the request; job ID reconciliation is required" }, 202, cors);
+    return json({ success: true, pending: true, request_id: requestId, video: { id: job.id, status: "queued", error_code: "provider_job_id_missing" }, message: "Provider accepted the request; job ID reconciliation is required" }, 202, cors);
   }
   // A terminal webhook can arrive before the /run response. Only update a job
   // that is still queued, so the late submission response cannot overwrite it.
