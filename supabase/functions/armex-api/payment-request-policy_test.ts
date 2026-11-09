@@ -52,7 +52,7 @@ Deno.test("ambiguous, incomplete or mismatched unverified results never recover 
 Deno.test("provider validation errors are definitive but malformed and server failures are ambiguous", () => {
   assertEquals(isDefinitiveZarinpalRequestRejection(200, { data: { code: -9 } }), true);
   assertEquals(isDefinitiveZarinpalRequestRejection(400, { errors: { code: -9 } }), true);
-  assertEquals(isDefinitiveZarinpalRequestRejection(502, { data: { code: -9 } }), true);
+  assertEquals(isDefinitiveZarinpalRequestRejection(502, { data: { code: -9 } }), false);
   assertEquals(isDefinitiveZarinpalRequestRejection(502, {}), false);
   assertEquals(isDefinitiveZarinpalRequestRejection(200, { data: { code: 100 } }), false);
   assertEquals(isDefinitiveZarinpalRequestRejection(200, null), false);
