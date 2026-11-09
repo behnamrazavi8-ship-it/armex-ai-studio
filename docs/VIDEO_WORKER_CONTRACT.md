@@ -1,6 +1,6 @@
 # LOKAL AI — RunPod video worker contract
 
-Status: staged integration contract; no GPU endpoint is invoked by CI.
+Status: worker source and CPU-only contract tests are staged; no GPU endpoint is invoked by CI.
 
 ## Request
 
@@ -20,7 +20,7 @@ The `webhook` property is a top-level sibling of `input`, not part of the model 
 The signed URL is valid for two hours and is scoped to the deterministic object path
 `<user_id>/<video_job_id>.mp4` in the private `lokal-ai-videos` bucket. It is an upload capability:
 never print it, persist it in worker logs, include it in the output, or expose it to the browser.
-The worker never receives `SUPABASE_SERVICE_ROLE_KEY`.
+The worker never receives `SUPABASE_SERVICE_ROLE_KEY`. The API also passes `storage_upload.path`, the exact deterministic object key.
 
 ## Worker responsibilities
 
@@ -45,13 +45,19 @@ The API independently checks that the object exists in the private bucket and th
 
 Provider-supplied public URLs are not accepted as durable results. The API stores only the private object path and issues a one-hour signed download URL after verifying the requesting user owns the job.
 
+## Worker implementation
+
+The `runpod-worker/` directory contains a Serverless handler, a pinned Wan2.2 source checkout, a pinned Python constraints file, and a CUDA/PyTorch container definition. The handler runs the official `ti2v-5B` command with model offload, CPU T5, and 121 frames, then probes the generated MP4 before uploading it. It explicitly checks the output file because the upstream Wan `save_video` helper can log an encoding error without returning a failing process status.
+
+The official Wan2.2 TI2V-5B recipe requires at least 24 GB of GPU memory and documents 720p output at 24 fps. The worker is configured for a 900-second job timeout and should run one generation per 24 GB GPU worker at a time. Model weights are downloaded to the configured checkpoint directory on cold start; a mounted RunPod network volume can cache them, but that storage option is not created or purchased here.
+
 ## Cost-free verification before GPU enablement
 
 CI tests the output contract, path isolation, MIME type, file-size ceiling, and disposable SQL bucket configuration. It does not call RunPod, allocate a GPU, deploy an Edge Function, or mutate production.
 
 ## Release gates
 
-- Add the worker implementation and pinned Python dependencies/container build.
-- Build and run the worker's upload contract against a disposable Supabase Storage bucket using a tiny synthetic MP4.
+- Build and push the worker container image, then configure a RunPod Serverless endpoint with a compatible 24 GB GPU and at least 900 seconds execution timeout.
+- Run the worker's upload contract against a disposable Supabase Storage bucket using a tiny synthetic MP4.
 - Verify the webhook and polling paths both converge to the same private object and that signed downloads are owner-gated.
 - Only then request approval for a controlled paid RunPod smoke test.
