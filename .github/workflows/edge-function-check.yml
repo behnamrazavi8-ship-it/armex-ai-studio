@@ -1,6 +1,7 @@
 name: Edge Function and frontend checks
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "index.html"
