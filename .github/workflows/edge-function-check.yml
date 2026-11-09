@@ -77,6 +77,9 @@ jobs:
       - name: Test chat recovery SQL invariants
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-regression.sql
 
+      - name: Test multi-session chat reconciliation races
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-concurrency.sql
+
       - name: Syntax-check browser JavaScript
         run: |
           python - <<'PY'
