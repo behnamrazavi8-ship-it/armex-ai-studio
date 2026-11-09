@@ -425,7 +425,7 @@ const generateVideo = async (
     const detail = (await response.text()).slice(0, 300);
     console.error("RunPod rejected video job", { requestId, status: response.status, detail });
     const refunded = await refundCredits(db, userId, VIDEO_CREDIT_COST, requestId, requestId, "video_provider_rejected");
-    await db.from("armex_video_generations").update({ status: "failed", error_code: "provider_rejected" })
+    await db.from("armex_video_generations").update({ status: "failed", refund_status: refunded ? "completed" : "pending", error_code: "provider_rejected" })
       .eq("id", job.id).eq("user_id", userId);
     return fail(refunded ? "Video provider rejected the job; credits were returned" : "Provider rejected the job but refund could not be confirmed", refunded ? 502 : 500, cors);
   }
@@ -451,9 +451,14 @@ const getVideoStatus = async (
 ): Promise<Response> => {
   if (!isUuid(id)) return fail("A valid video job ID is required", 400, cors);
   const { data: job, error } = await db.from("armex_video_generations")
-    .select("id,status,provider_job_id,result_url,error_code,credits_charged,created_at,updated_at")
+    .select("id,status,provider_job_id,result_url,error_code,credits_charged,refund_status,created_at,updated_at")
     .eq("id", id).eq("user_id", userId).maybeSingle();
   if (error || !job) return fail("Video job not found", 404, cors);
+  if (job.status === "failed" && job.refund_status === "pending") {
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_provider_failed");
+    if (refunded) await db.from("armex_video_generations").update({ refund_status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId);
+    return json({ success: refunded, video: { ...job, refund_status: refunded ? "completed" : "pending" } }, refunded ? 200 : 500, cors);
+  }
   if (["completed", "failed", "cancelled"].includes(job.status) || !job.provider_job_id) {
     return json({ success: true, video: job }, 200, cors);
   }
@@ -471,10 +476,16 @@ const getVideoStatus = async (
     ? safeHttpsUrl(output.video_url ?? output.url)
     : null;
   if (status === "completed" && !resultUrl) {
-    await db.from("armex_video_generations").update({ status: "failed", error_code: "worker_did_not_return_durable_https_url" })
-      .eq("id", job.id).eq("user_id", userId);
     const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_missing_output");
+    await db.from("armex_video_generations").update({ status: "failed", refund_status: refunded ? "completed" : "pending", error_code: "worker_did_not_return_durable_https_url" })
+      .eq("id", job.id).eq("user_id", userId);
     return fail(refunded ? "Video worker did not return a permanent HTTPS video URL; credits were returned" : "Video output is missing and credit refund could not be confirmed", 502, cors);
+  }
+  if (status === "failed") {
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_provider_failed");
+    const { error: failedSaveError } = await db.from("armex_video_generations").update({ status: "failed", refund_status: refunded ? "completed" : "pending", error_code: "provider_job_failed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId);
+    if (failedSaveError || !refunded) return fail("Video failed; automatic credit refund is pending and will be retried", 500, cors);
+    return json({ success: true, video: { ...job, status: "failed", refund_status: "completed" } }, 200, cors);
   }
   const update: Record<string, unknown> = {
     status, updated_at: new Date().toISOString(),
@@ -484,10 +495,6 @@ const getVideoStatus = async (
   const { error: saveError } = await db.from("armex_video_generations").update(update)
     .eq("id", job.id).eq("user_id", userId);
   if (saveError) return fail("Could not save video status", 500, cors);
-  if (status === "failed") {
-    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_provider_failed");
-    if (!refunded) return fail("Video failed and the credit refund could not be confirmed", 500, cors);
-  }
   return json({ success: true, video: { ...job, ...update } }, 200, cors);
 };
 
