@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { deriveAcceptedChatPayload } from "./recovery-payload.ts";
 
 type Json = Record<string, unknown>;
 type ReconciliationRow = {
@@ -132,56 +133,32 @@ const processAccepted = async (
     return "manual_review";
   }
 
-  const snapshot = row.provider_response_payload;
-  const choices = Array.isArray(snapshot.choices) ? snapshot.choices : [];
-  const firstChoice = isObject(choices[0]) ? choices[0] : {};
-  const assistant = isObject(firstChoice.message) ? firstChoice.message : {};
-  const answer = typeof assistant.content === "string" ? assistant.content : "";
-  const recoveryModel = typeof recovery.recovery_model === "string" ? recovery.recovery_model : "";
-  const model = typeof snapshot.model === "string" && snapshot.model
-    ? snapshot.model
-    : recoveryModel;
-
-  if (!answer.trim() || !model ||
-      !Number.isSafeInteger(recovery.recovery_credits) ||
-      !Number.isSafeInteger(recovery.recovery_estimated_input_tokens)) {
+  const payload = deriveAcceptedChatPayload(
+    row.provider_response_payload,
+    {
+      recovery_model: recovery.recovery_model,
+      recovery_estimated_input_tokens: recovery.recovery_estimated_input_tokens,
+      recovery_prompt_price: recovery.recovery_prompt_price,
+      recovery_completion_price: recovery.recovery_completion_price,
+    },
+  );
+  if (!payload || !Number.isSafeInteger(recovery.recovery_credits) ||
+      Number(recovery.recovery_credits) < 1) {
     await markManualReview(db, row, "accepted_response_payload_is_not_recoverable");
     return "manual_review";
   }
-
-  const usage = isObject(snapshot.usage) ? snapshot.usage : {};
-  const inputTokens = safeNumber(
-    usage.prompt_tokens,
-    Number(recovery.recovery_estimated_input_tokens),
-  );
-  const outputTokens = safeNumber(usage.completion_tokens, Math.ceil(answer.length / 4));
-  const totalTokens = safeNumber(usage.total_tokens, inputTokens + outputTokens);
-  const reportedCost = safeNumber(usage.cost, -1);
-  const promptPrice = safeNumber(recovery.recovery_prompt_price, -1);
-  const completionPrice = safeNumber(recovery.recovery_completion_price, -1);
-  const calculatedCost = promptPrice >= 0 && completionPrice >= 0
-    ? inputTokens * promptPrice + outputTokens * completionPrice
-    : -1;
-  const actualCost = reportedCost >= 0
-    ? reportedCost
-    : calculatedCost >= 0
-    ? calculatedCost
-    : null;
-  const finishReason = typeof firstChoice.finish_reason === "string"
-    ? firstChoice.finish_reason
-    : null;
 
   const { error } = await db.rpc("armex_persist_chat_response_atomic", {
     p_user_id: row.user_id,
     p_request_id: row.request_id,
     p_lease_token: row.reconciliation_lease_token,
-    p_answer: answer,
-    p_model: model,
-    p_input_tokens: inputTokens,
-    p_output_tokens: outputTokens,
-    p_total_tokens: totalTokens,
-    p_actual_cost_usd: actualCost,
-    p_finish_reason: finishReason,
+    p_answer: payload.answer,
+    p_model: payload.model,
+    p_input_tokens: payload.inputTokens,
+    p_output_tokens: payload.outputTokens,
+    p_total_tokens: payload.totalTokens,
+    p_actual_cost_usd: payload.actualCostUsd,
+    p_finish_reason: payload.finishReason,
   });
 
   if (error) {
