@@ -8,13 +8,13 @@ begin
 end
 $roles$;
 create schema if not exists auth;
-create table auth.users(id uuid primary key);
-create table public.armex_wallets(
+create table if not exists auth.users(id uuid primary key);
+create table if not exists public.armex_wallets(
   user_id uuid primary key references auth.users(id),
   balance bigint not null default 0 check(balance>=0),
   updated_at timestamptz not null default now()
 );
-create table public.armex_credit_transactions(
+create table if not exists public.armex_credit_transactions(
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id),
   amount bigint not null check(amount<>0),
