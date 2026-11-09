@@ -527,7 +527,7 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
     return json({ success: false, error: "Provider job ID mismatch" }, 409);
   }
   if (["completed", "failed", "cancelled"].includes(job.status) &&
-      !(job.status === "failed" && job.refund_status === "pending")) {
+      !(["failed", "cancelled"].includes(job.status) && job.refund_status === "pending")) {
     return json({ success: true, duplicate: true }, 200);
   }
 
@@ -585,9 +585,9 @@ const getVideoStatus = async (
     .select("id,status,provider_job_id,result_url,error_code,credits_charged,refund_status,created_at,updated_at")
     .eq("id", id).eq("user_id", userId).maybeSingle();
   if (error || !job) return fail("Video job not found", 404, cors);
-  if (job.status === "failed" && job.refund_status === "pending") {
+  if (["failed", "cancelled"].includes(job.status) && job.refund_status === "pending") {
     const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
-    if (refunded) await db.from("armex_video_generations").update({ refund_status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId);
+    if (refunded) await db.from("armex_video_generations").update({ refund_status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId).in("status", ["failed", "cancelled"]);
     return json({ success: refunded, video: { ...job, refund_status: refunded ? "completed" : "pending" } }, refunded ? 200 : 500, cors);
   }
   if (["completed", "failed", "cancelled"].includes(job.status) || !job.provider_job_id) {
