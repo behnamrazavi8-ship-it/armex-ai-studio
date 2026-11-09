@@ -107,6 +107,17 @@ begin
   ) then
     raise exception 'recovery metadata should be persisted once';
   end if;
+
+  -- The legacy completion RPC must not bypass provider/debit evidence or
+  -- atomic message+usage persistence.
+  begin
+    perform public.armex_complete_chat_request(
+      v_user, v_request, '{"success":true,"answer":"unverified"}'::jsonb
+    );
+    raise exception 'legacy completion RPC must reject requests without durable evidence';
+  exception when others then
+    if sqlerrm <> 'chat request is not eligible for completion' then raise; end if;
+  end;
   if public.armex_set_chat_recovery_metadata(
     v_user, v_request, 'changed prompt', 'test/model', null, 7, v_attempt, 0.1, 0.2, 12
   ) then
