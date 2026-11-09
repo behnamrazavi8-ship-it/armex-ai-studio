@@ -111,3 +111,33 @@ debit/provider work so recovery can reproduce the normal usage accounting.
 
 No existing database rows should be rewritten or deleted as part of this work.
 Legacy tables and records remain untouched.
+
+
+## Read-only schema review
+
+The staged SQL dependency order is:
+1. `20261109190000_durable_chat_request_idempotency.sql` creates
+   `public.armex_chat_requests` and its service-role-only RPCs.
+2. `20261109200000_chat_request_reconciliation_evidence.sql` adds provider
+   evidence and lease primitives to that table.
+3. `20261109210000_chat_recovery_metadata.sql` adds the recovery inputs.
+4. `20261109220000_chat_atomic_recovery_persistence.sql` adds the
+   request-linked message uniqueness guard and atomic persistence RPC.
+
+A read-only inspection of the connected live project found:
+- `public.armex_chat_requests` does not exist yet, as expected because the
+  staged base migration has not been applied.
+- `public.armex_messages.request_id` does not exist yet; the final staged
+  migration adds it without rewriting legacy rows (NULL remains allowed).
+- `public.armex_usage.request_id` already exists and has a unique constraint,
+  so the staged migration correctly does not add a duplicate usage index.
+- The current `armex_messages`, `armex_usage`, and
+  `armex_conversations` columns used by the atomic function were confirmed
+  through read-only catalog queries.
+
+This is a source/schema compatibility review, not a PostgreSQL execution test.
+The staged migrations remain unapplied. Before rollout, run the complete ordered
+migration set against an isolated disposable database, add database-level tests
+for concurrent claims and atomic persistence, then review Supabase advisors.
+Do not apply only the later migrations: the reconciliation migrations depend
+on the base `armex_chat_requests` migration.
