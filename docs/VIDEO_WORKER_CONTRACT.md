@@ -49,7 +49,13 @@ Provider-supplied public URLs are not accepted as durable results. The API store
 
 The `runpod-worker/` directory contains a Serverless handler, a pinned Wan2.2 source checkout, a pinned Python constraints file, and a CUDA/PyTorch container definition. The handler runs the official `ti2v-5B` command with model offload, CPU T5, and 121 frames, then probes the generated MP4 before uploading it. It explicitly checks the output file because the upstream Wan `save_video` helper can log an encoding error without returning a failing process status.
 
-The official Wan2.2 TI2V-5B recipe requires at least 24 GB of GPU memory and documents 720p output at 24 fps. The worker is configured for a 900-second job timeout and should run one generation per 24 GB GPU worker at a time. Model weights are downloaded to the configured checkpoint directory on cold start; a mounted RunPod network volume can cache them, but that storage option is not created or purchased here. The worker fails closed unless `WAN_MODEL_REVISION` is supplied as an immutable 40-character Hugging Face commit SHA. The Docker build also requires this build argument and rejects branch names such as `main`. Resolve and independently verify the full model-repository commit before building the image; do not substitute a short commit displayed in the web UI.
+The official Wan2.2 TI2V-5B recipe requires at least 24 GB of GPU memory and documents 720p output at 24 fps. The worker is configured for a 900-second job timeout and should run one generation per 24 GB GPU worker at a time. Model weights are downloaded to the configured checkpoint directory on cold start; a mounted RunPod network volume can cache them, but that storage option is not created or purchased here.
+
+The model repository is pinned to the full immutable Hugging Face commit
+`921dbaf3f1674a56f47e83fb80a34bac8a8f203e`. The official repository tree at this revision contains the TI2V-5B VAE,
+T5 encoder, and three diffusion weight shards. The Docker build argument defaults to
+this exact revision and rejects values that are not 40-character lowercase commit SHAs.
+Do not replace it with a branch name such as `main` or a short SHA.
 
 ## Cost-free verification before GPU enablement
 
