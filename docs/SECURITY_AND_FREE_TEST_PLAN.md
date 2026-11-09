@@ -18,9 +18,10 @@ This plan is for PR #30 and its feature branch. It is documentation only: it doe
 | AUTH-02 | Owner isolation | User A requests User B conversation/image/video/order IDs | 404/403; no cross-user data |
 | CORS-01 | CORS | Preview origin not allowlisted; preflight and actual request | Rejected until exact preview origin is intentionally allowlisted |
 | CHAT-01 | Idempotency | Repeat identical request_id after completed usage exists | Cached prior response; no second provider call or debit |
-| CHAT-02 | Idempotency | Concurrent requests with same request_id before usage row exists | Exactly one provider invocation and one debit; second request receives in-progress/duplicate response |
+| CHAT-02 | Idempotency | Concurrent requests with same user_id + request_id before usage row exists | Unique reservation grants exactly one claim; second request receives in-progress/duplicate response; one provider call and one debit |
 | CHAT-03 | Recovery | Provider error or timeout after debit | One refund; repeat retry does not add extra refund |
 | CHAT-04 | Persistence | Conversation/message/usage write fails at each boundary | Durable, discoverable state; no silent duplicate charge; reconciliation path documented |
+| CHAT-05 | Reservation recovery | Edge Function stops after reservation or provider acceptance is ambiguous | Retry stays fail-closed; no duplicate provider invocation; manual reconciliation requirement is visible |
 | WALLET-01 | Ledger | Insufficient balance | 402; no debit ledger entry |
 | PAY-01 | Zarinpal mock | Provider request rejected or malformed JSON | Order transitions to explicit failed/recoverable state; no credits granted |
 | PAY-02 | Zarinpal mock | Authority persistence fails after authority issuance | Order remains traceable and support/reconciliation path is available |
@@ -49,7 +50,7 @@ This plan is for PR #30 and its feature branch. It is documentation only: it doe
 
 ## Blocking design questions before live tests
 
-- Chat needs a durable request reservation/lock so concurrent retries cannot trigger multiple provider calls. A stable debit key alone is insufficient because the debit RPC treats an existing idempotency key as success.
+- Chat now has a staged durable reservation RPC and a stable debit idempotency key. The fail-closed `processing` state intentionally blocks automatic retries after ambiguous failures; a safe operator reconciliation workflow and disposable-DB concurrency tests remain required before release.
 - Payment callback should treat an already-granted idempotency key as successful duplicate processing, while distinguishing true grant errors.
 - Payment order creation needs recovery for an uncertain Zarinpal request/authority persistence.
 - Video submission and status JSON parsing need explicit recovery handling and reconciliation for uncertain provider acceptance.
