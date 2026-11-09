@@ -126,3 +126,22 @@ Deno.test("unverified callback must preserve every configured callback query par
     ] },
   }, expected), null);
 });
+
+Deno.test("accepts the documented unverified-transactions response shape", () => {
+  // The Zarinpal v4 SDK response types expose data.authorities with
+  // authority, amount, callback_url, referer and date fields.
+  const response = {
+    data: {
+      authorities: [{
+        authority: "A-SDK-SHAPE",
+        amount: 100000,
+        callback_url: callbackUrl,
+        referer: "https://www.zarinpal.com/",
+        date: "2026-11-09 12:00:00",
+      }],
+    },
+  };
+  assertEquals(findUnverifiedAuthorityForOrder(response, {
+    orderId, amount: 100000, callbackUrl,
+  }), "A-SDK-SHAPE");
+});
