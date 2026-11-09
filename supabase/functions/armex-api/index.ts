@@ -690,7 +690,7 @@ const getVideoStatus = async (
   const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
   if (!endpointId || !token) return fail("Video status provider is not configured", 503, cors);
   const response = await fetch(RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/status/" + encodeURIComponent(job.provider_job_id), {
-    headers: { Authorization: token }, signal: AbortSignal.timeout(15000),
+    headers: { Authorization: runpodAuthorizationHeader(token) }, signal: AbortSignal.timeout(15000),
   });
   if (!response.ok) return fail("Could not retrieve video status", 502, cors);
   const payload = await response.json();
