@@ -1,6 +1,20 @@
 -- Real independent-session races against disposable PostgreSQL only.
 create extension if not exists dblink;
 
+do $block$
+declare b record;
+begin
+ select * into b from storage.buckets where id='lokal-ai-videos';
+ if not found then raise exception 'private video bucket was not created'; end if;
+ if b.public is distinct from false then raise exception 'video bucket must remain private'; end if;
+ if b.file_size_limit <> 52428800 then raise exception 'video bucket must enforce 50 MiB cap'; end if;
+ if not ('video/mp4'=any(b.allowed_mime_types)) then raise exception 'video bucket must allow MP4 only'; end if;
+ if not exists(select 1 from information_schema.columns where table_schema='public' and table_name='armex_video_generations' and column_name='storage_path')
+    or not exists(select 1 from information_schema.columns where table_schema='public' and table_name='armex_video_generations' and column_name='file_size_bytes') then
+   raise exception 'video durable storage metadata columns are missing';
+ end if;
+end $block$;
+
 -- The staged migration must explicitly grant the callback's service role access.
 do $block$
 begin
