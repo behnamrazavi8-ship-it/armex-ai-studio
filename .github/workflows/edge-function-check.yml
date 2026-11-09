@@ -73,6 +73,9 @@ jobs:
       - name: Test RunPod callback and refund retry policy
         run: deno test supabase/functions/armex-api/runpod-callback-policy_test.ts
 
+      - name: Test video recovery policy
+        run: deno test supabase/functions/armex-api/video-recovery-policy_test.ts
+
       - name: Simulate concurrent payment and video callback recovery
         run: deno test supabase/functions/armex-api/provider-callback-simulation_test.ts
 
