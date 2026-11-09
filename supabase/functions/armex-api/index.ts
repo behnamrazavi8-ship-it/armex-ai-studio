@@ -2,7 +2,7 @@ import { createSupabaseContext } from "npm:@supabase/server@1";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
-import { hasDurableVerifiedPayment, isValidProviderReference, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
+import { hasDurableVerifiedPayment, isMatchingPaymentGrant, isValidProviderReference, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
 import { decideRunpodCallbackAction, runpodRefundIdempotencyKey } from "./runpod-callback-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
@@ -800,15 +800,32 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
     if (paidError) return json({ success: false, error: "Could not record verified payment" }, 500);
   }
 
+  const grantKey = paymentGrantIdempotencyKey(order.id);
   const { data: granted, error: grantError } = await admin.rpc("armex_grant_credits", {
     p_user_id: order.user_id, p_amount: Number(order.credits), p_type: "purchase",
-    p_idempotency_key: paymentGrantIdempotencyKey(order.id),
+    p_idempotency_key: grantKey,
     p_description: "شارژ کیف پول پس از تأیید پرداخت زرین‌پال",
     p_metadata: { order_id: order.id, provider: "zarinpal", ref_id: refId },
   });
   if (grantError || granted !== true) {
-    console.error("Verified payment credit grant failed", { orderId: order.id, code: grantError?.code });
-    return json({ success: false, error: "Payment was verified but wallet crediting needs retry" }, 500);
+    // armex_grant_credits returns false for an existing idempotency key.
+    // Confirm the durable row instead of reporting a successful duplicate as failure.
+    const { data: existingGrant, error: ledgerError } = await admin
+      .from("armex_credit_transactions")
+      .select("amount,transaction_type,metadata")
+      .eq("user_id", order.user_id)
+      .eq("idempotency_key", grantKey)
+      .maybeSingle();
+    if (ledgerError || !isMatchingPaymentGrant(existingGrant, {
+      orderId: order.id,
+      credits: Number(order.credits),
+    })) {
+      console.error("Verified payment credit grant could not be confirmed", {
+        orderId: order.id,
+        code: grantError?.code ?? ledgerError?.code,
+      });
+      return json({ success: false, error: "Payment was verified but wallet crediting needs retry" }, 500);
+    }
   }
   return new Response(`<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پرداخت موفق</title><body style="font-family:sans-serif;background:#07110f;color:#eafff8;padding:40px;text-align:center"><h2>پرداخت با موفقیت تأیید شد</h2><p>${Number(order.credits).toLocaleString("fa-IR")} اعتبار به کیف پول شما اضافه شد.</p><a style="color:#5ce5bd" href="https://lokal-ai.net/?payment=success#workspace-home">بازگشت به LOKAL AI</a></body></html>`, {status:200,headers:{"Content-Type":"text/html; charset=utf-8"}});
 };
