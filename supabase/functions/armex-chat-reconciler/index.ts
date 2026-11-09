@@ -163,8 +163,8 @@ const processAccepted = async (
   });
 
   if (error || !isObject(persisted) || persisted.success !== true) {
-    await releaseLease(db, row, "atomic_persistence_failed:" + (error?.code || "invalid_result"));
-    return row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
+    const released = await releaseLease(db, row, "atomic_persistence_failed:" + (error?.code || "invalid_result"));
+    return released && row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
   }
   return "completed";
 };
@@ -185,8 +185,8 @@ const processRefundableFailure = async (
       : "provider_not_started";
     const failed = await markFailed(db, row, failureCode);
     if (!failed) {
-      await releaseLease(db, row, "failed_state_write_unconfirmed");
-      return row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
+      const released = await releaseLease(db, row, "failed_state_write_unconfirmed");
+      return released && row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
     }
     return "failed";
   }
@@ -211,8 +211,8 @@ const processRefundableFailure = async (
 
   const refunded = await refundCredits(db, row, amount, attemptId, reason);
   if (!refunded) {
-    await releaseLease(db, row, "refund_confirmation_pending");
-    return row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
+    const released = await releaseLease(db, row, "refund_confirmation_pending");
+    return released && row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
   }
 
   const failureCode = row.provider_outcome === "rejected"
@@ -220,8 +220,8 @@ const processRefundableFailure = async (
     : "provider_not_started_refunded";
   const failed = await markFailed(db, row, failureCode);
   if (!failed) {
-    await releaseLease(db, row, "refund_confirmed_but_failure_state_pending");
-    return row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
+    const released = await releaseLease(db, row, "refund_confirmed_but_failure_state_pending");
+    return released && row.reconciliation_attempts >= 5 ? "manual_review" : "retry";
   }
   return "failed";
 };
@@ -296,8 +296,8 @@ const handle = async (request: Request): Promise<Response> => {
         .maybeSingle();
 
       if (recoveryError || !recovery) {
-        await releaseLease(db, row, "recovery_metadata_read_failed");
-        if (row.reconciliation_attempts >= 5) summary.manual_review++;
+        const released = await releaseLease(db, row, "recovery_metadata_read_failed");
+        if (released && row.reconciliation_attempts >= 5) summary.manual_review++;
         else summary.retry_pending++;
         continue;
       }
@@ -325,8 +325,8 @@ const handle = async (request: Request): Promise<Response> => {
         requestId: row.request_id,
         error: error instanceof Error ? error.message : "unknown",
       });
-      await releaseLease(db, row, "worker_exception");
-      if (row.reconciliation_attempts >= 5) summary.manual_review++;
+      const released = await releaseLease(db, row, "worker_exception");
+      if (released && row.reconciliation_attempts >= 5) summary.manual_review++;
       else summary.retry_pending++;
     }
   }
