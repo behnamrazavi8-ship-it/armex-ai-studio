@@ -58,7 +58,14 @@ begin
   where user_id = p_user_id
     and request_id = p_request_id
     and status = 'processing'
-    and (provider_outcome not in ('accepted','rejected') or p_provider_outcome = provider_outcome)
+    and (
+      provider_outcome not in ('accepted','rejected')
+      or (
+        p_provider_outcome = provider_outcome
+        and p_provider_http_status is not distinct from provider_http_status
+        and p_provider_response_payload is not distinct from provider_response_payload
+      )
+    )
     and (debit_outcome not in ('debited','not_debited','not_attempted') or p_debit_outcome = debit_outcome);
 
   get diagnostics updated_count = row_count;
