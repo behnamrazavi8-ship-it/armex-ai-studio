@@ -17,7 +17,24 @@
 @media(max-width:900px){.hero-grid{gap:25px}.tool-grid{grid-template-columns:repeat(2,1fr)}.app-layout{grid-template-columns:205px minmax(0,1fr);padding:16px;gap:15px}}
 @media(max-width:680px){.container{width:min(100% - 28px,540px)}.topbar{height:64px;padding:0 14px}.top-links{display:none}.brand-mark{width:37px;height:37px}.hero{padding:55px 0 45px}.hero-grid{grid-template-columns:1fr}.visual-card{min-height:300px}.visual-core{height:205px}.orb{width:150px;height:150px}.features{grid-template-columns:1fr 1fr}.tool-grid,.steps{grid-template-columns:1fr 1fr}.section{padding:45px 0}.cta{align-items:flex-start;flex-direction:column;padding:25px}.app-top{height:62px;padding:0 14px}.app-layout{display:block;padding:16px 13px 88px}.sidebar{display:none}.stats{gap:8px}.stat{padding:12px}.stat b{font-size:17px}.field-row{grid-template-columns:1fr}.tools-grid{grid-template-columns:1fr 1fr}.mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:25;background:#071016ed;border-top:1px solid var(--line);justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(16px)}.mobile-nav button{border:0;background:none;color:#90a8ac;font-size:9px;display:grid;gap:4px;justify-items:center}.mobile-nav button span{font-size:18px}.mobile-nav button.active{color:var(--mint)}}
 @media(max-width:390px){.features{grid-template-columns:1fr}.hero h1{font-size:34px}.top-actions .btn{padding:9px 11px}.tools-grid{grid-template-columns:1fr}}
-.lokal-hero-logo{width:min(100%,780px);min-height:220px;padding:22px 18px;gap:10px;position:relative;overflow:hidden}.lokal-hero-logo:before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#31d9c51c,transparent 62%);pointer-events:none}.lokal-hero-logo svg{width:116px;height:116px;filter:drop-shadow(0 0 14px #25dcb588)}.lokal-hero-wordmark{font-size:clamp(32px,5vw,52px);text-shadow:0 0 24px #35b9ed33}.lokal-hero-caption{letter-spacing:clamp(2px,1vw,4px)}.app-tool h4,.nav-btn,.mobile-nav button{font-family:Arial,Tahoma,sans-serif;letter-spacing:.25px}@media(max-width:680px){.lokal-hero-logo{width:calc(100vw - 24px);max-width:none;min-height:205px;padding:20px 10px;margin-inline:auto;border-radius:22px}.lokal-hero-logo svg{width:108px;height:108px}.lokal-hero-wordmark{font-size:clamp(31px,8vw,42px)}.lokal-hero-caption{font-size:8px;letter-spacing:2.5px}}</style>
+.lokal-hero-logo{width:min(100%,780px);min-height:220px;padding:22px 18px;gap:10px;position:relative;overflow:hidden}.lokal-hero-logo:before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#31d9c51c,transparent 62%);pointer-events:none}.lokal-hero-logo svg{width:116px;height:116px;filter:drop-shadow(0 0 14px #25dcb588)}.lokal-hero-wordmark{font-size:clamp(32px,5vw,52px);text-shadow:0 0 24px #35b9ed33}.lokal-hero-caption{letter-spacing:clamp(2px,1vw,4px)}.app-tool h4,.nav-btn,.mobile-nav button{font-family:Arial,Tahoma,sans-serif;letter-spacing:.25px}@media(max-width:680px){.lokal-hero-logo{width:calc(100vw - 24px);max-width:none;min-height:205px;padding:20px 10px;margin-inline:auto;border-radius:22px}.lokal-hero-logo svg{width:108px;height:108px}.lokal-hero-wordmark{font-size:clamp(31px,8vw,42px)}.lokal-hero-caption{font-size:8px;letter-spacing:2.5px}}
+.chat-layout{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:14px;align-items:stretch}
+.chat-panel{min-width:0;display:flex;flex-direction:column;min-height:65vh;background:linear-gradient(145deg,#101f28,#0a131a);border:1px solid var(--line);border-radius:16px;padding:15px}
+.chat-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.chat-messages{flex:1;min-height:280px;max-height:58vh;overflow:auto;display:flex;flex-direction:column;gap:12px;padding:16px 2px}
+.chat-bubble{max-width:min(88%,760px);padding:12px 14px;border-radius:15px;font-size:12px;line-height:2;white-space:pre-wrap;overflow-wrap:anywhere}
+.chat-bubble.user{align-self:flex-start;background:#123b35;border:1px solid #246b5c}
+.chat-bubble.assistant{align-self:flex-end;background:#102331;border:1px solid #24495d}
+.chat-bubble.pending{opacity:.65}
+.chat-compose{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:end;border-top:1px solid var(--line);padding-top:12px}
+.chat-compose textarea{min-height:74px;max-height:180px}
+.chat-conversations{background:#0b151c;border:1px solid var(--line);border-radius:16px;padding:12px;min-width:0}
+.chat-conversations-list{display:grid;gap:7px;margin-top:12px;max-height:56vh;overflow:auto}
+.chat-conversation{width:100%;text-align:right;border:1px solid transparent;background:#ffffff06;color:#b9cdcc;border-radius:10px;padding:10px;font-size:10px;line-height:1.8;overflow-wrap:anywhere}
+.chat-conversation.active,.chat-conversation:hover{border-color:#267d6b;background:#12332b;color:#eafffa}
+.chat-note{font-size:10px;color:var(--muted);line-height:1.8;margin-top:9px}
+@media(max-width:680px){.chat-layout{grid-template-columns:1fr}.chat-conversations{order:2}.chat-conversations-list{display:flex;max-height:none;overflow-x:auto}.chat-conversation{min-width:150px}.chat-panel{min-height:58vh;padding:11px}.chat-messages{max-height:48vh}.chat-bubble{max-width:94%}.chat-compose{grid-template-columns:1fr}.chat-compose .btn{width:100%}}
+</style>
 </head>
 <body>
 <div id="public-site">
@@ -51,10 +68,23 @@
 <div id="workspace-app" hidden>
 <header class="app-top"><a class="brand" href="#"><span class="brand-mark">LA</span><span>LOKAL AI<small>CREATIVE WORKSPACE</small></span></a><div class="top-actions"><button class="btn btn-ghost btn-small" id="workspace-home" type="button">بازگشت به خانه</button><span class="tag">اعتبار <b id="creditCount">—</b></span><button class="btn btn-ghost btn-small" id="workspace-signout">خروج</button></div></header>
 <div class="app-layout">
-<aside class="sidebar"><div class="side-label">WORKSPACE</div><button class="nav-btn active" data-page="home">⌂　Dashboard</button><button class="nav-btn" data-page="prompt">✍️　Prompt Lab</button><button class="nav-btn" data-page="projects">▤　My Projects</button><button class="nav-btn" data-page="account">◉　Account & Wallet</button><div class="side-label">STUDIOS</div><button class="nav-btn" data-page="image">🎨　Image Studio</button><button class="nav-btn" data-page="video">🎬　Video Studio</button></aside>
+<aside class="sidebar"><div class="side-label">WORKSPACE</div><button class="nav-btn active" data-page="home">⌂　Dashboard</button><button class="nav-btn" data-page="prompt">✍️　Prompt Lab</button><button class="nav-btn" data-page="chat">💬　AI Assistant</button><button class="nav-btn" data-page="projects">▤　My Projects</button><button class="nav-btn" data-page="account">◉　Account & Wallet</button><div class="side-label">STUDIOS</div><button class="nav-btn" data-page="image">🎨　Image Studio</button><button class="nav-btn" data-page="video">🎬　Video Studio</button></aside>
 <main class="main">
 <section class="page active" id="page-home"><div class="dash-hero"><h2>فضای کار خلاقانه تو</h2><p>پرامپت بساز و پروژه‌هایت را مدیریت کن.</p><button class="btn" data-go="prompt">شروع ساخت پرامپت ←</button></div><div class="stats"><div class="stat"><span>اعتبار کیف پول</span><b id="walletStat">—</b></div><div class="stat"><span>پروژه‌های ذخیره‌شده</span><b id="projectCount">۰</b></div><div class="stat"><span>ابزار فعال</span><b>۲</b></div></div><div class="panel"><h3>ابزارهای فضای کاری</h3><div class="tools-grid"><button class="app-tool" data-go="prompt"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M11 35.5 31.8 14.7a5 5 0 0 1 7.1 7.1L18.1 42.6 9 45l2-9.5Z" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/><path d="m28 18 7 7M8 8h10M13 3v10M34 5l1.8 4.2L40 11l-4.2 1.8L34 17l-1.8-4.2L28 11l4.2-1.8L34 5Z" stroke="#69b8ff" stroke-width="1.8" stroke-linecap="round"/></svg></div><h4>Prompt Lab</h4><p>ساخت پرامپت محلی و هوشمند</p><span class="tag">فعال</span></button><button class="app-tool" data-page="image"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><rect x="6" y="8" width="36" height="32" rx="7" stroke="#67f0d0" stroke-width="2.2"/><circle cx="17" cy="19" r="3.5" stroke="#69b8ff" stroke-width="2"/><path d="m8 34 11-10 7 6 6-8 8 9" stroke="#67f0d0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m34 7 1.5-3L37 7l3 1.5L37 10l-1.5 3L34 10l-3-1.5L34 7Z" fill="#69b8ff"/></svg></div><h4>Image Studio</h4><p>تولید و ذخیره تصاویر با هوش مصنوعی</p><span class="tag">فعال</span></button><button class="app-tool" data-tool="video"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><rect x="5" y="11" width="38" height="28" rx="6" stroke="#67f0d0" stroke-width="2.2"/><path d="m20 18 12 7-12 7V18Z" stroke="#69b8ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m9 11 5-6h8l-5 6M26 11l5-6h8l-5 6" stroke="#67f0d0" stroke-width="2" stroke-linejoin="round"/></svg></div><h4>Video Prompt Lab</h4><p>ورود مستقیم به Prompt Lab با تنظیم نوع خروجی ویدئو</p><span class="tag">آماده‌سازی پرامپت</span></button><button class="app-tool" data-page="account"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="16" r="8" stroke="#69b8ff" stroke-width="2.2"/><path d="M8 41c1.8-8 7.5-12 16-12s14.2 4 16 12" stroke="#67f0d0" stroke-width="2.2" stroke-linecap="round"/><circle cx="38" cy="11" r="4" fill="#67f0d0" fill-opacity=".25" stroke="#67f0d0" stroke-width="1.6"/></svg></div><h4>Account & Wallet</h4><p>مشاهده حساب Google، موجودی و تنظیمات کیف پول</p><span class="tag">حساب کاربری</span></button><button class="app-tool" data-page="projects"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="m24 5 18 9-18 9-18-9 18-9Z" stroke="#69b8ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m6 23 18 9 18-9M6 32l18 9 18-9" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/></svg></div><h4>پروژه‌های من</h4><p>مدیریت پروژه‌های ذخیره‌شده در حساب</p><span class="tag">حساب کاربری</span></button></div></div></section><section class="page" id="page-prompt"><div class="welcome"><div class="eyebrow">PROMPT LAB</div><h1>سازنده پرامپت</h1><p>ایده‌ات را به پرامپت حرفه‌ای تبدیل کن و در صورت نیاز به Image Studio بفرست.</p></div><div class="panel" id="prompt-builder"><div class="eyebrow">PROMPT CREATOR</div><h3>سازنده پرامپت</h3><p class="muted-copy">ایده‌ات را یک‌بار وارد کن؛ پرامپت آماده را محلی بساز یا با هوش مصنوعی بهبود بده.</p><label class="field-label" for="idea">ایده یا توضیح اولیه</label><textarea id="idea" class="textarea" placeholder="مثلاً: یک خودروی اسپرت مشکی در خیابان خیس و نورهای آبی نئونی..."></textarea><div class="field-row"><div><label class="field-label" for="contentType">نوع خروجی</label><select class="select" id="contentType"><option value="image">تصویر</option><option value="video">ویدئو</option><option value="design">طراحی گرافیک</option><option value="social">محتوای شبکه اجتماعی</option></select></div><div><label class="field-label" for="style">سبک بصری</label><select class="select" id="style"><option>سینمایی و واقع‌گرایانه</option><option>مینیمال و مدرن</option><option>فانتزی و سورئال</option><option>تاریک و دراماتیک</option><option>سه‌بعدی و آینده‌نگر</option><option>تبلیغاتی و تجاری</option></select></div></div><div class="field-row"><div><label class="field-label" for="ratio">کادر تصویر</label><select class="select" id="ratio"><option>۱:۱ مربع</option><option selected>۹:۱۶ عمودی</option><option>۱۶:۹ افقی</option><option>۴:۵ پرتره</option><option>۳:۲ منظره</option></select></div><div><label class="field-label" for="language">زبان پرامپت</label><select class="select" id="language"><option value="en">انگلیسی</option><option value="fa">فارسی</option></select></div></div><div class="workspace-actions"><button class="btn" id="generatePrompt">ساخت پرامپت</button><button class="btn" id="generateAIPrompt">بهبود هوشمند · ۱ اعتبار</button><button class="btn btn-ghost" id="savePrompt">ذخیره پروژه</button><button class="btn btn-ghost" id="clearPrompt">پاک کردن</button></div><div class="result" id="aiPromptStatus" role="status" aria-live="polite"></div><div class="result" id="promptResult" aria-live="polite"></div><div class="workspace-actions" id="resultActions" style="display:none"><button class="btn btn-ghost" id="copyResult">کپی خروجی</button></div></div><div class="notice">موجودی و عملیات هوشمند از API امن خوانده می‌شوند. هزینه هر درخواست پیش از ارسال نمایش داده می‌شود.</div></section>
 
+<section class="page" id="page-chat">
+<div class="welcome"><div class="eyebrow">LOKAL AI ASSISTANT</div><h1>دستیار هوشمند</h1><p>گفتگوی فارسی و انگلیسی با تاریخچه ذخیره‌شده در حساب شخصی تو.</p></div>
+<div class="chat-layout">
+ <div class="chat-panel">
+  <div class="chat-toolbar"><div><strong id="chatConversationTitle">گفتگوی جدید</strong><div class="chat-note">هر پیام موفق: ۱ اعتبار · پاسخ‌ها در حساب تو ذخیره می‌شوند.</div></div>
+   <select class="select" id="chatModel" aria-label="مدل هوش مصنوعی" style="max-width:230px"><option value="openai/gpt-4o-mini">GPT-4o mini</option></select>
+  </div>
+  <div class="chat-messages" id="chatMessages" aria-live="polite"><div class="empty">برای شروع پیام خود را بنویس.</div></div>
+  <div class="chat-compose"><textarea class="textarea" id="chatInput" maxlength="12000" placeholder="پیامت را اینجا بنویس... (برای ارسال Ctrl یا Shift + Enter)"></textarea><button class="btn" id="chatSend" type="button">ارسال پیام</button></div>
+  <div class="chat-note" id="chatStatus" role="status" aria-live="polite">مدل و پاسخ از API امن LOKAL AI دریافت می‌شوند.</div>
+ </div>
+ <aside class="chat-conversations"><button class="btn btn-ghost" id="chatNew" type="button" style="width:100%">+ گفتگوی جدید</button><h3 style="margin:14px 3px 0">تاریخچه گفتگوها</h3><div class="chat-conversations-list" id="chatConversationList"><div class="empty">در حال دریافت...</div></div></aside>
+</div></section>
 <section class="page" id="page-projects"><div class="welcome"><h1>پروژه‌های من</h1></div><div id="projectsList" class="empty">هنوز پروژه‌ای ذخیره نشده است.</div><div class="notice" id="projectsSyncStatus">پروژه‌های جدید پس از فعال‌سازی جدول امن پروژه‌ها در حساب ذخیره و بین دستگاه‌ها همگام می‌شوند. تا آن زمان نسخه محلی حفظ می‌شود.</div></section>
 <section class="page" id="page-account"><div class="welcome"><h1>حساب و کیف پول</h1></div><div class="account-card" id="auth-session-card" hidden><div class="account-profile"><img id="auth-user-avatar" alt="" hidden><div><h3 id="auth-user-name">حساب شخصی LOKAL AI</h3><p id="auth-user-email"></p><span class="tag" id="auth-provider">روش ورود</span></div></div><div class="account-details"><div><span>موجودی فعلی</span><b id="accountWalletBalance">در حال دریافت…</b></div><div><span>شناسه حساب</span><b id="auth-user-id">—</b></div></div><p class="muted-copy" id="wallet-help">اعتبار از کیف پول امن سرور خوانده می‌شود؛ این صفحه امکان تغییر مستقیم موجودی را ندارد.</p><div class="panel" id="wallet-topup"><h3>شارژ کیف پول</h3><p class="muted-copy">بسته‌ها و قیمت‌ها از تنظیمات امن سرور دریافت می‌شوند. اعتبار فقط پس از تأیید پرداخت زرین‌پال اضافه خواهد شد.</p><label class="field-label" for="creditPackage">بسته اعتبار</label><select class="select" id="creditPackage"><option value="">در حال دریافت بسته‌ها...</option></select><div class="workspace-actions"><button class="btn" id="startCreditPayment" type="button">پرداخت و شارژ اعتبار</button><button class="btn btn-ghost" id="reloadCreditPackages" type="button">به‌روزرسانی بسته‌ها</button></div><div class="result" id="paymentStatus" role="status" aria-live="polite"></div></div><div class="panel"><h3>تنظیم رمز عبور برای حساب فعلی</h3><p class="muted-copy">اگر با Google ثبت‌نام کرده‌ای، می‌توانی بدون ساخت حساب تکراری برای همین حساب رمز عبور تعیین کنی.</p><label class="field-label" for="account-new-password">رمز عبور جدید</label><input class="input" id="account-new-password" type="password" minlength="8" autocomplete="new-password" placeholder="حداقل ۸ کاراکتر"><div class="workspace-actions"><button class="btn btn-ghost" id="account-set-password" type="button">ثبت رمز برای همین حساب</button></div></div><div class="workspace-actions"><button class="btn btn-ghost" id="auth-signout" type="button">خروج از حساب</button></div></div></section>
 <section class="page" id="page-image"><div class="welcome"><div class="eyebrow">LOKAL AI IMAGE ENGINE</div><h1>استودیوی تصویر</h1><p class="muted-copy">ایده‌ات را بنویس و تصویر واقعی بساز؛ خروجی‌ها در گالری خصوصی حساب تو ذخیره می‌شوند.</p></div>
@@ -65,7 +95,7 @@
 <div class="panel"><h3>گالری تصاویر من</h3><p class="muted-copy">تصاویر فقط برای حساب خودت قابل دسترسی هستند.</p><div id="imageGallery" class="image-gallery"><div class="empty">هنوز تصویری نساخته‌ای.</div></div></div></section>
 <section class="page" id="page-video"><div class="welcome"><div class="eyebrow">LOKAL AI VIDEO ENGINE</div><h1>استودیوی ویدئو</h1><p>تولید ویدئو به‌صورت صف غیرهم‌زمان؛ هزینه فقط هنگام اجرای واقعی job محاسبه می‌شود.</p></div><div class="panel"><h3>ساخت ویدئوی جدید</h3><label class="field-label" for="videoPrompt">توضیح صحنه و حرکت</label><textarea class="textarea" id="videoPrompt" maxlength="6000" placeholder="مثلاً: نمای سینمایی از یک خودروی اسپرت مشکی که در جاده خیس حرکت می‌کند، دوربین از کنار خودرو تعقیب می‌کند..."></textarea><div class="field-row"><div><label class="field-label" for="videoAspectRatio">نسبت تصویر</label><select class="select" id="videoAspectRatio"><option value="16:9">افقی ۱۶:۹</option><option value="9:16">عمودی ۹:۱۶</option><option value="1:1">مربع ۱:۱</option></select></div><div><label class="field-label">مدل</label><div class="notice">Wan 2.2 TI2V-5B · کلیپ آزمایشی ۵ ثانیه</div></div></div><div class="workspace-actions"><button class="btn" id="generateVideo" type="button">ثبت درخواست ویدئو</button><button class="btn btn-ghost" id="refreshVideoStatus" type="button">بررسی وضعیت آخرین درخواست</button></div><div class="result" id="videoStatus" role="status" aria-live="polite">برای شروع، توضیح ویدئو را وارد کن. هزینه نهایی از تنظیم VIDEO_CREDIT_COST در سرور خوانده می‌شود.</div><div id="videoResult" class="empty" hidden></div></div></section>
 </main></div>
-<nav class="mobile-nav"><button class="active" data-page="home"><span>⌂</span>Dashboard</button><button data-page="prompt"><span>✍️</span>Prompt Lab</button><button data-page="image"><span>🎨</span>Image Studio</button><button data-page="projects"><span>▤</span>My Projects</button><button data-page="account"><span>◉</span>Account</button></nav>
+<nav class="mobile-nav"><button class="active" data-page="home"><span>⌂</span>Dashboard</button><button data-page="prompt"><span>✍️</span>Prompt Lab</button><button data-page="chat"><span>💬</span>AI Chat</button><button data-page="image"><span>🎨</span>Image Studio</button><button data-page="projects"><span>▤</span>My Projects</button><button data-page="account"><span>◉</span>Account</button></nav>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
@@ -75,7 +105,7 @@
  const toast=msg=>{const t=$('#toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove('show'),2400)};
  const readProjects=()=>{try{return JSON.parse(localStorage.getItem(storeKey)||'[]')}catch{return []}};
  const writeProjects=p=>{try{localStorage.setItem(storeKey,JSON.stringify(p));return true}catch{return false}};
- const workspacePages=new Set(['home','prompt','projects','account','image','video']);
+ const workspacePages=new Set(['home','prompt','chat','projects','account','image','video']);
  const workspaceRoot=document.getElementById('workspace-app');
  function showPage(name,options={}){
   const target=workspacePages.has(name)?name:'home';
@@ -88,6 +118,7 @@
   }
   if(target==='projects')renderProjects();
   if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'));
+  if(target==='chat')window.dispatchEvent(new CustomEvent('lokal:open-chat'));
  }
  window.lokalShowPage=showPage;
  window.addEventListener('popstate',event=>{
@@ -243,6 +274,92 @@ else{
    console.warn("Wallet balance unavailable",error);
   }
  };
+ let activeConversationId=null;
+ let chatBusy=false;
+ const chatMessagesNode=document.getElementById("chatMessages");
+ const chatListNode=document.getElementById("chatConversationList");
+ const chatStatusNode=document.getElementById("chatStatus");
+ const chatInputNode=document.getElementById("chatInput");
+ const setChatStatus=(value,isError=false)=>{if(!chatStatusNode)return;chatStatusNode.textContent=value;chatStatusNode.style.color=isError?"#ffb8c2":"#91a8ad"};
+ const renderChatMessages=messages=>{
+  if(!chatMessagesNode)return;
+  chatMessagesNode.replaceChildren();
+  if(!messages.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="این گفتگو هنوز پیامی ندارد. اولین پیام را بنویس.";chatMessagesNode.append(empty);return}
+  messages.forEach(item=>{
+   const bubble=document.createElement("div");bubble.className="chat-bubble "+(item.role==="user"?"user":"assistant");
+   bubble.textContent=String(item.content||"");chatMessagesNode.append(bubble);
+  });
+  chatMessagesNode.scrollTop=chatMessagesNode.scrollHeight;
+ };
+ const renderChatList=items=>{
+  if(!chatListNode)return;
+  chatListNode.replaceChildren();
+  if(!items.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="هنوز گفتگویی ذخیره نشده است.";chatListNode.append(empty);return}
+  items.forEach(item=>{
+   const button=document.createElement("button");button.type="button";button.className="chat-conversation"+(item.id===activeConversationId?" active":"");
+   button.textContent=String(item.title||"گفتگوی جدید");
+   button.addEventListener("click",()=>void openConversation(item.id));
+   chatListNode.append(button);
+  });
+ };
+ const loadChatConversations=async session=>{
+  if(!session||!chatListNode)return;
+  try{
+   const result=await callArmexApi(session,"?action=conversations");
+   renderChatList(result.conversations||[]);
+  }catch(error){chatListNode.textContent="دریافت تاریخچه گفتگوها ناموفق بود.";setChatStatus(String(error?.message||"خطا در دریافت گفتگوها."),true)}
+ };
+ const openConversation=async id=>{
+  const {data:{session}}=await supabase.auth.getSession();if(!session)return;
+  try{
+   const result=await callArmexApi(session,"?action=conversation_messages&id="+encodeURIComponent(id));
+   activeConversationId=id;
+   const title=(document.getElementById("chatConversationTitle"));if(title)title.textContent="گفتگوی ذخیره‌شده";
+   renderChatMessages(result.messages||[]);await loadChatConversations(session);setChatStatus("تاریخچه گفتگو بارگذاری شد.");
+  }catch(error){setChatStatus(String(error?.message||"بارگذاری گفتگو ناموفق بود."),true)}
+ };
+ const loadChatModels=async session=>{
+  const select=document.getElementById("chatModel");if(!select)return;
+  try{
+   const result=await callArmexApi(session,"?action=models");
+   const models=result.models||[];if(!models.length)return;
+   select.replaceChildren();
+   models.forEach(model=>select.add(new Option(model.name||model.id,model.id)));
+   if(models.some(model=>model.id==="openai/gpt-4o-mini"))select.value="openai/gpt-4o-mini";
+  }catch(error){console.warn("Chat model list unavailable",error)}
+ };
+ const startNewChat=()=>{
+  activeConversationId=null;const title=document.getElementById("chatConversationTitle");if(title)title.textContent="گفتگوی جدید";
+  renderChatMessages([]);setChatStatus("گفتگوی تازه آماده است.");if(chatInputNode)chatInputNode.focus();
+  void supabase.auth.getSession().then(({data:{session}})=>loadChatConversations(session));
+ };
+ const sendChatMessage=async()=>{
+  if(chatBusy)return;
+  const messageText=String(chatInputNode?.value||"").trim();if(!messageText){setChatStatus("ابتدا پیام خود را بنویس.",true);return}
+  const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}
+  chatBusy=true;const button=document.getElementById("chatSend");if(button)button.disabled=true;
+  if(chatInputNode)chatInputNode.value="";
+  const optimistic=[...(chatMessagesNode?.querySelectorAll(".chat-bubble")||[])].map(node=>({role:node.classList.contains("user")?"user":"assistant",content:node.textContent}));
+  optimistic.push({role:"user",content:messageText});renderChatMessages(optimistic);setChatStatus("در حال دریافت پاسخ هوش مصنوعی...");
+  try{
+   const payload={request_id:crypto.randomUUID(),message:messageText,model:document.getElementById("chatModel")?.value||"openai/gpt-4o-mini",max_tokens:2048,...(activeConversationId?{conversation_id:activeConversationId}:{})};
+   const result=await callArmexApi(session,"",payload);
+   activeConversationId=result.conversation_id||activeConversationId;
+   optimistic.push({role:"assistant",content:String(result.answer||"")});renderChatMessages(optimistic);
+   const title=document.getElementById("chatConversationTitle");if(title)title.textContent="گفتگو";
+   setChatStatus("پاسخ دریافت و در تاریخچه ذخیره شد · "+Number(result.usage?.credits_charged||1).toLocaleString("fa-IR")+" اعتبار مصرف شد.");
+   await Promise.all([loadWalletBalance(session),loadChatConversations(session)]);
+  }catch(error){
+   if(chatInputNode)chatInputNode.value=messageText;
+   const raw=String(error?.message||"");setChatStatus(/Insufficient credits/i.test(raw)?"اعتبار کیف پول کافی نیست.":raw||"ارسال پیام ناموفق بود.",true);
+   optimistic.push({role:"assistant",content:"ارسال پیام انجام نشد. متن پیام در کادر باقی مانده؛ پس از بررسی اتصال دوباره تلاش کن."});renderChatMessages(optimistic);
+   await loadWalletBalance(session);
+  }finally{chatBusy=false;if(button)button.disabled=false}
+ };
+ document.getElementById("chatSend")?.addEventListener("click",()=>void sendChatMessage());
+ document.getElementById("chatNew")?.addEventListener("click",startNewChat);
+ chatInputNode?.addEventListener("keydown",event=>{if(event.key==="Enter"&&(event.ctrlKey||event.shiftKey)){event.preventDefault();void sendChatMessage()}});
+ window.addEventListener("lokal:open-chat",async()=>{const {data:{session}}=await supabase.auth.getSession();if(session){await loadChatModels(session);await loadChatConversations(session)}});
  const renderSession=session=>{
   activeSession=session||null;const user=session?.user;
   if(user&&!routeInitialized){
@@ -254,7 +371,7 @@ else{
   if(!user){landingView=false;routeInitialized=false;}
   publicSite.hidden=Boolean(user)&&!landingView;workspace.hidden=!user||landingView;formCard.hidden=Boolean(user);sessionCard.hidden=!user;
   const returnWorkspace=document.getElementById("return-workspace");if(returnWorkspace)returnWorkspace.hidden=!user||!landingView;
-  if(user){void loadPaymentPackages();const metadata=user.user_metadata||{};document.getElementById("auth-user-email").textContent=user.email||"ایمیل ثبت نشده";document.getElementById("auth-user-name").textContent=metadata.full_name||metadata.name||metadata.user_name||"حساب شخصی LOKAL AI";document.getElementById("auth-user-id").textContent=user.id;const provider=(user.app_metadata?.provider||"email").toLowerCase();document.getElementById("auth-provider").textContent=provider==="google"?"ورود با Google":"ورود با ایمیل";const avatar=document.getElementById("auth-user-avatar"),avatarUrl=metadata.avatar_url||metadata.picture||"";if(avatarUrl&&/^https:\/\//i.test(avatarUrl)){avatar.src=avatarUrl;avatar.hidden=false}else{avatar.removeAttribute("src");avatar.hidden=true}setMessage("با موفقیت وارد شدی.");void loadCloudProjects(session);}
+  if(user){void loadPaymentPackages();void loadChatModels(session);void loadChatConversations(session);const metadata=user.user_metadata||{};document.getElementById("auth-user-email").textContent=user.email||"ایمیل ثبت نشده";document.getElementById("auth-user-name").textContent=metadata.full_name||metadata.name||metadata.user_name||"حساب شخصی LOKAL AI";document.getElementById("auth-user-id").textContent=user.id;const provider=(user.app_metadata?.provider||"email").toLowerCase();document.getElementById("auth-provider").textContent=provider==="google"?"ورود با Google":"ورود با ایمیل";const avatar=document.getElementById("auth-user-avatar"),avatarUrl=metadata.avatar_url||metadata.picture||"";if(avatarUrl&&/^https:\/\//i.test(avatarUrl)){avatar.src=avatarUrl;avatar.hidden=false}else{avatar.removeAttribute("src");avatar.hidden=true}setMessage("با موفقیت وارد شدی.");void loadCloudProjects(session);}
   else{walletLoadSequence++;setWalletBalance("—");}
   void loadWalletBalance(session);
  };
