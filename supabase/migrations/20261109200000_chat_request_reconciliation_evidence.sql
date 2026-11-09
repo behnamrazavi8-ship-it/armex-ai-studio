@@ -95,7 +95,9 @@ security definer
 set search_path = ''
 as $$
 begin
-  if p_limit < 1 or p_limit > 50 or p_lease_seconds < 30 or p_lease_seconds > 900 then
+  if p_limit is null or p_lease_seconds is null
+     or p_limit < 1 or p_limit > 50
+     or p_lease_seconds < 30 or p_lease_seconds > 900 then
     raise exception 'invalid reconciliation lease parameters';
   end if;
 
