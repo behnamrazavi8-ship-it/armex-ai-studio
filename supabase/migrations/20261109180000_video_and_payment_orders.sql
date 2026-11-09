@@ -14,6 +14,9 @@ create table if not exists public.armex_video_generations (
   provider text not null default 'runpod',
   provider_job_id text,
   result_url text,
+  storage_path text,
+  mime_type text check (mime_type is null or mime_type = 'video/mp4'),
+  file_size_bytes bigint check (file_size_bytes is null or file_size_bytes between 1 and 52428800),
   error_code text,
   provider_metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
@@ -80,3 +83,19 @@ create unique index if not exists armex_payment_orders_one_pending_per_user_idx
   on public.armex_payment_orders (user_id)
   where provider = 'zarinpal'
     and status = 'pending';
+
+
+-- Private, user-owned video objects. RunPod receives only a short-lived signed
+-- upload URL for one deterministic object path; it never receives service_role.
+alter table public.armex_video_generations
+  add column if not exists storage_path text,
+  add column if not exists mime_type text check (mime_type is null or mime_type = 'video/mp4'),
+  add column if not exists file_size_bytes bigint check (file_size_bytes is null or file_size_bytes between 1 and 52428800);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('lokal-ai-videos', 'lokal-ai-videos', false, 52428800, array['video/mp4']::text[])
+on conflict (id) do update set
+  name = excluded.name,
+  public = false,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
