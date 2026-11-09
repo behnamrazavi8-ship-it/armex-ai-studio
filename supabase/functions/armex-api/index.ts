@@ -2,6 +2,7 @@ import { createSupabaseContext } from "npm:@supabase/server@1";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
+import { hasDurableVerifiedPayment } from "./payment-callback-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -751,36 +752,49 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
   }
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: order, error } = await admin.from("armex_payment_orders")
-    .select("id,user_id,amount,credits,status")
+    .select("id,user_id,amount,credits,status,provider_metadata")
     .eq("provider", "zarinpal").eq("provider_reference", authority).maybeSingle();
   if (error || !order) return json({ success: false, error: "Payment order not found" }, 404);
-  if (status !== "OK") {
+
+  // Once verification is durably recorded, wallet-credit retries must not
+  // depend on Zarinpal being available again.
+  const alreadyVerified = hasDurableVerifiedPayment(order.status, order.provider_metadata);
+  if (status !== "OK" && order.status !== "paid") {
     await admin.from("armex_payment_orders").update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("id", order.id).eq("status", "pending");
     return json({ success: false, cancelled: true, order_id: order.id }, 200);
   }
-  const verifyResponse = await fetch(ZARINPAL_API + "/verify.json", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ merchant_id: merchantId, amount: Number(order.amount), authority }),
-    signal: AbortSignal.timeout(20000),
-  });
-  const verifyPayload = await verifyResponse.json().catch(() => ({}));
-  const verifyCode = Number(verifyPayload?.data?.code);
-  if (!verifyResponse.ok || ![100, 101].includes(verifyCode)) {
-    console.error("Zarinpal verification failed", { orderId: order.id, httpStatus: verifyResponse.status, code: verifyCode });
-    return json({ success: false, error: "Payment verification failed; no credits were added" }, 502);
+
+  let refId: string | number | null = null;
+  if (alreadyVerified) {
+    const storedRefId = (order.provider_metadata as Record<string, unknown>).ref_id;
+    refId = typeof storedRefId === "string" || typeof storedRefId === "number" ? storedRefId : null;
+  } else {
+    const verifyResponse = await fetch(ZARINPAL_API + "/verify.json", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ merchant_id: merchantId, amount: Number(order.amount), authority }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const verifyPayload = await verifyResponse.json().catch(() => ({}));
+    const verifyCode = Number(verifyPayload?.data?.code);
+    if (!verifyResponse.ok || ![100, 101].includes(verifyCode)) {
+      console.error("Zarinpal verification failed", { orderId: order.id, httpStatus: verifyResponse.status, code: verifyCode });
+      return json({ success: false, error: "Payment verification failed; no credits were added" }, 502);
+    }
+    const providerRef = verifyPayload?.data?.ref_id;
+    refId = typeof providerRef === "string" || typeof providerRef === "number" ? providerRef : null;
+    const { error: paidError } = await admin.from("armex_payment_orders").update({
+      status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      provider_metadata: { ref_id: refId },
+    }).eq("id", order.id).neq("status", "paid");
+    if (paidError) return json({ success: false, error: "Could not record verified payment" }, 500);
   }
-  const { error: paidError } = await admin.from("armex_payment_orders").update({
-    status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-    provider_metadata: { ref_id: verifyPayload?.data?.ref_id ?? null },
-  }).eq("id", order.id).neq("status", "paid");
-  if (paidError) return json({ success: false, error: "Could not record verified payment" }, 500);
 
   const { data: granted, error: grantError } = await admin.rpc("armex_grant_credits", {
     p_user_id: order.user_id, p_amount: Number(order.credits), p_type: "purchase",
     p_idempotency_key: "payment_order:" + order.id,
     p_description: "شارژ کیف پول پس از تأیید پرداخت زرین‌پال",
-    p_metadata: { order_id: order.id, provider: "zarinpal", ref_id: verifyPayload?.data?.ref_id ?? null },
+    p_metadata: { order_id: order.id, provider: "zarinpal", ref_id: refId },
   });
   if (grantError || granted !== true) {
     console.error("Verified payment credit grant failed", { orderId: order.id, code: grantError?.code });
