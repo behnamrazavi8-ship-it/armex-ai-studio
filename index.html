@@ -168,7 +168,7 @@ else{
 
  const creditCount=document.getElementById("creditCount"),walletStat=document.getElementById("walletStat"),aiButton=document.getElementById("generateAIPrompt"),aiStatus=document.getElementById("aiPromptStatus");let pendingPromptRequest=null;
  const setWalletBalance=balance=>{const f=balance==="—"?"—":Number(balance||0).toLocaleString("fa-IR");if(creditCount)creditCount.textContent=f;if(walletStat)walletStat.textContent=f;const accountBalance=document.getElementById("accountWalletBalance");if(accountBalance)accountBalance.textContent=f==="—"?"در دسترس نیست":f+" اعتبار"};
- const callArmexApi=async(session,path,body)=>{const response=await fetch(config.supabaseUrl.replace(/\/$/,"")+"/functions/v1/armex-api"+path,{method:body?"POST":"GET",headers:{"apikey":config.supabaseAnonKey,"Authorization":"Bearer "+session.access_token,...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||("HTTP "+response.status));return payload};
+ const callArmexApi=async(session,path,body)=>{const response=await fetch(config.supabaseUrl.replace(/\/$/,"")+"/functions/v1/armex-api"+path,{method:body?"POST":"GET",headers:{"apikey":config.supabaseAnonKey,"Authorization":"Bearer "+session.access_token,...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{})});const payload=await response.json().catch(()=>({}));if(payload.pending)throw new Error("REQUEST_PENDING: "+(payload.message||"درخواست برای بررسی وضعیت نگه داشته شده است."));if(!response.ok)throw new Error(payload.error||("HTTP "+response.status));return payload};
  const ensureSecureApi=async session=>{const h=await callArmexApi(session,"?action=health");if(h.api_version!=="5.0"||h.secure_api!==true)throw new Error("نسخه امن سرویس هنوز منتشر نشده است.")};
  let lastVideoJobId="";
  let videoPollSequence=0;
@@ -276,6 +276,7 @@ else{
  };
  let activeConversationId=null;
  let chatBusy=false;
+ let pendingChatRequest=null;
  const chatMessagesNode=document.getElementById("chatMessages");
  const chatListNode=document.getElementById("chatConversationList");
  const chatStatusNode=document.getElementById("chatStatus");
@@ -341,9 +342,11 @@ else{
   if(chatInputNode)chatInputNode.value="";
   const optimistic=[...(chatMessagesNode?.querySelectorAll(".chat-bubble")||[])].map(node=>({role:node.classList.contains("user")?"user":"assistant",content:node.textContent}));
   optimistic.push({role:"user",content:messageText});renderChatMessages(optimistic);setChatStatus("در حال دریافت پاسخ هوش مصنوعی...");
+  let submittedRequestId=pendingChatRequest?.message===messageText?pendingChatRequest.requestId:crypto.randomUUID();
   try{
-   const payload={request_id:crypto.randomUUID(),message:messageText,model:document.getElementById("chatModel")?.value||"openai/gpt-4o-mini",max_tokens:2048,...(activeConversationId?{conversation_id:activeConversationId}:{})};
+   const payload={request_id:submittedRequestId,message:messageText,model:document.getElementById("chatModel")?.value||"openai/gpt-4o-mini",max_tokens:2048,...(activeConversationId?{conversation_id:activeConversationId}:{})};
    const result=await callArmexApi(session,"",payload);
+   pendingChatRequest=null;
    activeConversationId=result.conversation_id||activeConversationId;
    optimistic.push({role:"assistant",content:String(result.answer||"")});renderChatMessages(optimistic);
    const title=document.getElementById("chatConversationTitle");if(title)title.textContent="گفتگو";
@@ -351,8 +354,12 @@ else{
    await Promise.all([loadWalletBalance(session),loadChatConversations(session)]);
   }catch(error){
    if(chatInputNode)chatInputNode.value=messageText;
-   const raw=String(error?.message||"");setChatStatus(/Insufficient credits/i.test(raw)?"اعتبار کیف پول کافی نیست.":raw||"ارسال پیام ناموفق بود.",true);
-   optimistic.push({role:"assistant",content:"ارسال پیام انجام نشد. متن پیام در کادر باقی مانده؛ پس از بررسی اتصال دوباره تلاش کن."});renderChatMessages(optimistic);
+   const raw=String(error?.message||"");
+   const requestPending=raw.startsWith("REQUEST_PENDING:")||/already processing/i.test(raw);
+   if(requestPending)pendingChatRequest={message:messageText,requestId:submittedRequestId};else pendingChatRequest=null;
+   const friendly=raw.startsWith("REQUEST_PENDING:")?"درخواست ممکن است به سرویس رسیده باشد و برای بررسی نگه داشته شده است. همان پیام را با شناسه جدید دوباره ارسال نکن.":(/Insufficient credits/i.test(raw)?"اعتبار کیف پول کافی نیست.":raw||"ارسال پیام ناموفق بود.");
+   setChatStatus(friendly,true);
+   optimistic.push({role:"assistant",content:requestPending?"برای جلوگیری از مصرف اعتبار تکراری، این درخواست در وضعیت بررسی باقی می‌ماند. پس از بررسی وضعیت، پیام تازه‌ای ارسال کن.":"ارسال پیام انجام نشد. متن پیام در کادر باقی مانده؛ پس از بررسی اتصال دوباره تلاش کن."});renderChatMessages(optimistic);
    await loadWalletBalance(session);
   }finally{chatBusy=false;if(button)button.disabled=false}
  };
