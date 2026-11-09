@@ -558,6 +558,7 @@ const generateVideo = async (
           task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
           request_id: requestId, aspect_ratio: aspectRatio, size: wanSize, duration_seconds: 5,
           storage_upload: {
+            path: storagePath,
             signed_url: storageUploadUrl,
             apikey: supabaseAnonKey,
             authorization: "Bearer " + supabaseAnonKey,
