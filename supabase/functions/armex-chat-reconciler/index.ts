@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 type Json = Record<string, unknown>;
 type ReconciliationRow = {
@@ -44,7 +44,7 @@ const constantTimeEqual = (left: string, right: string): boolean => {
 };
 
 const refundCredits = async (
-  db: ReturnType<typeof createClient>,
+  db: SupabaseClient,
   row: ReconciliationRow,
   amount: number,
   attemptId: string,
@@ -77,7 +77,7 @@ const refundCredits = async (
 };
 
 const releaseLease = async (
-  db: ReturnType<typeof createClient>,
+  db: SupabaseClient,
   row: ReconciliationRow,
   diagnostic: string,
   manualReview = false,
@@ -94,7 +94,7 @@ const releaseLease = async (
 };
 
 const markFailed = async (
-  db: ReturnType<typeof createClient>,
+  db: SupabaseClient,
   row: ReconciliationRow,
   failureCode: string,
 ): Promise<boolean> => {
@@ -115,7 +115,7 @@ const markFailed = async (
 };
 
 const markManualReview = async (
-  db: ReturnType<typeof createClient>,
+  db: SupabaseClient,
   row: ReconciliationRow,
   reason: string,
 ): Promise<void> => {
@@ -123,7 +123,7 @@ const markManualReview = async (
 };
 
 const processAccepted = async (
-  db: ReturnType<typeof createClient>,
+  db: SupabaseClient,
   row: ReconciliationRow,
   recovery: Json,
 ): Promise<"completed" | "retry" | "manual_review"> => {
@@ -192,7 +192,7 @@ const processAccepted = async (
 };
 
 const processRefundableFailure = async (
-  db: ReturnType<typeof createClient>,
+  db: SupabaseClient,
   row: ReconciliationRow,
   recovery: Json,
 ): Promise<"failed" | "retry" | "manual_review"> => {
@@ -251,25 +251,25 @@ const processRefundableFailure = async (
 const handle = async (request: Request): Promise<Response> => {
   if (request.method !== "POST") return json({ success: false, error: "Method not allowed" }, 405);
 
-  let expectedSecret: string;
   let supabaseUrl: string;
   let serviceRoleKey: string;
   try {
-    expectedSecret = env("CHAT_RECONCILIATION_SECRET");
     supabaseUrl = env("SUPABASE_URL");
     serviceRoleKey = env("SUPABASE_SERVICE_ROLE_KEY");
   } catch {
     return json({ success: false, error: "Reconciliation worker is not configured" }, 503);
   }
 
-  if (expectedSecret.length < 32) {
-    return json({ success: false, error: "Reconciliation secret is too short" }, 503);
+  if (serviceRoleKey.length < 32) {
+    return json({ success: false, error: "Service role key is invalid" }, 503);
   }
+  // Keep platform JWT verification enabled; only the service-role JWT may
+  // invoke this internal maintenance endpoint.
   const authorization = request.headers.get("Authorization") ?? "";
   const suppliedSecret = authorization.startsWith("Bearer ")
     ? authorization.slice(7)
     : "";
-  if (!constantTimeEqual(suppliedSecret, expectedSecret)) {
+  if (!constantTimeEqual(suppliedSecret, serviceRoleKey)) {
     return json({ success: false, error: "Unauthorized" }, 401);
   }
 
