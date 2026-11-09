@@ -466,7 +466,7 @@ const getVideoStatus = async (
   const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
   if (!endpointId || !token) return fail("Video status provider is not configured", 503, cors);
   const response = await fetch(RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/status/" + encodeURIComponent(job.provider_job_id), {
-    headers: { Authorization: "Bearer " + token }, signal: AbortSignal.timeout(15000),
+    headers: { Authorization: token }, signal: AbortSignal.timeout(15000),
   });
   if (!response.ok) return fail("Could not retrieve video status", 502, cors);
   const payload = await response.json();
@@ -481,11 +481,11 @@ const getVideoStatus = async (
       .eq("id", job.id).eq("user_id", userId);
     return fail(refunded ? "Video worker did not return a permanent HTTPS video URL; credits were returned" : "Video output is missing and credit refund could not be confirmed", 502, cors);
   }
-  if (status === "failed") {
-    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_provider_failed");
-    const { error: failedSaveError } = await db.from("armex_video_generations").update({ status: "failed", refund_status: refunded ? "completed" : "pending", error_code: "provider_job_failed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId);
+  if (status === "failed" || status === "cancelled") {
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
+    const { error: failedSaveError } = await db.from("armex_video_generations").update({ status, refund_status: refunded ? "completed" : "pending", error_code: "provider_job_failed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId);
     if (failedSaveError || !refunded) return fail("Video failed; automatic credit refund is pending and will be retried", 500, cors);
-    return json({ success: true, video: { ...job, status: "failed", refund_status: "completed" } }, 200, cors);
+    return json({ success: true, video: { ...job, status, refund_status: "completed" } }, 200, cors);
   }
   const update: Record<string, unknown> = {
     status, updated_at: new Date().toISOString(),
