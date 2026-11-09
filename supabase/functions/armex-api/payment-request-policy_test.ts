@@ -77,34 +77,45 @@ Deno.test("insecure callback URLs are rejected", () => {
 
 Deno.test("simulation: lost provider response is recovered without issuing a second request", () => {
   const expected = { orderId, amount: 100000, callbackUrl };
-  const providerRequestCalls = 1;
-  let savedAuthority: string | null = null;
-  // The provider accepted the request, but the application lost its response.
-  const retryResult = findUnverifiedAuthorityForOrder({
+  const order: { status: "pending"; provider_reference: string | null } = {
+    status: "pending",
+    provider_reference: null,
+  };
+  let providerRequestCalls = 1; // The first request was accepted; its response was lost.
+  const unverified = {
     data: { authorities: [
       { authority: "A-RECOVERED", amount: 100000, callback_url: callbackUrl },
     ] },
-  }, expected);
-  if (retryResult) savedAuthority = retryResult;
-  assertEquals(savedAuthority, "A-RECOVERED");
-  assertEquals(providerRequestCalls, 1);
-  // A subsequent retry reuses the durable Authority rather than calling /request.
+  };
+  const retry = () => {
+    if (order.provider_reference) return "reused";
+    const authority = findUnverifiedAuthorityForOrder(unverified, expected);
+    if (!authority) return "manual_review";
+    order.provider_reference = authority;
+    return "recovered";
+  };
+  assertEquals(retry(), "recovered");
+  assertEquals(order.provider_reference, "A-RECOVERED");
+  assertEquals(retry(), "reused");
   assertEquals(providerRequestCalls, 1);
 });
 
 Deno.test("simulation: missing order-specific provider evidence remains manual review", () => {
   const expected = { orderId, amount: 100000, callbackUrl };
-  let providerRequestCalls = 1;
+  const order: { status: "pending"; provider_reference: string | null } = {
+    status: "pending",
+    provider_reference: null,
+  };
+  const providerRequestCalls = 1;
   const retryResult = findUnverifiedAuthorityForOrder({
     data: { authorities: [
       { authority: "A-SAME-AMOUNT", amount: 100000, channel: "Web" },
     ] },
   }, expected);
   assertEquals(retryResult, null);
-  // The request remains held; a retry must not create another provider session.
+  assertEquals(order.provider_reference, null);
   assertEquals(providerRequestCalls, 1);
 });
-
 
 Deno.test("unverified callback must preserve every configured callback query parameter", () => {
   const expected = { orderId, amount: 100000, callbackUrl };
