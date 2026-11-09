@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert";
-import { hasDurableVerifiedPayment } from "./payment-callback-policy.ts";
+import { hasDurableVerifiedPayment, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
 
 Deno.test("previously verified paid order can recover wallet grant without provider re-verification", () => {
   assertEquals(hasDurableVerifiedPayment("paid", { ref_id: "987654" }), true);
