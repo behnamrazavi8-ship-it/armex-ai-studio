@@ -1085,25 +1085,6 @@ const handle = async (request: Request): Promise<Response> => {
   const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
   const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
 
-  const { data: recoveryMetadataSaved, error: recoveryMetadataError } = await db.rpc(
-    "armex_set_chat_recovery_metadata",
-    {
-      p_user_id: userId,
-      p_request_id: requestId,
-      p_message: message,
-      p_model: model,
-      p_conversation_id: conversationId ?? null,
-      p_credits: chatCreditCost,
-      p_attempt_id: attemptId,
-      p_prompt_price: promptPrice >= 0 ? promptPrice : null,
-      p_completion_price: completionPrice >= 0 ? completionPrice : null,
-    },
-  );
-  if (recoveryMetadataError || recoveryMetadataSaved !== true) {
-    await markChatRequestFailed(db, userId, requestId, "recovery_metadata_failed");
-    return fail("Could not safely prepare chat recovery metadata", 500, cors);
-  }
-
   let conversation: { id: string } | null = null;
   let context: Array<{ role: "user" | "assistant"; content: string }> = [];
 
@@ -1145,6 +1126,27 @@ const handle = async (request: Request): Promise<Response> => {
 
   const promptChars = SYSTEM_PROMPT.length + context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
   const estimatedInputTokens = Math.max(1, Math.ceil(promptChars / 3));
+
+  const { data: recoveryMetadataSaved, error: recoveryMetadataError } = await db.rpc(
+    "armex_set_chat_recovery_metadata",
+    {
+      p_user_id: userId,
+      p_request_id: requestId,
+      p_message: message,
+      p_model: model,
+      p_conversation_id: conversationId ?? null,
+      p_credits: chatCreditCost,
+      p_attempt_id: attemptId,
+      p_prompt_price: promptPrice >= 0 ? promptPrice : null,
+      p_completion_price: completionPrice >= 0 ? completionPrice : null,
+      p_estimated_input_tokens: estimatedInputTokens,
+    },
+  );
+  if (recoveryMetadataError || recoveryMetadataSaved !== true) {
+    await markChatRequestFailed(db, userId, requestId, "recovery_metadata_failed");
+    return fail("Could not safely prepare chat recovery metadata", 500, cors);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
