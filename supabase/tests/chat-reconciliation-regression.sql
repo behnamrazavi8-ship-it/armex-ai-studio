@@ -93,6 +93,27 @@ begin
   ) then
     raise exception 'accepted provider evidence should persist';
   end if;
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'accepted', 'debited', 200,
+    '{"choices":[{"message":{"content":"Recovered answer"},"finish_reason":"stop"}]}'::jsonb,
+    'provider_accepted_retry'
+  ) then
+    raise exception 'identical accepted provider evidence should be idempotent';
+  end if;
+  if public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'accepted', 'debited', 200,
+    '{"choices":[{"message":{"content":"Tampered answer"},"finish_reason":"stop"}]}'::jsonb,
+    'attempted_snapshot_replacement'
+  ) then
+    raise exception 'accepted provider response snapshot must be immutable';
+  end if;
+  if public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'accepted', 'debited', 201,
+    '{"choices":[{"message":{"content":"Recovered answer"},"finish_reason":"stop"}]}'::jsonb,
+    'attempted_status_replacement'
+  ) then
+    raise exception 'accepted provider HTTP status must be immutable';
+  end if;
   if public.armex_record_chat_provider_evidence(
     v_user, v_request, 'rejected', 'debited', 400, null, 'attempted_downgrade'
   ) then
