@@ -134,6 +134,14 @@ jobs:
           missing = [item for item in required if item not in ids]
           if missing:
               raise SystemExit("Missing required UI ids: " + ", ".join(missing))
+          payment_contract = [
+              "pendingPaymentRequestMemory", "allowPending=false",
+              "request_closed===true", "retry_allowed===true",
+              "result.pending===true"
+          ]
+          missing_payment = [item for item in payment_contract if item not in html]
+          if missing_payment:
+              raise SystemExit("Missing safe payment retry UI contract: " + ", ".join(missing_payment))
           PY
           node --check /tmp/lokal-inline-0.js
           node --check /tmp/lokal-inline-1.mjs
