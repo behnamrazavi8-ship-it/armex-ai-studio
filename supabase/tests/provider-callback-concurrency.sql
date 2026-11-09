@@ -52,10 +52,10 @@ select * from dblink_get_result('pay_b') as t(id uuid);
 
 -- Both retries attempt the same durable grant key; unique index allows one.
 select dblink_send_query('pay_a',format(
- 'insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key,metadata) values(%L::uuid,500,''purchase'',%L,%L::jsonb) on conflict(idempotency_key) do nothing returning id',
+ 'insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key,metadata) values(%L::uuid,500,''purchase'',%L,%L::jsonb) on conflict (user_id, idempotency_key) do nothing returning id',
  :'payment_user','payment_order:'||:'payment_order','{"provider":"zarinpal"}'));
 select dblink_send_query('pay_b',format(
- 'insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key,metadata) values(%L::uuid,500,''purchase'',%L,%L::jsonb) on conflict(idempotency_key) do nothing returning id',
+ 'insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key,metadata) values(%L::uuid,500,''purchase'',%L,%L::jsonb) on conflict (user_id, idempotency_key) do nothing returning id',
  :'payment_user','payment_order:'||:'payment_order','{"provider":"zarinpal"}'));
 create temp table payment_grants(id uuid);
 insert into payment_grants select * from dblink_get_result('pay_a') as t(id uuid);
@@ -71,7 +71,7 @@ begin
  if (select count(*) from payment_grants)>1 then raise exception 'more than one payment grant insert won'; end if;
 end $block$;
 insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key)
-values(:'payment_user'::uuid,500,'purchase','payment_order:'||:'payment_order') on conflict(idempotency_key) do nothing;
+values(:'payment_user'::uuid,500,'purchase','payment_order:'||:'payment_order') on conflict (user_id, idempotency_key) do nothing;
 select set_config('test.payment_order', :'payment_order', false);
 do $block$ begin
  if (select count(*) from public.armex_credit_transactions where idempotency_key='payment_order:'||current_setting('test.payment_order'))<>1 then raise exception 'payment retry duplicated grant'; end if;
@@ -135,10 +135,10 @@ insert into public.armex_video_generations(user_id,request_id,prompt,credits_cha
 values(:'payment_user'::uuid,gen_random_uuid(),'synthetic duplicate failure',80,'failed','pending') returning id \gset
 \set failed_video_job :id
 select dblink_send_query('pay_a',format(
- 'insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key,metadata) values(%L::uuid,80,''refund'',%L,%L::jsonb) on conflict(idempotency_key) do nothing returning id',
+ 'insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key,metadata) values(%L::uuid,80,''refund'',%L,%L::jsonb) on conflict (user_id, idempotency_key) do nothing returning id',
  :'payment_user','ai_refund:'||:'failed_video_job'||':'||:'failed_video_job'||':video_refund','{"reason":"video_refund"}'));
 select dblink_send_query('pay_b',format(
- 'insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key,metadata) values(%L::uuid,80,''refund'',%L,%L::jsonb) on conflict(idempotency_key) do nothing returning id',
+ 'insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key,metadata) values(%L::uuid,80,''refund'',%L,%L::jsonb) on conflict (user_id, idempotency_key) do nothing returning id',
  :'payment_user','ai_refund:'||:'failed_video_job'||':'||:'failed_video_job'||':video_refund','{"reason":"video_refund"}'));
 create temp table refund_claims(id uuid);
 insert into refund_claims select * from dblink_get_result('pay_a') as t(id uuid);
