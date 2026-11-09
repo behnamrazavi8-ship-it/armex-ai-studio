@@ -75,6 +75,7 @@ Payment flow:
 3. Zarinpal redirects to the callback. The server verifies the authority and exact amount with Zarinpal.
 4. Only a verified transaction is marked paid and credited through `armex_grant_credits`, with `payment_order:{order_id}` as an idempotency key.
 5. The callback can safely retry the grant if the payment was verified but a transient database failure interrupted wallet crediting.
+6. Once `status=paid` and a non-empty provider `ref_id` are durably stored, retries use that stored verification evidence and do not depend on another Zarinpal verification request. Wallet grants remain idempotent with `payment_order:{order_id}`.
 
 ## Database and rollout
 
