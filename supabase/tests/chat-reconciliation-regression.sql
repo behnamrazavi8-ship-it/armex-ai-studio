@@ -1,4 +1,4 @@
--- SQL-level regression tests for the four staged chat-request migrations.
+-- SQL-level regression tests for the staged chat-request migrations.
 -- Runs only against the disposable PostgreSQL service in GitHub Actions.
 begin;
 
@@ -49,6 +49,81 @@ begin
   end loop;
 end $privilege_test$;
 
+
+
+-- Failure state must be blocked until any confirmed chat debit has a
+-- matching idempotent refund record. Accepted provider work is never failed.
+do $failure_refund_guard_regression$
+declare
+  v_user uuid := gen_random_uuid();
+  v_no_debit_request uuid := gen_random_uuid();
+  v_debited_request uuid := gen_random_uuid();
+  v_accepted_request uuid := gen_random_uuid();
+  v_attempt uuid := gen_random_uuid();
+  v_failed boolean;
+  v_status text;
+begin
+  insert into auth.users(id) values (v_user);
+
+  -- Pre-debit validation failures may be marked failed without a refund.
+  perform public.armex_claim_chat_request(v_user, v_no_debit_request);
+  if not public.armex_fail_chat_request(v_user, v_no_debit_request, 'validation_failed') then
+    raise exception 'request with no debit should be fail-able';
+  end if;
+
+  -- A durable debit without its exact refund ledger entry must stay processing.
+  perform public.armex_claim_chat_request(v_user, v_debited_request);
+  if not public.armex_set_chat_recovery_metadata(
+    v_user, v_debited_request, 'prompt', 'test/model', null, 1, v_attempt, null, null, 1
+  ) then
+    raise exception 'refund guard recovery metadata should persist';
+  end if;
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_debited_request, 'rejected', 'debited', 400, null, 'provider_rejected'
+  ) then
+    raise exception 'rejected provider evidence should persist';
+  end if;
+  insert into public.armex_credit_transactions(user_id, idempotency_key)
+  values (v_user, 'ai_request:' || v_debited_request::text);
+
+  v_failed := public.armex_fail_chat_request(v_user, v_debited_request, 'provider_rejected_400');
+  if v_failed then
+    raise exception 'debited request must not fail before refund is recorded';
+  end if;
+  select status into v_status from public.armex_chat_requests
+  where user_id = v_user and request_id = v_debited_request;
+  if v_status <> 'processing' then
+    raise exception 'request without refund must remain processing';
+  end if;
+
+  insert into public.armex_credit_transactions(user_id, idempotency_key)
+  values (
+    v_user,
+    'ai_refund:' || v_debited_request::text || ':' || v_attempt::text || ':provider_error'
+  );
+  if not public.armex_fail_chat_request(v_user, v_debited_request, 'provider_rejected_400') then
+    raise exception 'request may fail after exact refund record is durable';
+  end if;
+
+  -- Even a refund record cannot authorize failing an accepted provider result.
+  perform public.armex_claim_chat_request(v_user, v_accepted_request);
+  if not public.armex_set_chat_recovery_metadata(
+    v_user, v_accepted_request, 'prompt', 'test/model', null, 1, gen_random_uuid(), null, null, 1
+  ) then
+    raise exception 'accepted guard metadata should persist';
+  end if;
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_accepted_request, 'accepted', 'debited', 200,
+    '{"choices":[{"message":{"content":"billable answer"}}]}'::jsonb, 'accepted'
+  ) then
+    raise exception 'accepted guard evidence should persist';
+  end if;
+  insert into public.armex_credit_transactions(user_id, idempotency_key)
+  values (v_user, 'ai_request:' || v_accepted_request::text);
+  if public.armex_fail_chat_request(v_user, v_accepted_request, 'operator_failure') then
+    raise exception 'accepted provider request must not be failed through generic RPC';
+  end if;
+end $failure_refund_guard_regression$;
 
 -- Lease claim parameters must be bounded even when callers pass explicit NULL.
 do $lease_parameter_regression$
