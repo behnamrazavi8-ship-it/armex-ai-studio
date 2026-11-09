@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
 import { hasDurableVerifiedPayment, isMatchingPaymentGrant, isValidProviderReference, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
+import { findUnverifiedAuthorityForOrder, isDefinitiveZarinpalRequestRejection, paymentCallbackUrlForOrder } from "./payment-request-policy.ts";
 import { decideRunpodCallbackAction, runpodRefundIdempotencyKey } from "./runpod-callback-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
@@ -693,84 +694,323 @@ const createZarinpalPayment = async (
   if (!merchantId || !pack) return fail("Zarinpal is not configured or this credit package is unavailable", 503, cors);
   if (!requestId) return fail("A UUID request_id is required for payment idempotency", 400, cors);
 
+  const baseCallbackUrl = Deno.env.get("ZARINPAL_CALLBACK_URL")?.trim() ||
+    "https://znendbwkmcldttugvwnr.supabase.co/functions/v1/armex-api?action=payment_callback";
+
   const { data: prior, error: priorError } = await db.from("armex_payment_orders")
-    .select("id,status,provider_reference,amount,credits")
+    .select("id,status,provider,provider_reference,amount,currency,credits,package_id,provider_metadata")
     .eq("user_id", userId).eq("idempotency_key", requestId).maybeSingle();
   if (priorError) return fail("Could not verify payment request idempotency", 500, cors);
+
+  const paymentUrl = (authority: string) =>
+    "https://www.zarinpal.com/pg/StartPay/" + encodeURIComponent(authority);
+  const pendingResponse = (orderId: string, message: string) =>
+    json({ success: true, pending: true, reconciliation_required: true, order_id: orderId, message }, 202, cors);
+
   if (prior) {
-    if (prior.status === "pending" && prior.provider_reference) {
+    const packageMatches = prior.provider === "zarinpal" &&
+      prior.currency === "IRR" &&
+      Number(prior.amount) === pack.amount_irr &&
+      Number(prior.credits) === pack.credits &&
+      (!prior.package_id || prior.package_id === pack.id);
+    if (!packageMatches) {
+      return fail("This request ID is already bound to a different payment package; no new payment was created", 409, cors);
+    }
+    if (prior.status === "pending" && isValidProviderReference(prior.provider_reference)) {
       return json({ success: true, duplicate: true, order: prior,
-        payment_url: "https://www.zarinpal.com/pg/StartPay/" + encodeURIComponent(prior.provider_reference) }, 200, cors);
+        payment_url: paymentUrl(String(prior.provider_reference)) }, 200, cors);
     }
     if (prior.status === "paid") {
-      return json({ success: true, duplicate: true, order: prior, already_paid: true }, 200, cors);
+      if (hasDurableVerifiedPayment(prior.status, prior.provider_metadata)) {
+        return json({ success: true, duplicate: true, order: prior, already_paid: true }, 200, cors);
+      }
+      return pendingResponse(prior.id, "The order is marked paid without complete provider evidence; it is held for manual reconciliation");
     }
-    return fail("This payment request already exists but has no reusable payment session; create a new request", 409, cors);
+    if (prior.status !== "pending") {
+      return fail("This payment request is closed; use a new request ID only after confirming the previous order status", 409, cors);
+    }
+
+    // A previous request may have reached Zarinpal even though its response was
+    // lost. Never send another /request call for this idempotency key.
+    const metadata = prior.provider_metadata && typeof prior.provider_metadata === "object" &&
+        !Array.isArray(prior.provider_metadata)
+      ? prior.provider_metadata as Record<string, unknown>
+      : {};
+    const savedCallbackUrl = typeof metadata.callback_url === "string"
+      ? metadata.callback_url
+      : "";
+    if (!savedCallbackUrl) {
+      return pendingResponse(prior.id, "The original callback URL is not available; this order requires manual reconciliation");
+    }
+
+    let unverifiedResponse: Response;
+    try {
+      unverifiedResponse = await fetch(ZARINPAL_API + "/unVerified.json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ merchant_id: merchantId }),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch (error) {
+      console.warn("Zarinpal unverified-payment inquiry was inconclusive", {
+        orderId: prior.id,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+      return pendingResponse(prior.id, "The provider could not be reached; the existing payment request remains held and will not be duplicated");
+    }
+
+    const unverifiedPayload = await unverifiedResponse.json().catch(() => null);
+    const recoveredAuthority = unverifiedResponse.ok
+      ? findUnverifiedAuthorityForOrder(unverifiedPayload, {
+        orderId: prior.id,
+        amount: pack.amount_irr,
+        callbackUrl: savedCallbackUrl,
+      })
+      : null;
+    if (!recoveredAuthority) {
+      const nextMetadata = {
+        ...metadata,
+        request_state: unverifiedResponse.ok ? "manual_review" : "ambiguous",
+        last_reconciliation_at: new Date().toISOString(),
+        last_reconciliation_http_status: unverifiedResponse.status,
+      };
+      await db.from("armex_payment_orders").update({
+        provider_metadata: nextMetadata,
+        updated_at: new Date().toISOString(),
+      }).eq("id", prior.id).eq("status", "pending");
+      return pendingResponse(prior.id, unverifiedResponse.ok
+        ? "No unique provider record matched this exact order, amount and callback URL; manual review is required"
+        : "The provider inquiry failed; this order remains pending for safe retry or manual review");
+    }
+
+    const recoveredMetadata = {
+      ...metadata,
+      request_state: "authority_recovered",
+      authority_recovered_at: new Date().toISOString(),
+    };
+    const { data: savedOrder, error: saveError } = await db.from("armex_payment_orders")
+      .update({
+        provider_reference: recoveredAuthority,
+        provider_metadata: recoveredMetadata,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", prior.id).eq("status", "pending").is("provider_reference", null)
+      .select("id,provider_reference").maybeSingle();
+    if (saveError || !savedOrder) {
+      const { data: persistedOrder, error: lookupError } = await db.from("armex_payment_orders")
+        .select("provider_reference").eq("id", prior.id).maybeSingle();
+      if (lookupError || persistedOrder?.provider_reference !== recoveredAuthority) {
+        console.error("Recovered Zarinpal authority could not be durably confirmed", {
+          orderId: prior.id,
+          code: saveError?.code ?? lookupError?.code,
+        });
+        return pendingResponse(prior.id, "A provider session was found but its authority could not be safely recorded; manual reconciliation is required");
+      }
+    }
+    return json({
+      success: true,
+      duplicate: true,
+      recovered: true,
+      order_id: prior.id,
+      payment_url: paymentUrl(recoveredAuthority),
+    }, 200, cors);
   }
 
-  const { data: order, error: orderError } = await db.from("armex_payment_orders").insert({
-    user_id: userId, amount: pack.amount_irr, currency: "IRR", credits: pack.credits,
-    provider: "zarinpal", package_id: pack.id, idempotency_key: requestId, status: "pending",
-  }).select("id").single();
-  if (orderError || !order) return fail("Could not create payment order", 500, cors);
+  // Do not let a different request ID create a second provider session while
+  // this user's previous request has no durable Authority.
+  const { data: ambiguousOrder, error: ambiguousOrderError } = await db.from("armex_payment_orders")
+    .select("id").eq("user_id", userId).eq("provider", "zarinpal")
+    .eq("status", "pending").is("provider_reference", null).maybeSingle();
+  if (ambiguousOrderError) return fail("Could not check for an earlier unresolved payment", 500, cors);
+  if (ambiguousOrder) {
+    return fail("An earlier payment request is still being reconciled; retry that same request or contact support before starting another", 409, cors);
+  }
 
-  const callbackUrl = (Deno.env.get("ZARINPAL_CALLBACK_URL")?.trim() ||
-    "https://znendbwkmcldttugvwnr.supabase.co/functions/v1/armex-api?action=payment_callback");
-  const response = await fetch(ZARINPAL_API + "/request.json", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      merchant_id: merchantId, amount: pack.amount_irr, currency: "IRR",
-      description: "خرید اعتبار " + pack.title + " در LOKAL AI",
-      callback_url: callbackUrl, metadata: { order_id: order.id, user_id: userId },
-    }), signal: AbortSignal.timeout(20000),
-  });
-  const payload = await response.json().catch(() => ({}));
+  const orderId = crypto.randomUUID();
+  let callbackUrl: string;
+  try {
+    callbackUrl = paymentCallbackUrlForOrder(baseCallbackUrl, orderId);
+  } catch {
+    return fail("The configured payment callback URL must be a valid HTTPS URL", 503, cors);
+  }
+  const requestAttemptId = crypto.randomUUID();
+  const requestStartedAt = new Date().toISOString();
+  const initialMetadata = {
+    request_state: "submitting",
+    request_attempt_id: requestAttemptId,
+    request_started_at: requestStartedAt,
+    callback_url: callbackUrl,
+  };
+  const { data: order, error: orderError } = await db.from("armex_payment_orders").insert({
+    id: orderId,
+    user_id: userId,
+    amount: pack.amount_irr,
+    currency: "IRR",
+    credits: pack.credits,
+    provider: "zarinpal",
+    package_id: pack.id,
+    idempotency_key: requestId,
+    status: "pending",
+    provider_metadata: initialMetadata,
+  }).select("id").single();
+  if (orderError || !order) {
+    console.error("Zarinpal order creation failed", { requestId, code: orderError?.code });
+    return fail(orderError?.code === "23505"
+      ? "An earlier payment request is already being created or reconciled; do not start another payment"
+      : "Could not create payment order", orderError?.code === "23505" ? 409 : 500, cors);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(ZARINPAL_API + "/request.json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        merchant_id: merchantId,
+        amount: pack.amount_irr,
+        currency: "IRR",
+        description: "خرید اعتبار " + pack.title + " در LOKAL AI",
+        callback_url: callbackUrl,
+        metadata: { order_id: order.id, user_id: userId },
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (error) {
+    const ambiguousMetadata = {
+      ...initialMetadata,
+      request_state: "ambiguous",
+      last_error_kind: error instanceof Error && error.name === "AbortError" ? "timeout" : "transport",
+      last_reconciliation_at: new Date().toISOString(),
+    };
+    const { error: stateError } = await db.from("armex_payment_orders").update({
+      provider_metadata: ambiguousMetadata,
+      updated_at: new Date().toISOString(),
+    }).eq("id", order.id).eq("status", "pending");
+    console.error("Zarinpal payment request outcome is ambiguous", {
+      orderId: order.id,
+      stateSaveCode: stateError?.code,
+    });
+    return pendingResponse(order.id, "The provider request timed out or the connection was interrupted; no second payment request will be sent automatically");
+  }
+
+  const payload = await response.json().catch(() => null);
   const authority = payload?.data?.authority;
   const code = Number(payload?.data?.code);
-  if (!response.ok || code !== 100 || typeof authority !== "string") {
-    await db.from("armex_payment_orders").update({ status: "failed", updated_at: new Date().toISOString() })
-      .eq("id", order.id).eq("user_id", userId);
-    console.error("Zarinpal payment request failed", { orderId: order.id, httpStatus: response.status, code });
-    return fail("Zarinpal could not create the payment session", 502, cors);
+  if (!response.ok || code !== 100 || typeof authority !== "string" || !authority.trim()) {
+    if (isDefinitiveZarinpalRequestRejection(response.status, payload)) {
+      const rejectedMetadata = {
+        ...initialMetadata,
+        request_state: "rejected",
+        provider_http_status: response.status,
+        provider_code: code,
+        rejected_at: new Date().toISOString(),
+      };
+      await db.from("armex_payment_orders").update({
+        status: "failed",
+        provider_metadata: rejectedMetadata,
+        updated_at: new Date().toISOString(),
+      }).eq("id", order.id).eq("status", "pending");
+      console.error("Zarinpal definitively rejected payment request", {
+        orderId: order.id,
+        httpStatus: response.status,
+        code,
+      });
+      return fail("Zarinpal rejected the payment request; no payment session was created", 502, cors);
+    }
+
+    const ambiguousMetadata = {
+      ...initialMetadata,
+      request_state: "ambiguous",
+      provider_http_status: response.status,
+      provider_code: Number.isSafeInteger(code) ? code : null,
+      last_reconciliation_at: new Date().toISOString(),
+    };
+    await db.from("armex_payment_orders").update({
+      provider_metadata: ambiguousMetadata,
+      updated_at: new Date().toISOString(),
+    }).eq("id", order.id).eq("status", "pending");
+    return pendingResponse(order.id, "Zarinpal returned an incomplete or ambiguous response; the order is held and will not be submitted again");
   }
-  const { error: authoritySaveError } = await db.from("armex_payment_orders")
-    .update({ provider_reference: authority, updated_at: new Date().toISOString() })
-    .eq("id", order.id).eq("user_id", userId);
-  if (authoritySaveError) {
-    console.error("Zarinpal authority persistence failed", { orderId: order.id, code: authoritySaveError.code });
-    return fail("Payment session was created but could not be safely recorded; contact support before retrying", 500, cors);
+
+  const authorityMetadata = {
+    ...initialMetadata,
+    request_state: "authority_received",
+    authority_received_at: new Date().toISOString(),
+    provider_code: code,
+  };
+  const { data: authoritySaved, error: authoritySaveError } = await db.from("armex_payment_orders")
+    .update({
+      provider_reference: authority,
+      provider_metadata: authorityMetadata,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", order.id).eq("status", "pending").is("provider_reference", null)
+    .select("id,provider_reference").maybeSingle();
+  if (authoritySaveError || !authoritySaved) {
+    const { data: persistedOrder, error: lookupError } = await db.from("armex_payment_orders")
+      .select("provider_reference").eq("id", order.id).maybeSingle();
+    if (lookupError || persistedOrder?.provider_reference !== authority) {
+      console.error("Zarinpal authority persistence could not be confirmed", {
+        orderId: order.id,
+        code: authoritySaveError?.code ?? lookupError?.code,
+      });
+      return pendingResponse(order.id, "The provider created a payment session but its authority could not be durably confirmed; do not retry with a new request");
+    }
   }
-  return json({ success: true, order_id: order.id, payment_url: "https://www.zarinpal.com/pg/StartPay/" + encodeURIComponent(authority) }, 200, cors);
+  return json({
+    success: true,
+    order_id: order.id,
+    payment_url: paymentUrl(authority),
+  }, 200, cors);
 };
 
 const zarinpalCallback = async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
   const authority = url.searchParams.get("Authority") ?? "";
   const status = url.searchParams.get("Status") ?? "";
+  const orderId = url.searchParams.get("order_id");
   const merchantId = Deno.env.get("ZARINPAL_MERCHANT_ID")?.trim() ?? "";
   const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
   if (!authority || !merchantId || !supabaseUrl || !serviceKey) {
     return json({ success: false, error: "Payment callback is not configured" }, 503);
   }
+  if (orderId && !isUuid(orderId)) {
+    return json({ success: false, error: "Invalid payment order reference" }, 400);
+  }
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: order, error } = await admin.from("armex_payment_orders")
-    .select("id,user_id,amount,credits,status,provider_metadata")
-    .eq("provider", "zarinpal").eq("provider_reference", authority).maybeSingle();
+  let orderQuery = admin.from("armex_payment_orders")
+    .select("id,user_id,amount,credits,status,provider_metadata,provider_reference")
+    .eq("provider", "zarinpal");
+  const { data: order, error } = orderId
+    ? await orderQuery.eq("id", orderId).maybeSingle()
+    : await orderQuery.eq("provider_reference", authority).maybeSingle();
   if (error || !order) return json({ success: false, error: "Payment order not found" }, 404);
+  if (order.provider_reference && order.provider_reference !== authority) {
+    return json({ success: false, error: "Payment authority does not match this order" }, 409);
+  }
+
+  const existingMetadata = order.provider_metadata && typeof order.provider_metadata === "object" &&
+      !Array.isArray(order.provider_metadata)
+    ? order.provider_metadata as Record<string, unknown>
+    : {};
 
   // Once verification is durably recorded, wallet-credit retries must not
   // depend on Zarinpal being available again.
-  const alreadyVerified = hasDurableVerifiedPayment(order.status, order.provider_metadata);
+  const alreadyVerified = hasDurableVerifiedPayment(order.status, existingMetadata);
   if (shouldCancelUnverifiedPayment(status, order.status)) {
-    await admin.from("armex_payment_orders").update({ status: "cancelled", updated_at: new Date().toISOString() })
-      .eq("id", order.id).eq("status", "pending");
+    await admin.from("armex_payment_orders").update({
+      status: "cancelled",
+      provider_reference: authority,
+      provider_metadata: { ...existingMetadata, request_state: "cancelled", callback_status: status },
+      updated_at: new Date().toISOString(),
+    }).eq("id", order.id).eq("status", "pending");
     return json({ success: false, cancelled: true, order_id: order.id }, 200);
   }
 
   let refId: string | number | null = null;
   if (alreadyVerified) {
-    const storedRefId = (order.provider_metadata as Record<string, unknown>).ref_id;
+    const storedRefId = existingMetadata.ref_id;
     refId = typeof storedRefId === "string" || typeof storedRefId === "number" ? storedRefId : null;
   } else {
     const verifyResponse = await fetch(ZARINPAL_API + "/verify.json", {
@@ -794,8 +1034,17 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
     }
     refId = providerRef;
     const { error: paidError } = await admin.from("armex_payment_orders").update({
-      status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-      provider_metadata: { ref_id: refId },
+      status: "paid",
+      provider_reference: authority,
+      paid_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      provider_metadata: {
+        ...existingMetadata,
+        ref_id: refId,
+        request_state: "verified",
+        verification_code: verifyCode,
+        verified_at: new Date().toISOString(),
+      },
     }).eq("id", order.id).neq("status", "paid");
     if (paidError) return json({ success: false, error: "Could not record verified payment" }, 500);
   }
