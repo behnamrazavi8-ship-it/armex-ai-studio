@@ -384,7 +384,7 @@ const generateVideo = async (
   if (insertError || !job) return fail("Could not create video job", insertError?.code === "23505" ? 409 : 500, cors);
 
   let webhookUrl = "";
-  try { webhookUrl = runpodWebhookUrl(job.id, requestId); }
+  try { webhookUrl = await runpodWebhookUrl(job.id, requestId); }
   catch {
     await db.from("armex_video_generations").update({
       status: "failed", error_code: "webhook_not_configured",
@@ -465,14 +465,26 @@ const generateVideo = async (
   return json({ success: true, video: current }, 202, cors);
 };
 
-const runpodWebhookUrl = (jobId: string, requestId: string): string => {
+const runpodWebhookSignature = async (
+  secret: string, jobId: string, requestId: string,
+): Promise<string> => {
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC", key, new TextEncoder().encode(jobId + ":" + requestId),
+  );
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+const runpodWebhookUrl = async (jobId: string, requestId: string): Promise<string> => {
   const base = (Deno.env.get("RUNPOD_WEBHOOK_CALLBACK_URL")?.trim() ||
     (Deno.env.get("SUPABASE_URL")?.trim() + "/functions/v1/armex-api?action=runpod_callback"));
   const secret = Deno.env.get("RUNPOD_WEBHOOK_SECRET")?.trim() ?? "";
   if (!secret || !base.startsWith("https://")) throw new Error("RUNPOD_WEBHOOK_NOT_CONFIGURED");
   const url = new URL(base);
   url.searchParams.set("action", "runpod_callback");
-  url.searchParams.set("token", secret);
+  url.searchParams.set("token", await runpodWebhookSignature(secret, jobId, requestId));
   url.searchParams.set("job_id", jobId);
   url.searchParams.set("request_id", requestId);
   return url.toString();
@@ -480,14 +492,19 @@ const runpodWebhookUrl = (jobId: string, requestId: string): string => {
 
 const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
-  const expected = Deno.env.get("RUNPOD_WEBHOOK_SECRET")?.trim() ?? "";
+  const secret = Deno.env.get("RUNPOD_WEBHOOK_SECRET")?.trim() ?? "";
+  const jobId = url.searchParams.get("job_id") ?? "";
+  const requestId = url.searchParams.get("request_id") ?? "";
   const supplied = url.searchParams.get("token") ?? "";
-  let mismatch = supplied.length ^ expected.length;
-  const maxLength = Math.max(supplied.length, expected.length);
-  for (let i = 0; i < maxLength; i++) {
-    mismatch |= (supplied.charCodeAt(i) || 0) ^ (expected.charCodeAt(i) || 0);
+  if (!secret || !isUuid(jobId) || !isUuid(requestId)) {
+    return json({ success: false, error: "Unauthorized webhook" }, 401);
   }
-  if (!expected || mismatch !== 0) return json({ success: false, error: "Unauthorized webhook" }, 401);
+  const expected = await runpodWebhookSignature(secret, jobId, requestId);
+  let mismatch = supplied.length ^ expected.length;
+  for (let i = 0; i < expected.length; i++) {
+    mismatch |= (supplied.charCodeAt(i) || 0) ^ expected.charCodeAt(i);
+  }
+  if (mismatch !== 0) return json({ success: false, error: "Unauthorized webhook" }, 401);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
