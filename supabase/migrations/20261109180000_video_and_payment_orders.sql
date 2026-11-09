@@ -10,6 +10,7 @@ create table if not exists public.armex_video_generations (
   status text not null default 'queued'
     check (status in ('queued','processing','completed','failed','cancelled')),
   credits_charged bigint not null check (credits_charged > 0),
+  refund_status text not null default 'not_required' check (refund_status in ('not_required','pending','completed')),
   provider text not null default 'runpod',
   provider_job_id text,
   result_url text,
