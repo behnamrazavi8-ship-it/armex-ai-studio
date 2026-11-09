@@ -31,7 +31,7 @@ def valid_input():
         "size": "1280*704",
         "storage_upload": {
             "path": f"{USER_ID}/{JOB_ID}.mp4",
-            "signed_url": "https://projectref.supabase.co/storage/v1/object/upload/sign/lokal-ai-videos/test.mp4?token=one-time",
+            "signed_url": f"https://projectref.supabase.co/storage/v1/object/upload/sign/lokal-ai-videos/{USER_ID}/{JOB_ID}.mp4?token=one-time",
             "apikey": "public-anon-key",
             "authorization": "Bearer public-anon-key",
             "content_type": "video/mp4",
@@ -54,6 +54,10 @@ class WorkerContractTests(unittest.TestCase):
             validate_job_input(value)
         value = valid_input()
         value["storage_upload"]["signed_url"] = "https://attacker.example/upload?token=x"
+        with self.assertRaises(ValueError):
+            validate_job_input(value)
+        value = valid_input()
+        value["storage_upload"]["signed_url"] = "https://projectref.supabase.co/storage/v1/object/upload/sign/lokal-ai-videos/other-user/other-job.mp4?token=x"
         with self.assertRaises(ValueError):
             validate_job_input(value)
         value = valid_input()
