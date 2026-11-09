@@ -405,7 +405,7 @@ const generateVideo = async (
   try {
     response = await fetch(RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/run", {
       method: "POST",
-      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      headers: { Authorization: token, "Content-Type": "application/json" },
       body: JSON.stringify({ input: {
         task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
         request_id: requestId, aspect_ratio: aspectRatio, duration_seconds: 5, output_mode: "durable_https_url",
@@ -424,7 +424,7 @@ const generateVideo = async (
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 300);
     console.error("RunPod rejected video job", { requestId, status: response.status, detail });
-    const refunded = await refundCredits(db, userId, VIDEO_CREDIT_COST, requestId, requestId, "video_provider_rejected");
+    const refunded = await refundCredits(db, userId, VIDEO_CREDIT_COST, job.id, job.id, "video_refund");
     await db.from("armex_video_generations").update({ status: "failed", refund_status: refunded ? "completed" : "pending", error_code: "provider_rejected" })
       .eq("id", job.id).eq("user_id", userId);
     return fail(refunded ? "Video provider rejected the job; credits were returned" : "Provider rejected the job but refund could not be confirmed", refunded ? 502 : 500, cors);
@@ -455,7 +455,7 @@ const getVideoStatus = async (
     .eq("id", id).eq("user_id", userId).maybeSingle();
   if (error || !job) return fail("Video job not found", 404, cors);
   if (job.status === "failed" && job.refund_status === "pending") {
-    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_provider_failed");
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
     if (refunded) await db.from("armex_video_generations").update({ refund_status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId);
     return json({ success: refunded, video: { ...job, refund_status: refunded ? "completed" : "pending" } }, refunded ? 200 : 500, cors);
   }
@@ -476,7 +476,7 @@ const getVideoStatus = async (
     ? safeHttpsUrl(output.video_url ?? output.url)
     : null;
   if (status === "completed" && !resultUrl) {
-    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_missing_output");
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
     await db.from("armex_video_generations").update({ status: "failed", refund_status: refunded ? "completed" : "pending", error_code: "worker_did_not_return_durable_https_url" })
       .eq("id", job.id).eq("user_id", userId);
     return fail(refunded ? "Video worker did not return a permanent HTTPS video URL; credits were returned" : "Video output is missing and credit refund could not be confirmed", 502, cors);
@@ -571,7 +571,7 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
     .eq("provider", "zarinpal").eq("provider_reference", authority).maybeSingle();
   if (error || !order) return json({ success: false, error: "Payment order not found" }, 404);
   if (order.status === "paid") {
-    return json({ success: true, already_paid: true, order_id: order.id });
+    return new Response(`<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پرداخت موفق</title><body style="font-family:sans-serif;background:#07110f;color:#eafff8;padding:40px;text-align:center"><h2>پرداخت قبلاً تأیید شده است</h2><p>اعتبار این سفارش قبلاً به کیف پول اضافه شده است.</p><a style="color:#5ce5bd" href="https://lokal-ai.net/#workspace-home">بازگشت به LOKAL AI</a></body></html>`, {status:200,headers:{"Content-Type":"text/html; charset=utf-8"}});
   }
   if (status !== "OK") {
     await admin.from("armex_payment_orders").update({ status: "cancelled", updated_at: new Date().toISOString() })
@@ -605,7 +605,7 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
     console.error("Verified payment credit grant failed", { orderId: order.id, code: grantError?.code });
     return json({ success: false, error: "Payment was verified but wallet crediting needs retry" }, 500);
   }
-  return json({ success: true, paid: true, order_id: order.id, credits: Number(order.credits) }, 200);
+  return new Response(`<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پرداخت موفق</title><body style="font-family:sans-serif;background:#07110f;color:#eafff8;padding:40px;text-align:center"><h2>پرداخت با موفقیت تأیید شد</h2><p>${Number(order.credits).toLocaleString("fa-IR")} اعتبار به کیف پول شما اضافه شد.</p><a style="color:#5ce5bd" href="https://lokal-ai.net/?payment=success#workspace-home">بازگشت به LOKAL AI</a></body></html>`, {status:200,headers:{"Content-Type":"text/html; charset=utf-8"}});
 };
 
 const handle = async (request: Request): Promise<Response> => {
