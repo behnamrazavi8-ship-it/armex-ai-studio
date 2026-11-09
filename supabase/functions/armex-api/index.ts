@@ -1114,7 +1114,14 @@ const handle = async (request: Request): Promise<Response> => {
       console.error("Credit debit failed", { requestId, code: debitError.code });
       return fail("Could not reserve credits", 500, cors);
     }
-    if (debited !== true) return fail("Insufficient credits", 402, cors);
+    if (debited !== true) {
+      await db.rpc("armex_fail_chat_request", {
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_failure_code: "insufficient_credits",
+      });
+      return fail("Insufficient credits", 402, cors);
+    }
     debitCompleted = true;
 
     const providerMessages = [
