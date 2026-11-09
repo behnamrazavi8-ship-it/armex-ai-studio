@@ -166,9 +166,9 @@ begin
   if v_row.reconciliation_lease_token is null then
     raise exception 'could not claim persistence lease';
   end if;
-  perform set_config('test.race_user',v_user::text,true);
-  perform set_config('test.race_request',v_request::text,true);
-  perform set_config('test.race_lease',v_row.reconciliation_lease_token::text,true);
+  perform set_config('test.race_user',v_user::text,false);
+  perform set_config('test.race_request',v_request::text,false);
+  perform set_config('test.race_lease',v_row.reconciliation_lease_token::text,false);
 end $$;
 
 select dblink_send_query(
