@@ -97,6 +97,14 @@ jobs:
           psql -d lokal_wallet_rpc_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261109240000_wallet_rpc_idempotency_hardening.sql
           psql -d lokal_wallet_rpc_test -v ON_ERROR_STOP=1 -f supabase/tests/wallet-rpc-invariants.sql
 
+      - name: Test signup and referral activation in isolated PostgreSQL database
+        run: |
+          createdb lokal_signup_referral_test
+          psql -d lokal_signup_referral_test -v ON_ERROR_STOP=1 -f supabase/tests/signup-referral-fixture.sql
+          psql -d lokal_signup_referral_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261109240000_wallet_rpc_idempotency_hardening.sql
+          psql -d lokal_signup_referral_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261109250000_signup_referral_idempotency_hardening.sql
+          psql -d lokal_signup_referral_test -v ON_ERROR_STOP=1 -f supabase/tests/signup-referral-invariants.sql
+
       - name: Build disposable PostgreSQL schema fixture
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-fixture.sql
 
