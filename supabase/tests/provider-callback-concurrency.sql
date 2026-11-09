@@ -66,11 +66,12 @@ end $block$;
 -- A user cannot create a second ambiguous pending Zarinpal order with a new request ID.
 insert into public.armex_payment_orders(user_id,amount,currency,credits,provider,status,package_id,idempotency_key,provider_metadata)
 values(:'payment_user'::uuid,150000,'IRR',700,'zarinpal','pending','starter','ambiguous-request-1','{"request_state":"ambiguous"}');
+select set_config('test.payment_user', :'payment_user', false);
 do $block$
 begin
   begin
     insert into public.armex_payment_orders(user_id,amount,currency,credits,provider,status,package_id,idempotency_key,provider_metadata)
-    values(:'payment_user'::uuid,150000,'IRR',700,'zarinpal','pending','starter','ambiguous-request-2','{"request_state":"ambiguous"}');
+    values(current_setting('test.payment_user')::uuid,150000,'IRR',700,'zarinpal','pending','starter','ambiguous-request-2','{"request_state":"ambiguous"}');
     raise exception 'second ambiguous pending payment order unexpectedly inserted';
   exception when unique_violation then null;
   end;
