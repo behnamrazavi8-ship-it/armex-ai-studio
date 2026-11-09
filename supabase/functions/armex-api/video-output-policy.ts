@@ -24,3 +24,11 @@ export const validateRunpodVideoOutput = (
       fileSizeBytes < 1 || fileSizeBytes > VIDEO_OUTPUT_MAX_BYTES) return null;
   return { storagePath: expectedPath, mimeType: "video/mp4", fileSizeBytes };
 };
+
+
+/** Wan2.2 TI2V-5B official inference supports these two sizes only. */
+export const wanSizeForAspectRatio = (aspectRatio: unknown): "1280*704" | "704*1280" | null => {
+  if (aspectRatio === "16:9") return "1280*704";
+  if (aspectRatio === "9:16") return "704*1280";
+  return null;
+};
