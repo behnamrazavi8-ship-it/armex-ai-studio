@@ -123,6 +123,10 @@ The staged SQL dependency order is:
 3. `20261109210000_chat_recovery_metadata.sql` adds the recovery inputs.
 4. `20261109220000_chat_atomic_recovery_persistence.sql` adds the
    request-linked message uniqueness guard and atomic persistence RPC.
+5. `20261109230000_chat_failure_refund_guard.sql` hardens the generic failure
+   RPC: an existing chat debit must have its exact idempotent refund ledger
+   record before the request can become failed, and accepted provider work
+   cannot be marked failed through that RPC.
 
 A read-only inspection of the connected live project found:
 - `public.armex_chat_requests` does not exist yet, as expected because the
