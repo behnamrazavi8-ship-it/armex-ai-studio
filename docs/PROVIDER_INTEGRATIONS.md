@@ -78,6 +78,17 @@ Payment flow:
 6. Once `status=paid` and a non-empty provider `ref_id` are durably stored, retries use that stored verification evidence and do not depend on another Zarinpal verification request. Wallet grants remain idempotent with `payment_order:{order_id}`.
 7. Repeated and concurrent callback paths use the same order-level grant key. A late non-OK browser return cannot cancel a durably paid order.
 
+
+### Provider response contract evidence and limitations
+
+The implementation expects the Zarinpal v4 unverified-transactions response at `/pg/v4/payment/unVerified.json` to contain `data.authorities`, with each authority record exposing `authority`, integer `amount`, and `callback_url`. The `referer` and `date` fields are optional for matching and are not treated as order identity. This shape is corroborated by independently maintained Go SDK type definitions; it is not a substitute for the current first-party Zarinpal API specification or a live provider test. The policy test suite includes a fixture with the documented SDK fields.
+
+Sources reviewed:
+- https://pkg.go.dev/github.com/amiranmanesh/paygap/providers/zarinpal
+- https://pkg.go.dev/github.com/hossein-225/iranian-bank-gateways/zarinpal
+
+Before production enablement, confirm the exact endpoint behavior, authentication/body contract, response shape, amount unit, and callback URL normalization against Zarinpal's current first-party documentation or an authorized sandbox account. Until then, unmatched or structurally different responses must remain manual-review cases.
+
 ### Ambiguous payment-request recovery
 
 The payment request path now records the order UUID, request-attempt UUID, request start time, and exact HTTPS callback URL before contacting Zarinpal. The callback URL carries that order UUID as `order_id`. Because a browser callback parameter is not cryptographic proof, when the Authority was not already saved the callback must also be matched against the provider's unverified list using the exact order UUID, amount, callback origin/path, and Authority before the order can be verified or changed.
