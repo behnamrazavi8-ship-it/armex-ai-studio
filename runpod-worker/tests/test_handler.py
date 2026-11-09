@@ -14,6 +14,7 @@ from handler import (
     validate_job_input,
     validate_video_file,
     upload_video,
+    validate_model_revision,
 )
 
 USER_ID = "11111111-1111-4111-8111-111111111111"
@@ -41,6 +42,12 @@ def valid_input():
 
 
 class WorkerContractTests(unittest.TestCase):
+    def test_model_revision_requires_immutable_full_commit_sha(self):
+        self.assertEqual(validate_model_revision("a" * 40), "a" * 40)
+        for revision in ("", "main", "921dbaf", "g" * 40, "a" * 39):
+            with self.subTest(revision=revision), self.assertRaises(RuntimeError):
+                validate_model_revision(revision)
+
     def test_accepts_api_payload_and_returns_validated_storage_capability(self):
         result = validate_job_input(valid_input())
         self.assertEqual(result["storage_path"], f"{USER_ID}/{JOB_ID}.mp4")
