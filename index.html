@@ -279,8 +279,8 @@ else{
     return;
    }
    if(!result.payment_url)throw new Error(result.error||result.message||"لینک پرداخت دریافت نشد.");
-   delete pendingPaymentRequestMemory[session.user.id];
-   try{localStorage.removeItem(pendingKey)}catch{}
+   // Keep the request ID until the callback resolves the order. If the user
+   // closes the gateway or the redirect is lost, retry the same Authority.
    if(status)status.textContent="در حال انتقال به درگاه زرین‌پال...";
    window.location.assign(result.payment_url);
   }catch(error){if(status)status.textContent=String(error?.message||"ساخت یا پیگیری سفارش پرداخت ناموفق بود.")}
