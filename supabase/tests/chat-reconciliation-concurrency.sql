@@ -27,7 +27,9 @@ select dblink_send_query(
 );
 insert into race_claim_results
 select * from dblink_get_result('claim_a') as t(outcome text, response_payload jsonb);
+select * from dblink_get_result('claim_a') as t(outcome text, response_payload jsonb);
 insert into race_claim_results
+select * from dblink_get_result('claim_b') as t(outcome text, response_payload jsonb);
 select * from dblink_get_result('claim_b') as t(outcome text, response_payload jsonb);
 
 do $$
@@ -82,6 +84,12 @@ select * from dblink_get_result('claim_a') as t(
   response_payload jsonb, reconciliation_lease_token uuid,
   reconciliation_attempts integer
 );
+select * from dblink_get_result('claim_a') as t(
+  user_id uuid, request_id uuid, provider_outcome text, debit_outcome text,
+  provider_http_status integer, provider_response_payload jsonb,
+  response_payload jsonb, reconciliation_lease_token uuid,
+  reconciliation_attempts integer
+);
 insert into reconcile_claim_results
 select * from dblink_get_result('claim_b') as t(
   user_id uuid, request_id uuid, provider_outcome text, debit_outcome text,
@@ -89,8 +97,14 @@ select * from dblink_get_result('claim_b') as t(
   response_payload jsonb, reconciliation_lease_token uuid,
   reconciliation_attempts integer
 );
+select * from dblink_get_result('claim_b') as t(
+  user_id uuid, request_id uuid, provider_outcome text, debit_outcome text,
+  provider_http_status integer, provider_response_payload jsonb,
+  response_payload jsonb, reconciliation_lease_token uuid,
+  reconciliation_attempts integer
+);
 
-do $$
+do $
 declare
   v_total integer;
   v_distinct integer;
@@ -189,8 +203,10 @@ insert into persistence_race_results
 select * from dblink_get_result('claim_a') as t(payload jsonb);
 insert into persistence_race_results
 select * from dblink_get_result('claim_b') as t(payload jsonb);
+select * from dblink_get_result('claim_a') as t(payload jsonb);
+select * from dblink_get_result('claim_b') as t(payload jsonb);
 
-do $$
+do $
 declare
   v_user uuid := current_setting('test.race_user')::uuid;
   v_request uuid := current_setting('test.race_request')::uuid;
