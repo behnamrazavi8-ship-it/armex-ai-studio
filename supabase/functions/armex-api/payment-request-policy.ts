@@ -11,10 +11,9 @@ export const isDefinitiveZarinpalRequestRejection = (
   httpStatus: unknown,
   payload: unknown,
 ): boolean => {
-  if (!Number.isInteger(httpStatus) || (httpStatus as number) < 400 ||
-      (httpStatus as number) > 599) {
-    if (httpStatus !== 200 && httpStatus !== 201) return false;
-  }
+  if (!Number.isInteger(httpStatus) ||
+      !((httpStatus as number) >= 200 && (httpStatus as number) < 300) &&
+      !((httpStatus as number) >= 400 && (httpStatus as number) < 500)) return false;
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
   const body = payload as Record<string, unknown>;
   const data = body.data && typeof body.data === "object" && !Array.isArray(body.data)
