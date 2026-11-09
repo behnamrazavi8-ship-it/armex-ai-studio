@@ -99,7 +99,7 @@ class FakeRunpodAdapter {
     return true;
   }
 
-  async callback(providerStatus: "COMPLETED" | "FAILED" | "TIMED_OUT"): Promise<"duplicate" | "completed" | "refunded" | "retry"> {
+  async callback(providerStatus: "COMPLETED" | "FAILED" | "CANCELLED" | "TIMED_OUT"): Promise<"duplicate" | "completed" | "refunded" | "retry"> {
     const action = decideRunpodCallbackAction(
       this.job.status,
       this.job.refund_status,
