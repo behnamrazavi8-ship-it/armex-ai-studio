@@ -280,6 +280,29 @@ const generateImage = async (
     });
     if (!providerResponse.ok) {
       const providerError = await providerResponse.text();
+      const providerIsDefinitiveRejection =
+        providerResponse.status >= 400 &&
+        providerResponse.status < 500 &&
+        providerResponse.status !== 408;
+      const { data: providerEvidenceSaved, error: providerEvidenceError } = await db.rpc(
+        "armex_record_chat_provider_evidence",
+        {
+          p_user_id: userId,
+          p_request_id: requestId,
+          p_provider_outcome: providerIsDefinitiveRejection ? "rejected" : "unknown",
+          p_debit_outcome: "debited",
+          p_provider_http_status: providerResponse.status,
+          p_provider_response_payload: null,
+          p_diagnostic_code: "provider_http_" + providerResponse.status,
+        },
+      );
+      if (providerEvidenceError || providerEvidenceSaved !== true) {
+        debitCompleted = false;
+        return json({
+          success: true, pending: true, request_id: requestId,
+          message: "Provider response was received but its recovery evidence could not be saved; billing remains held",
+        }, 202, cors);
+      }
       console.error("Cloudflare Workers AI image request failed", { requestId, status: providerResponse.status, body: providerError.slice(0, 500) });
       const refunded = await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_provider_error");
       debitCompleted = false;
@@ -1171,6 +1194,28 @@ const handle = async (request: Request): Promise<Response> => {
       debitCompleted = true;
     }
 
+    // Persist the confirmed debit before contacting the provider. If this write
+    // cannot be confirmed, do not submit a billable provider request.
+    const { data: debitEvidenceSaved, error: debitEvidenceError } = await db.rpc(
+      "armex_record_chat_provider_evidence",
+      {
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_provider_outcome: "not_started",
+        p_debit_outcome: "debited",
+        p_provider_http_status: null,
+        p_provider_response_payload: null,
+        p_diagnostic_code: null,
+      },
+    );
+    if (debitEvidenceError || debitEvidenceSaved !== true) {
+      debitCompleted = false;
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "Credit reservation is confirmed but its recovery record could not be saved; the provider was not called",
+      }, 202, cors);
+    }
+
     const providerMessages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...context,
@@ -1223,6 +1268,27 @@ const handle = async (request: Request): Promise<Response> => {
     }
 
     const result = await providerResponse.json();
+    // Store the complete validated HTTP response before any message/usage
+    // writes, so a later local failure can recover without calling OpenRouter.
+    const { data: responseEvidenceSaved, error: responseEvidenceError } = await db.rpc(
+      "armex_record_chat_provider_evidence",
+      {
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_provider_outcome: "accepted",
+        p_debit_outcome: "debited",
+        p_provider_http_status: providerResponse.status,
+        p_provider_response_payload: result,
+        p_diagnostic_code: null,
+      },
+    );
+    if (responseEvidenceError || responseEvidenceSaved !== true) {
+      debitCompleted = false;
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "The provider response was received but could not be durably recorded; no provider retry will be made",
+      }, 202, cors);
+    }
     const answer = result.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {
       // A successful provider HTTP response means the model may already have
@@ -1380,6 +1446,21 @@ const handle = async (request: Request): Promise<Response> => {
     debitCompleted = false;
     return json(responsePayload, 200, cors);
   } catch (error) {
+    if (providerRequestStarted) {
+      // The provider may have accepted/billed the request. Preserve an
+      // ambiguous outcome; never convert a transport error into a refund.
+      await db.rpc("armex_record_chat_provider_evidence", {
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_provider_outcome: "unknown",
+        p_debit_outcome: debitOutcomeKnown && debitCompleted ? "debited" : "unknown",
+        p_provider_http_status: null,
+        p_provider_response_payload: null,
+        p_diagnostic_code: error instanceof Error && error.name === "AbortError"
+          ? "provider_timeout"
+          : "provider_transport_error",
+      }).catch(() => undefined);
+    }
     console.error("armex-api request failed", {
       requestId,
       error: error instanceof Error ? error.message : "unknown",
