@@ -26,3 +26,13 @@ grant select on auth.users to service_role;
 -- Intentionally start without service_role access; the staged migration must add it.
 revoke all on public.armex_payment_orders from service_role;
 grant select,insert,update,delete on public.armex_credit_transactions to service_role;
+
+-- Minimal Storage catalog fixture for the staged private-video bucket migration.
+create schema if not exists storage;
+create table if not exists storage.buckets (
+ id text primary key,
+ name text not null,
+ public boolean not null default false,
+ file_size_limit bigint,
+ allowed_mime_types text[]
+);
