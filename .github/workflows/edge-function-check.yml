@@ -49,6 +49,13 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Test Production-derived core schema baseline
+        run: |
+          createdb lokal_core_baseline_test
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/tests/core-baseline-fixture.sql
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261108000000_lokal_core_schema_baseline.sql
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/tests/core-baseline-invariants.sql
+
       - name: Test RunPod worker CPU contract
         run: python -m unittest discover -s runpod-worker/tests -v
 
