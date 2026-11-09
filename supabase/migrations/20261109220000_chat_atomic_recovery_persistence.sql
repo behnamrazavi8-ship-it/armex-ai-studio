@@ -24,7 +24,7 @@ create or replace function public.armex_persist_chat_response_atomic(
 )
 returns jsonb
 language plpgsql
-security definer
+security invoker
 set search_path = ''
 as $$
 declare
@@ -142,7 +142,8 @@ begin
        or v_existing_usage.input_tokens <> p_input_tokens
        or v_existing_usage.output_tokens <> p_output_tokens
        or v_existing_usage.total_tokens <> p_total_tokens
-       or v_existing_usage.credits_charged <> v_request.recovery_credits then
+       or v_existing_usage.credits_charged <> v_request.recovery_credits
+       or v_existing_usage.actual_cost_usd is distinct from p_actual_cost_usd then
       raise exception 'existing usage row conflicts with recovered response';
     end if;
   else
