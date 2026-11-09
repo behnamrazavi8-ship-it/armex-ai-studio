@@ -354,6 +354,7 @@ const videoProviderStatus = (status: string): string => ({
   COMPLETED: "completed",
   FAILED: "failed",
   CANCELLED: "cancelled",
+  TIMED_OUT: "failed",
 }[status] ?? "processing");
 
 const generateVideo = async (
@@ -513,7 +514,7 @@ const runpodWebhookCallback = async (request: Request): Promise<Response> => {
   const providerJobId = typeof payload?.id === "string" ? payload.id : "";
   const providerStatus = typeof payload?.status === "string" ? payload.status : "";
   if (!payload || !providerJobId ||
-      !["COMPLETED", "FAILED", "CANCELLED"].includes(providerStatus)) {
+      !["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(providerStatus)) {
     return json({ success: false, error: "Invalid terminal job payload" }, 400);
   }
 
@@ -637,10 +638,20 @@ const createZarinpalPayment = async (
   if (!merchantId || !pack) return fail("Zarinpal is not configured or this credit package is unavailable", 503, cors);
   if (!requestId) return fail("A UUID request_id is required for payment idempotency", 400, cors);
 
-  const { data: prior } = await db.from("armex_payment_orders")
+  const { data: prior, error: priorError } = await db.from("armex_payment_orders")
     .select("id,status,provider_reference,amount,credits")
     .eq("user_id", userId).eq("idempotency_key", requestId).maybeSingle();
-  if (prior) return json({ success: true, duplicate: true, order: prior }, 200, cors);
+  if (priorError) return fail("Could not verify payment request idempotency", 500, cors);
+  if (prior) {
+    if (prior.status === "pending" && prior.provider_reference) {
+      return json({ success: true, duplicate: true, order: prior,
+        payment_url: "https://www.zarinpal.com/pg/StartPay/" + encodeURIComponent(prior.provider_reference) }, 200, cors);
+    }
+    if (prior.status === "paid") {
+      return json({ success: true, duplicate: true, order: prior, already_paid: true }, 200, cors);
+    }
+    return fail("This payment request already exists but has no reusable payment session; create a new request", 409, cors);
+  }
 
   const { data: order, error: orderError } = await db.from("armex_payment_orders").insert({
     user_id: userId, amount: pack.amount_irr, currency: "IRR", credits: pack.credits,
@@ -667,8 +678,13 @@ const createZarinpalPayment = async (
     console.error("Zarinpal payment request failed", { orderId: order.id, httpStatus: response.status, code });
     return fail("Zarinpal could not create the payment session", 502, cors);
   }
-  await db.from("armex_payment_orders").update({ provider_reference: authority, updated_at: new Date().toISOString() })
+  const { error: authoritySaveError } = await db.from("armex_payment_orders")
+    .update({ provider_reference: authority, updated_at: new Date().toISOString() })
     .eq("id", order.id).eq("user_id", userId);
+  if (authoritySaveError) {
+    console.error("Zarinpal authority persistence failed", { orderId: order.id, code: authoritySaveError.code });
+    return fail("Payment session was created but could not be safely recorded; contact support before retrying", 500, cors);
+  }
   return json({ success: true, order_id: order.id, payment_url: "https://www.zarinpal.com/pg/StartPay/" + encodeURIComponent(authority) }, 200, cors);
 };
 
@@ -687,9 +703,6 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
     .select("id,user_id,amount,credits,status")
     .eq("provider", "zarinpal").eq("provider_reference", authority).maybeSingle();
   if (error || !order) return json({ success: false, error: "Payment order not found" }, 404);
-  if (order.status === "paid") {
-    return new Response(`<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پرداخت موفق</title><body style="font-family:sans-serif;background:#07110f;color:#eafff8;padding:40px;text-align:center"><h2>پرداخت قبلاً تأیید شده است</h2><p>اعتبار این سفارش قبلاً به کیف پول اضافه شده است.</p><a style="color:#5ce5bd" href="https://lokal-ai.net/#workspace-home">بازگشت به LOKAL AI</a></body></html>`, {status:200,headers:{"Content-Type":"text/html; charset=utf-8"}});
-  }
   if (status !== "OK") {
     await admin.from("armex_payment_orders").update({ status: "cancelled", updated_at: new Date().toISOString() })
       .eq("id", order.id).eq("status", "pending");
