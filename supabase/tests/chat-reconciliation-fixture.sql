@@ -54,5 +54,14 @@ alter table public.armex_messages enable row level security;
 alter table public.armex_usage enable row level security;
 
 grant usage on schema public, auth to service_role;
-grant select, insert, update, delete on public.armex_conversations, public.armex_messages, public.armex_usage to service_role;
 grant select on auth.users to service_role;
+
+-- Match the live project's observed service_role table privileges.
+-- The atomic recovery RPC is SECURITY INVOKER, so its table access must
+-- succeed using these real grants rather than an over-privileged fixture.
+grant select, insert, update, delete
+  on public.armex_conversations to service_role;
+grant select, insert, delete
+  on public.armex_messages to service_role;
+grant select, insert
+  on public.armex_usage to service_role;
