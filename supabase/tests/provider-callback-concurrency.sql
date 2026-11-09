@@ -1,10 +1,10 @@
 -- Real independent-session races against disposable PostgreSQL only.
 create extension if not exists dblink;
 insert into auth.users(id) values(gen_random_uuid()) returning id \gset
-\set payment_user :'id'
+\set payment_user :id
 insert into public.armex_payment_orders(user_id,amount,currency,credits,provider,status)
 values(:'payment_user'::uuid,120000,'IRR',500,'zarinpal','pending') returning id \gset
-\set payment_order :'id'
+\set payment_order :id
 select dblink_connect('pay_a','dbname='||current_database());
 select dblink_connect('pay_b','dbname='||current_database());
 
@@ -51,7 +51,7 @@ end $block$;
 -- Success/failure video callbacks race for one terminal transition.
 insert into public.armex_video_generations(user_id,request_id,prompt,credits_charged,status)
 values(:'payment_user'::uuid,gen_random_uuid(),'synthetic callback race',80,'queued') returning id \gset
-\set video_job :'id'
+\set video_job :id
 select dblink_send_query('pay_a',format(
  'update public.armex_video_generations set status=''failed'',refund_status=''pending'',updated_at=now() where id=%L::uuid and status in (''queued'',''processing'') returning id',
  :'video_job'));
@@ -77,7 +77,7 @@ end $block$;
 -- Duplicate failure callbacks share one refund idempotency key.
 insert into public.armex_video_generations(user_id,request_id,prompt,credits_charged,status,refund_status)
 values(:'payment_user'::uuid,gen_random_uuid(),'synthetic duplicate failure',80,'failed','pending') returning id \gset
-\set failed_video_job :'id'
+\set failed_video_job :id
 select dblink_send_query('pay_a',format(
  'insert into public.armex_credit_transactions(user_id,amount,transaction_type,idempotency_key,metadata) values(%L::uuid,80,''refund'',%L,%L::jsonb) on conflict(idempotency_key) do nothing returning id',
  :'payment_user','ai_refund:'||:'failed_video_job'||':'||:'failed_video_job'||':video_refund','{"reason":"video_refund"}'));
