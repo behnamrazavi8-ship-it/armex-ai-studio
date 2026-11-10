@@ -48,20 +48,22 @@ jobs:
         run: |
           docker run --rm --entrypoint python \
             lokal-ai-runpod-worker:pr-${{ github.event.pull_request.number }} \
-            -c 'import pathlib, shutil, torch, runpod, handler; \
-  repo = pathlib.Path("/opt/Wan2.2"); \
-  revision = handler.validate_model_revision(handler.WAN_MODEL_REVISION); \
-  assert (repo / "generate.py").is_file(), "Wan generate.py missing"; \
-  assert shutil.which("ffmpeg"), "ffmpeg executable missing"; \
-  assert shutil.which("ffprobe"), "ffprobe executable missing"; \
-  assert torch.version.cuda, "PyTorch build has no CUDA runtime"; \
-  print("Runtime imports: OK"); \
-  print("Wan source: OK"); \
-  print("Pinned model revision:", revision); \
-  print("FFmpeg tools: OK"); \
-  print("CUDA-enabled PyTorch:", torch.version.cuda); \
-  print("GPU visible to runner:", torch.cuda.is_available()); \
-  print("No model download or inference was started.")'
+            -c '
+          import pathlib, shutil, torch, runpod, handler
+          repo = pathlib.Path("/opt/Wan2.2")
+          revision = handler.validate_model_revision(handler.WAN_MODEL_REVISION)
+          assert (repo / "generate.py").is_file(), "Wan generate.py missing"
+          assert shutil.which("ffmpeg"), "ffmpeg executable missing"
+          assert shutil.which("ffprobe"), "ffprobe executable missing"
+          assert torch.version.cuda, "PyTorch build has no CUDA runtime"
+          print("Runtime imports: OK")
+          print("Wan source: OK")
+          print("Pinned model revision:", revision)
+          print("FFmpeg tools: OK")
+          print("CUDA-enabled PyTorch:", torch.version.cuda)
+          print("GPU visible to runner:", torch.cuda.is_available())
+          print("No model download or inference was started.")
+          '
 
       - name: Report local image size
         if: success()
