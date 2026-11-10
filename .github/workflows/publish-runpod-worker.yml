@@ -14,12 +14,17 @@ concurrency:
 jobs:
   publish:
     name: Build and publish worker image to GHCR
-    if: github.ref == 'refs/heads/feat/video-and-zarinpal-integration'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - name: Checkout approved worker branch
         uses: actions/checkout@v4
+        with:
+          ref: feat/video-and-zarinpal-integration
+
+      - name: Capture approved worker commit
+        id: worker
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -37,10 +42,10 @@ jobs:
           context: ./runpod-worker
           file: ./runpod-worker/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/lokal-ai-runpod-worker:sha-${{ github.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/lokal-ai-runpod-worker:sha-${{ steps.worker.outputs.sha }}
           labels: |
             org.opencontainers.image.title=LOKAL AI RunPod Worker
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.worker.outputs.sha }}
           cache-from: type=gha,scope=lokal-ai-runpod-worker
           cache-to: type=gha,mode=max,scope=lokal-ai-runpod-worker
