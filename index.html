@@ -111,6 +111,7 @@
  function showPage(name,options={}){
   const target=workspacePages.has(name)?name:'home';
   const current=$('.page.active')?.id.replace('page-','');
+  if(target!=='home')window.lokalResetBackHome?.();
   if(current===target)return;
   $$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));
   $$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));
@@ -223,7 +224,7 @@ else{
   if(!user){landingView=false;routeInitialized=false;}
   publicSite.hidden=previewMode||(Boolean(user)&&!landingView);workspace.hidden=(!user&&!previewMode)||(Boolean(user)&&landingView);formCard.hidden=Boolean(user);sessionCard.hidden=!user;
   const privateGallery=document.getElementById('imageGallery')?.closest('.panel');if(privateGallery)privateGallery.hidden=!user;const accountPreview=document.getElementById('account-preview');if(accountPreview)accountPreview.hidden=Boolean(user);
-  const returnWorkspace=document.getElementById("return-workspace");if(returnWorkspace)returnWorkspace.hidden=!user||!landingView;
+  const returnWorkspace=document.getElementById("return-workspace");if(returnWorkspace)returnWorkspace.hidden=!user||!landingView;const signoutButton=document.getElementById('workspace-signout');if(signoutButton)signoutButton.hidden=!user;const creditBadge=document.getElementById('creditCount')?.closest('.tag');if(creditBadge)creditBadge.hidden=!user;
   if(user){const metadata=user.user_metadata||{};document.getElementById("auth-user-email").textContent=user.email||"ایمیل ثبت نشده";document.getElementById("auth-user-name").textContent=metadata.full_name||metadata.name||metadata.user_name||"حساب شخصی LOKAL AI";document.getElementById("auth-user-id").textContent=user.id;const provider=(user.app_metadata?.provider||"email").toLowerCase();document.getElementById("auth-provider").textContent=provider==="google"?"ورود با Google":"ورود با ایمیل";const avatar=document.getElementById("auth-user-avatar"),avatarUrl=metadata.avatar_url||metadata.picture||"";if(avatarUrl&&/^https:\/\//i.test(avatarUrl)){avatar.src=avatarUrl;avatar.hidden=false}else{avatar.removeAttribute("src");avatar.hidden=true}setMessage("با موفقیت وارد شدی.");void loadCloudProjects(session);}
   else{walletLoadSequence++;setWalletBalance("—");}
   void loadWalletBalance(session);
