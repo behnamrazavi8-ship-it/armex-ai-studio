@@ -30,7 +30,7 @@
 <body>
 <div id="public-site">
 <header class="topbar">
-<a class="brand" href="#top"><span class="brand-mark">LA</span><span>LOKAL AI<small>CREATE · IMAGINE · INNOVATE</small></span></a>
+<a class="brand" href="#top" id="public-brand-home" aria-label="ورود به داشبورد LOKAL AI"><span class="brand-mark">LA</span><span>LOKAL AI<small>CREATE · IMAGINE · INNOVATE</small></span></a>
 <nav class="top-links"><a href="#features">قابلیت‌ها</a><a href="#studios">استودیوها</a><a href="#how">نحوه شروع</a></nav>
 <div class="top-actions"><button class="btn btn-ghost btn-small" id="return-workspace" type="button" hidden>بازگشت به فضای کار</button><a href="#auth-section" class="btn btn-ghost btn-small">ورود</a><a href="#auth-section" class="btn btn-small">شروع رایگان</a></div>
 </header>
@@ -324,6 +324,7 @@ else{
  document.getElementById("auth-google").addEventListener("click",async()=>{setMessage("در حال انتقال امن به Google...");const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:authRedirectUrl()}});if(error)setMessage("ورود با Google انجام نشد: "+translateError(error),true)});
  document.getElementById("auth-reset").addEventListener("click",async()=>{const email=emailInput.value.trim();if(!email||!emailInput.checkValidity())return setMessage("ابتدا ایمیل معتبر را وارد کن.",true);setMessage("در حال ارسال لینک بازیابی...");const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:authRedirectUrl()});if(error)return setMessage(translateError(error),true);setMessage("اگر این ایمیل در سامانه ثبت شده باشد، لینک بازیابی برایش ارسال می‌شود.")});
  document.getElementById("workspace-home").addEventListener("click",()=>{if(!activeSession)return;landingView=true;renderSession(activeSession);history.pushState({lokalRoute:'public'},'',location.pathname+location.search+'#top');window.scrollTo({top:0,behavior:"smooth"})});
+ document.getElementById("public-brand-home")?.addEventListener("click",event=>{if(!activeSession)return;event.preventDefault();landingView=false;renderSession(activeSession);window.lokalShowPage?.("home",{history:false});history.pushState({lokalRoute:"workspace",lokalWorkspacePage:"home",lokalWorkspaceRoot:true},"",location.pathname+location.search+"#workspace-home");window.scrollTo({top:0,behavior:"smooth"})});
  document.getElementById("return-workspace").addEventListener("click",()=>{if(!activeSession)return;landingView=false;renderSession(activeSession);window.lokalShowPage?.("home",{history:false});history.pushState({lokalRoute:'workspace',lokalWorkspacePage:'home',lokalWorkspaceRoot:true},'',location.pathname+location.search+'#workspace-home');window.scrollTo({top:0,behavior:"smooth"})});
  window.addEventListener('lokal:show-public-home',()=>{if(!activeSession)return;landingView=true;renderSession(activeSession);window.scrollTo({top:0,behavior:'smooth'})});
  window.addEventListener('lokal:show-workspace',event=>{if(!activeSession)return;landingView=false;renderSession(activeSession);window.lokalShowPage?.(event.detail?.page||'home',{history:false});window.scrollTo({top:0,behavior:'smooth'})});
