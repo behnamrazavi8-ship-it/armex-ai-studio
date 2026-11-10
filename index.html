@@ -151,14 +151,7 @@
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){cancelAnimationFrame(globeFrame)}else if(!reducedMotion){cancelAnimationFrame(globeFrame);globeFrame=requestAnimationFrame(drawGlobe)}});
  }
  window.lokalShowPage=showPage;
- window.addEventListener('popstate',()=>{
-  if(backHomeConsumed)return;
-  backHomeConsumed=true;
-  if(activeSession){previewMode=false;landingView=false;renderSession(activeSession);showPage('home',{history:false});history.replaceState({lokalRoute:'workspace',lokalWorkspacePage:'home',lokalWorkspaceRoot:true},'',location.pathname+location.search+'#workspace-home');}
-  else if(previewMode){previewMode=false;renderSession(null);history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+'#top');}
-  else{renderSession(null);history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+'#top');}
-  window.scrollTo({top:0,behavior:'smooth'});history.pushState({lokalBackGuard:true},'',location.href);
- });
+ 
  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
  $$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
  $('[data-tool]').forEach(b=>b.addEventListener('click',()=>{
@@ -378,7 +371,7 @@ else{
  });
  document.getElementById("account-preview-login")?.addEventListener("click",requestAuth);document.getElementById("assistant-preview-login")?.addEventListener("click",requestAuth);
  document.getElementById("auth-signout").addEventListener("click",async()=>{const {error}=await supabase.auth.signOut();if(error)return setMessage(translateError(error),true);previewMode=false;backHomeConsumed=false;renderSession(null);history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+'#top');setMessage("از حساب خارج شدی.")});
- const {data:{session}}=await supabase.auth.getSession();renderSession(session);if(session){previewMode=false;window.lokalShowPage?.("home",{history:false});history.replaceState({lokalRoute:'workspace',lokalWorkspacePage:'home',lokalWorkspaceRoot:true},'',location.pathname+location.search+'#workspace-home');}else{history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+'#top');}history.pushState({lokalBackGuard:true},'',location.href);supabase.auth.onAuthStateChange((event,next)=>{renderSession(next);if(next&&(event==="SIGNED_IN"||event==="INITIAL_SESSION")){previewMode=false;backHomeConsumed=false;window.lokalShowPage?.("home",{history:false});history.replaceState({lokalRoute:'workspace',lokalWorkspacePage:'home',lokalWorkspaceRoot:true},'',location.pathname+location.search+'#workspace-home');}if(event==='SIGNED_OUT'){previewMode=false;backHomeConsumed=false;history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+'#top');}});
+ const {data:{session}}=await supabase.auth.getSession();renderSession(session);if(session){previewMode=false;window.lokalShowPage?.("home",{history:false});history.replaceState({lokalRoute:'workspace',lokalWorkspacePage:'home',lokalWorkspaceRoot:true},'',location.pathname+location.search+'#workspace-home');}else{history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+'#top');}history.pushState({lokalBackGuard:true},'',location.href);window.addEventListener('popstate',()=>{if(backHomeConsumed)return;backHomeConsumed=true;if(activeSession){previewMode=false;landingView=false;renderSession(activeSession);window.lokalShowPage?.('home',{history:false});history.replaceState({lokalRoute:'workspace',lokalWorkspacePage:'home',lokalWorkspaceRoot:true},'',location.pathname+location.search+'#workspace-home');}else{previewMode=false;renderSession(null);history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+'#top');}window.scrollTo({top:0,behavior:'smooth'});history.pushState({lokalBackGuard:true},'',location.href);});supabase.auth.onAuthStateChange((event,next)=>{renderSession(next);if(next&&(event==="SIGNED_IN"||event==="INITIAL_SESSION")){previewMode=false;backHomeConsumed=false;window.lokalShowPage?.("home",{history:false});history.replaceState({lokalRoute:'workspace',lokalWorkspacePage:'home',lokalWorkspaceRoot:true},'',location.pathname+location.search+'#workspace-home');}if(event==='SIGNED_OUT'){previewMode=false;backHomeConsumed=false;history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+'#top');}});
 }
 </script>
 </body>
