@@ -103,7 +103,7 @@
   const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const globeCtx=globeCanvas.getContext('2d',{alpha:true});
   let globeAngle=0,globeFrame=0,lastGlobeTime=0,globeWidth=0,globeHeight=0;
-  const iranOutline=[[44,34],[47,31],[51,32],[54,29],[58,31],[60,35],[64,36],[65,40],[62,43],[61,48],[57,50],[55,54],[51,52],[48,49],[45,47],[43,42],[41,39]];
+  const iranOutline=[[44,39],[46,38],[48,38],[50,37],[52,37],[54,36],[56,36],[58,35],[60,33],[61,29],[60,26],[57,25],[54,26],[51,27],[49,29],[47,30],[45,32],[44,35]];
   const resizeGlobe=()=>{const rect=globeCanvas.getBoundingClientRect();const dpr=Math.min(window.devicePixelRatio||1,1.5);globeWidth=Math.max(1,rect.width);globeHeight=Math.max(1,rect.height);globeCanvas.width=Math.round(globeWidth*dpr);globeCanvas.height=Math.round(globeHeight*dpr);globeCtx.setTransform(dpr,0,0,dpr,0,0)};
   const drawGlobe=(time=0)=>{
    if(!globeCtx)return;
@@ -118,7 +118,7 @@
    for(let lat=-60;lat<=60;lat+=20){globeCtx.beginPath();let open=false;for(let lon=-180;lon<=180;lon+=3){const p=project(lon,lat);if(p.visible){if(!open){globeCtx.moveTo(p.x,p.y);open=true}else globeCtx.lineTo(p.x,p.y)}else open=false}globeCtx.stroke()}
    for(let lon=-160;lon<=180;lon+=20){globeCtx.beginPath();let open=false;for(let lat=-88;lat<=88;lat+=2){const p=project(lon,lat);if(p.visible){if(!open){globeCtx.moveTo(p.x,p.y);open=true}else globeCtx.lineTo(p.x,p.y)}else open=false}globeCtx.stroke()}
    globeCtx.beginPath();iranOutline.forEach(([lon,lat],i)=>{const p=project(lon,lat);if(i===0)globeCtx.moveTo(p.x,p.y);else globeCtx.lineTo(p.x,p.y)});globeCtx.closePath();globeCtx.fillStyle='#3199ed35';globeCtx.strokeStyle='#65dfff';globeCtx.lineWidth=1.8;globeCtx.shadowColor='#3199ed';globeCtx.shadowBlur=12;globeCtx.fill();globeCtx.stroke();globeCtx.shadowBlur=0;
-   const brand=project(0,0);if(brand.visible){globeCtx.save();globeCtx.translate(cx,cy);globeCtx.rotate(-.035);globeCtx.font='900 '+Math.max(13,r*.19)+'px Arial,sans-serif';globeCtx.textAlign='center';globeCtx.textBaseline='middle';globeCtx.fillStyle='#a9ffe8';globeCtx.shadowColor='#28e2b4';globeCtx.shadowBlur=10;globeCtx.fillText('LOKAL AI',0,2);globeCtx.restore()}
+   const brand=project(0,0);if(brand.visible){globeCtx.save();globeCtx.translate(brand.x,brand.y);globeCtx.rotate(-.035);globeCtx.font='900 '+Math.max(13,r*.19)+'px Arial,sans-serif';globeCtx.textAlign='center';globeCtx.textBaseline='middle';globeCtx.fillStyle='#a9ffe8';globeCtx.shadowColor='#28e2b4';globeCtx.shadowBlur=10;globeCtx.fillText('LOKAL AI',0,2);globeCtx.restore()}
    globeCtx.restore();globeCtx.strokeStyle='#28e2b477';globeCtx.lineWidth=1.1;globeCtx.shadowColor='#28e2b4';globeCtx.shadowBlur=15;globeCtx.beginPath();globeCtx.arc(cx,cy,r,0,Math.PI*2);globeCtx.stroke();globeCtx.shadowBlur=0;
    if(!reducedMotion&&document.visibilityState==='visible'){globeAngle+=Math.PI*2/(100*60);globeFrame=requestAnimationFrame(drawGlobe)}
   };
