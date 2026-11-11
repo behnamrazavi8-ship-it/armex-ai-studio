@@ -16,8 +16,9 @@ Last reviewed: 2026-11-11
 - Repository: `behnamrazavi8-ship-it/armex-ai-studio`
 - Working branch: `feat/lokal-medium-image-worker`
 - Base: `main`
-- At latest compare after the review fixes: branch is 30 commits ahead and 0 behind `main`.
-- Latest branch commit confirmed from the last successful branch write: `9639980339cc3ebfae97a09f23a9c315ee71213b`.
+- At the latest GitHub compare: branch is **31 commits ahead** and **0 commits behind** `main`.
+- Current branch head: `161eedf43454cbb311d792b264bf9a6300d24741`.
+- The current head's parent is `9639980339cc3ebfae97a09f23a9c315ee71213b`; that parent was the previous checkpoint, not the current branch head.
 - Keep the work isolated on this branch until review is complete.
 
 ## Implementation currently on the branch
@@ -44,7 +45,7 @@ Last reviewed: 2026-11-11
 - Fixed an ambiguous-enqueue billing retry risk in the browser: the image request UUID is retained while the result is uncertain, retries reuse the same UUID, and a different prompt is blocked until the pending request is resolved. Terminal failure and insufficient-credit responses release the in-memory pending request.
 - Cloudflare's official FLUX.1 schnell documentation confirms the REST result contains a base64 `image` value; the worker's JSON/base64 decoding path matches that documented response. The model output is JPEG.
 - Supabase Storage's documented object-removal endpoint uses `DELETE /object/{bucket}` with a `prefixes` array; the worker cleanup request matches this contract.
-- Rechecked branch comparison: 30 commits ahead, 0 behind `main`. No merge or PR was created.
+- Rechecked branch comparison: **31 commits ahead, 0 behind** `main`. The branch head is `161eedf43454cbb311d792b264bf9a6300d24741`; its parent is `9639980339cc3ebfae97a09f23a9c315ee71213b`. No merge or PR was created.
 - GitHub connector currently exposes commit status and PR-associated workflow runs, but not the push-run listing needed to verify this branch's latest Actions execution. The latest combined commit status returned no status entries. Therefore the new PostgreSQL contract job, Deno check, browser syntax check, and Docker build remain **unverified** until a run is visibly successful in GitHub Actions.
 - The SQL contract test is a disposable vanilla PostgreSQL fixture. It is useful for transaction/queue/refund logic but does not fully emulate Supabase roles, default grants, Storage, Edge Runtime, or the Cloudflare provider.
 - Browser idempotency state is currently in-memory. It protects retries while the page remains open, but a full page reload loses the pending UUID; a durable server-side request recovery path or carefully scoped browser persistence is still a pre-production hardening item.
@@ -72,14 +73,6 @@ Last reviewed: 2026-11-11
 - Security advisor reports `public.rls_auto_enable()` as a SECURITY DEFINER function executable by anon and authenticated. Read-only inspection confirms it returns the special `event_trigger` type and is attached to the enabled `ensure_rls` DDL event trigger (`ddl_command_end`). This is likely a generic advisor false positive for RPC exposure, not a normal callable RPC. Do not revoke or alter it without a separate PostgreSQL event-trigger review. It was not modified during this worker task.
 - Auth leaked-password protection is disabled; review separately.
 - Performance advisor reports existing RLS init-plan and unindexed foreign-key recommendations on other project tables. These are not part of the image-worker migration and must not be changed as incidental scope.
-
-## Remaining gates — in order
-
-1. Observe the GitHub Actions run for the new PostgreSQL contract test and all existing quality checks; repair failures on this branch only.
-2. Review worker/Edge Function/frontend behavior and the exact Storage API semantics; add focused tests for ambiguous completion and stale-worker cleanup where practical.
-3. Run the migration against a disposable Supabase-compatible environment and verify actual role grants/RLS behavior.
-4. Review the existing `rls_auto_enable()` advisor finding as a separate security item.
-5. Only after the above, present a production rollout plan for explicit approval. Rollout would require migration, Edge Function deploy, server-side secrets, then creation/start of exactly one Medium worker and controlled end-to-end tests.
 
 ## Do not repeat
 
