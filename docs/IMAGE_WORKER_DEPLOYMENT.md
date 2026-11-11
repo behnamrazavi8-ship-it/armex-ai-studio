@@ -1,6 +1,6 @@
 # LOKAL AI Micro Image Worker
 
-This branch adds an asynchronous image-generation worker. It is designed for the initial Weblines **Micro Worker** service (0.5 vCPU, 1 GB RAM, 5 GB disk). This is a deliberately constrained, single-job-at-a-time CPU coordinator. Model inference stays remote on Cloudflare Workers AI; Micro does not load model weights locally. It does not execute model weights locally; it coordinates jobs and calls the configured Cloudflare Workers AI REST endpoint.
+This branch adds an asynchronous image-generation worker. It is designed for the initial Weblines **Micro Worker** service (0.5 vCPU, 1 GB RAM, 5 GB disk). This is a deliberately constrained, single-job-at-a-time CPU coordinator. Model inference stays remote on Cloudflare Workers AI; Micro does not load model weights locally. It coordinates jobs and calls the configured Cloudflare Workers AI REST endpoint.
 
 ## Architecture
 
@@ -52,7 +52,7 @@ The RPCs are executable only by `service_role`; the job table has RLS enabled an
 3. Apply the migration to the intended Supabase project.
 4. Deploy the updated `armex-api` Edge Function.
 5. Build the root Dockerfile and configure the four required runtime secrets on the Micro Worker service.
-6. Start exactly one worker instance; inspect logs and, from the container shell if available, confirm `GET http://127.0.0.1:8080/health` and one end-to-end image job.
+6. Start exactly one worker instance; inspect logs and, from the container shell if available, confirm the local health endpoint with `curl -fsS http://127.0.0.1:8080/health` and run one end-to-end image job.
 7. Test duplicate request IDs, insufficient balance, provider 429/5xx, storage failure, worker restart/lease expiry, retry exhaustion, and exactly-once refund ledger behavior before enabling user traffic.
 
 No production migration, Edge Function deployment, Weblines Worker service creation, or paid service activation is performed by this branch.
