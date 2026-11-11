@@ -5,13 +5,19 @@ on:
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
-      - "supabase/functions/armex-api/**"\n      - "supabase/migrations/**"\n      - "worker/**"\n      - "Dockerfile"
+      - "supabase/functions/armex-api/**"
+      - "supabase/migrations/**"
+      - "worker/**"
+      - "Dockerfile"
   push:
     branches: [main, "feat/lokal-medium-image-worker"]
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
+      - "supabase/migrations/**"
+      - "worker/**"
+      - "Dockerfile"
 
 permissions:
   contents: read
@@ -26,7 +32,8 @@ jobs:
           deno-version: v2.x
       - name: Type-check armex-api
         run: deno check supabase/functions/armex-api/index.ts
-
+      - name: Syntax-check image worker
+        run: node --check worker/src/worker.mjs
       - name: Syntax-check browser JavaScript
         run: |
           python - <<'PY'
