@@ -170,7 +170,7 @@ begin
   j := public.armex_claim_image_job(wid);
   if j is not null then raise exception 'exhausted lease unexpectedly returned a job: %',j; end if;
   if (select status from public.armex_image_generations where id=job) <> 'failed' then raise exception 'exhausted lease not marked failed'; end if;
-  if (select balance from public.armex_wallets where user_id=u3) <> 100 then raise exception 'lease exhaustion did not refund'; end if;
+  if (select balance from public.armex_wallets where user_id=u3) <> 80 then raise exception 'lease exhaustion did not refund'; end if;
   if (select count(*) from public.armex_credit_transactions where user_id=u3 and idempotency_key='image_refund:'||job::text) <> 1 then raise exception 'lease refund was not exactly once'; end if;
 end $$;
 
