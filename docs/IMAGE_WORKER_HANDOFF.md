@@ -9,7 +9,7 @@ Last reviewed: 2026-11-11
 - Keep the existing test service `lokal-ai-test-worker` on Nano stopped and unchanged.
 - Do not create/start a paid Micro Worker service until branch review passes and the user explicitly authorizes service creation.
 - Do not apply the migration to the live Supabase project, deploy `armex-api`, merge this branch, or activate infrastructure without separate explicit approval.
-- Never request or place service-role keys/provider tokens in chat, browser code, Git, logs, or build arguments. Configure them only as server-side runtime secrets when deployment is approved.
+- Never request or place Supabase secret/service-role keys or provider tokens in chat, browser code, Git, logs, or build arguments. Configure them only as server-side runtime secrets when deployment is approved. Prefer `SUPABASE_SECRET_KEY` (`sb_secret_...`); the legacy `SUPABASE_SERVICE_ROLE_KEY` is only a temporary fallback.
 
 ## Git checkpoint
 
