@@ -200,6 +200,7 @@ async function processJob(job) {
     }
 
     await uploadImage(storagePath, output.bytes, output.mimeType);
+    uploaded = true;
     if (leaseLost) {
       await removeImage(storagePath);
       log("job_abandoned_after_upload_lease_loss", { job_id: jobId });
