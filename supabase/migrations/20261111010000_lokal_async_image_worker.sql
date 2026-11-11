@@ -253,6 +253,7 @@ declare
   v_updated integer;
 begin
   if nullif(p_storage_path, '') is null
+     or p_mime_type is null
      or p_mime_type not in ('image/jpeg', 'image/png', 'image/webp') then
     raise exception 'Invalid image output metadata' using errcode = '22023';
   end if;
@@ -292,7 +293,6 @@ set search_path = public, pg_temp
 as $function$
 declare
   v_job record;
-  v_next_status text;
   v_delay_seconds integer;
 begin
   select j.job_id, j.user_id, j.attempt_count, j.max_attempts,
