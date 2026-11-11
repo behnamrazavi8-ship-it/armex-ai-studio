@@ -252,7 +252,7 @@ else{
   document.getElementById("imagePrompt").value=text.slice(0,2048);
   setImageStatus("پرامپت Prompt Lab به استودیوی تصویر منتقل شد.");
  });
- let pendingImageRequestId=null;
+ let pendingImageRequestId=null,pendingImagePrompt=null;
  const waitForImageJob=async(session,jobId)=>{
   let transientErrors=0;
   for(let attempt=0;attempt<200;attempt++){
@@ -282,9 +282,10 @@ else{
   if(!session){location.hash="auth-section";return}
   imageButton.disabled=true;setImageStatus("در حال ثبت درخواست و رزرو اعتبار...");
   try{
-   pendingImageRequestId ||= crypto.randomUUID();
+   if(pendingImageRequestId&&pendingImagePrompt!==prompt)throw new Error("IMAGE_PREVIOUS_REQUEST_PENDING");
+   if(!pendingImageRequestId){pendingImageRequestId=crypto.randomUUID();pendingImagePrompt=prompt}
    const result=await callArmexApi(session,"",{
-    action:"generate_image",request_id:pendingImageRequestId,prompt,
+    action:"generate_image",request_id:pendingImageRequestId,prompt:pendingImagePrompt,
     aspect_ratio:"1:1",resolution:"1K"
    });
    if(result.success!==true||!result.job?.id){
@@ -294,7 +295,7 @@ else{
    await loadWalletBalance(session);
    setImageStatus("درخواست ثبت شد؛ Worker در حال آماده‌سازی تولید تصویر است...");
    const job=await waitForImageJob(session,result.job.id);
-   pendingImageRequestId=null;
+   pendingImageRequestId=null;pendingImagePrompt=null;
    const preview=document.getElementById("generatedImage"),link=document.getElementById("downloadGeneratedImage");
    preview.src=job.image_url;link.dataset.url=job.image_url;setDownloadProgress(false,"",0,false);imagePreview.hidden=false;
    document.getElementById("imageMeta").textContent=String(job.model||"FLUX.1 Schnell")+" · "+Number(job.credits_charged||20).toLocaleString("fa-IR")+" اعتبار مصرف شد";
@@ -302,8 +303,8 @@ else{
    await Promise.all([loadWalletBalance(session),loadImageGallery(session)]);
   }catch(error){
    const raw=String(error?.message||"");
-   if(/IMAGE_JOB_FAILED/.test(raw))pendingImageRequestId=null;
-   const friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول برای ساخت تصویر کافی نیست.":/not configured/i.test(raw)?"تنظیمات موتور تصویر در Worker کامل نیست.":/IMAGE_JOB_FAILED/.test(raw)?"تولید تصویر پس از تلاش‌های مجاز ناموفق شد؛ اعتبار رزروشده به کیف پول بازگردانده می‌شود.":/IMAGE_JOB_STILL_PROCESSING/.test(raw)?"درخواست هنوز در صف یا مرحله تولید است؛ برای جلوگیری از کسر اعتبار دوباره، تلاش بعدی همین درخواست را پیگیری می‌کند.":/IMAGE_REQUEST_RESERVATION_UNCERTAIN/.test(raw)?"رزرو اعتبار ثبت شده اما شناسه Job قابل بازیابی نیست؛ برای جلوگیری از کسر دوباره اعتبار، فعلاً درخواست تازه‌ای ثبت نکن.":raw||"ساخت تصویر ناموفق بود.";
+   if(/IMAGE_JOB_FAILED/.test(raw)||/Insufficient credits/i.test(raw)){pendingImageRequestId=null;pendingImagePrompt=null}
+   const friendly=/IMAGE_PREVIOUS_REQUEST_PENDING/.test(raw)?"درخواست قبلی هنوز تعیین تکلیف نشده است؛ ابتدا همان درخواست را با همان توضیح پیگیری کن.":/Insufficient credits/i.test(raw)?"اعتبار کیف پول برای ساخت تصویر کافی نیست.":/not configured/i.test(raw)?"تنظیمات موتور تصویر در Worker کامل نیست.":/IMAGE_JOB_FAILED/.test(raw)?"تولید تصویر پس از تلاش‌های مجاز ناموفق شد؛ اعتبار رزروشده به کیف پول بازگردانده می‌شود.":/IMAGE_JOB_STILL_PROCESSING/.test(raw)?"درخواست هنوز در صف یا مرحله تولید است؛ برای جلوگیری از کسر اعتبار دوباره، تلاش بعدی همین درخواست را پیگیری می‌کند.":/IMAGE_REQUEST_RESERVATION_UNCERTAIN/.test(raw)?"رزرو اعتبار ثبت شده اما شناسه Job قابل بازیابی نیست؛ برای جلوگیری از کسر دوباره اعتبار، فعلاً درخواست تازه‌ای ثبت نکن.":raw||"ساخت تصویر ناموفق بود.";
    setImageStatus(friendly,true);await Promise.all([loadWalletBalance(session),loadImageGallery(session)]);
   }finally{imageButton.disabled=false}
  });
