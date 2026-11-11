@@ -37,7 +37,7 @@ Optional:
 
 The repository-root `Dockerfile` builds the worker from `worker/`. Runtime command is `npm start`. The process also listens on `0.0.0.0:8080` and exposes `GET /health` for local diagnostics. Weblines Worker is a background service without a public URL, so do not configure a public route or domain for it.
 
-Create this as a **Weblines Worker** (background worker), not a public Custom App. Weblines documents Worker sources as Docker Image or public Git repository; this repository is public and contains the root Dockerfile. Keep the service on the Micro pack for the initial low-volume validation. Do not create/start the paid Worker until branch review and explicit user approval.
+Create this as a **Weblines Worker** (background worker), not a public Custom App. Weblines documents Worker sources as Docker Image or public Git repository; this repository is public and contains the root Dockerfile. Select the **Medium** pack for the operational Worker service. The Nano test service remains stopped and untouched. Do not create/start the paid Worker until branch review and explicit user approval.
 
 ## Database migration
 
