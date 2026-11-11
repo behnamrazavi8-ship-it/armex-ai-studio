@@ -270,6 +270,10 @@ begin
         mime_type = p_mime_type, actual_cost_usd = p_actual_cost_usd,
         error_code = null, completed_at = now()
     where id = p_job_id and status = 'processing';
+  get diagnostics v_updated = row_count;
+  if v_updated <> 1 then
+    raise exception 'Image generation row could not be completed' using errcode = '40001';
+  end if;
 
   return true;
 end;
