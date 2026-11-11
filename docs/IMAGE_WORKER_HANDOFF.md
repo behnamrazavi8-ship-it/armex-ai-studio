@@ -47,7 +47,7 @@ Last reviewed: 2026-11-11
 
 ## Existing Supabase advisor findings (not introduced by this branch)
 
-- Security advisor reports `public.rls_auto_enable()` as a SECURITY DEFINER function executable by anon and authenticated. This is a pre-existing project-level issue; it was not modified during this worker task. Review it separately before production security sign-off.
+- Security advisor reports `public.rls_auto_enable()` as a SECURITY DEFINER function executable by anon and authenticated. Read-only inspection confirms it returns the special `event_trigger` type and is attached to the enabled `ensure_rls` DDL event trigger (`ddl_command_end`). This is likely a generic advisor false positive for RPC exposure, not a normal callable RPC. Do not revoke or alter it without a separate PostgreSQL event-trigger review. It was not modified during this worker task.
 - Auth leaked-password protection is disabled; review separately.
 - Performance advisor reports existing RLS init-plan and unindexed foreign-key recommendations on other project tables. These are not part of the image-worker migration and must not be changed as incidental scope.
 
