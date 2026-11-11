@@ -1,6 +1,6 @@
-# LOKAL AI Medium Image Worker
+# LOKAL AI Micro Image Worker
 
-This branch adds an asynchronous image-generation worker. It is designed for the planned Weblines **Medium** service (2 vCPU, 4 GB RAM, 20 GB disk). It does not execute model weights locally; it coordinates jobs and calls the configured Cloudflare Workers AI REST endpoint.
+This branch adds an asynchronous image-generation worker. It is designed for the initial Weblines **Micro Worker** service (0.5 vCPU, 1 GB RAM, 5 GB disk). This is a deliberately constrained, single-job-at-a-time CPU coordinator. Model inference stays remote on Cloudflare Workers AI; Micro does not load model weights locally. It does not execute model weights locally; it coordinates jobs and calls the configured Cloudflare Workers AI REST endpoint.
 
 ## Architecture
 
@@ -11,11 +11,11 @@ This branch adds an asynchronous image-generation worker. It is designed for the
 5. Transient provider/storage errors use bounded exponential backoff. Exhausted or terminal failures are marked failed and refunded using one stable idempotency key per job.
 6. The frontend receives a job ID and polls the authenticated status endpoint. Only the owner can read the job through the Edge Function.
 
-The database job table is authoritative. The worker is intentionally single-concurrency by default; increase concurrency only after observing provider limits and memory use.
+The database job table is authoritative. Keep concurrency at exactly one on Micro. The worker buffers one provider response (up to the bucket's 20 MiB file limit) in memory, so do not run parallel image jobs on this 1 GB service. The container caps the V8 heap at 512 MiB as an additional guardrail. Idle polling defaults to 5 seconds to reduce unnecessary Supabase RPC traffic.
 
 ## Required environment variables
 
-Configure these as **server-side secrets** in the Weblines service. Never add them to GitHub, frontend config, chat messages, or build arguments.
+Configure these as **server-side runtime secrets** on the Weblines Worker service (not in the frontend, GitHub, Docker build args, or chat). Never add them to GitHub, frontend config, chat messages, or build arguments.
 
 | Variable | Purpose |
 | --- | --- |
@@ -29,13 +29,13 @@ Optional:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PORT` | `8080` | Health endpoint port |
-| `WORKER_POLL_MS` | `2500` | Idle queue polling interval (clamped to 1–15 seconds) |
+| `WORKER_POLL_MS` | `5000` | Idle queue polling interval (clamped to 2–15 seconds) |
 
 ## Container
 
-The repository-root `Dockerfile` builds the worker from `worker/`. Runtime command is `npm start`. Expose port `8080`; configure the platform health check as `GET /health`.
+The repository-root `Dockerfile` builds the worker from `worker/`. Runtime command is `npm start`. The process also listens on `0.0.0.0:8080` and exposes `GET /health` for local diagnostics. Weblines Worker is a background service without a public URL, so do not configure a public route or domain for it.
 
-Use the public Git repository and the default branch only after this feature branch has been reviewed and merged. Do not create or start the paid Medium service until the migration and end-to-end tests have passed.
+Create this as a **Weblines Worker** (background worker), not a public Custom App. Weblines documents Worker sources as Docker Image or public Git repository; this repository is public and contains the root Dockerfile. Keep the service on the Micro pack for the initial low-volume validation. Do not create/start the paid Worker until branch review and explicit user approval.
 
 ## Database migration
 
@@ -51,8 +51,15 @@ The RPCs are executable only by `service_role`; the job table has RLS enabled an
 2. Confirm the private Storage bucket `lokal-ai-images` exists and the Cloudflare credentials are ready.
 3. Apply the migration to the intended Supabase project.
 4. Deploy the updated `armex-api` Edge Function.
-5. Build the root Dockerfile and configure the four required runtime secrets on the Medium service.
-6. Start one worker instance; confirm `GET /health` and a single end-to-end image job.
+5. Build the root Dockerfile and configure the four required runtime secrets on the Micro Worker service.
+6. Start exactly one worker instance; inspect logs and, from the container shell if available, confirm `GET http://127.0.0.1:8080/health` and one end-to-end image job.
 7. Test duplicate request IDs, insufficient balance, provider 429/5xx, storage failure, worker restart/lease expiry, retry exhaustion, and exactly-once refund ledger behavior before enabling user traffic.
 
-No production migration, Edge Function deployment, Worker service creation, or paid service activation is performed by this branch.
+No production migration, Edge Function deployment, Weblines Worker service creation, or paid service activation is performed by this branch.
+
+## Micro operating envelope
+
+- Weblines Micro: 0.5 vCPU / 1 GB RAM / 5 GB disk. Weblines describes Micro as suitable for light production APIs and recommends Medium or above for heavy workers; this Micro configuration is therefore an initial low-volume trial, not a promise of sustained heavy throughput.
+- One worker process and one active image job maximum. Do not scale replicas or concurrency until memory, CPU throttling, queue age, and provider latency have been measured.
+- Keep image output capped at the existing private bucket limit (20 MiB). Store outputs in Supabase Storage, never on the container disk.
+- A future increase to Small/Medium should be driven by observed OOM restarts, CPU throttling, sustained queue backlog, or unacceptable queue latency.
