@@ -69,7 +69,7 @@ async function heartbeat(jobId) {
 async function runProvider(job) {
   const model = job.model || DEFAULT_MODEL;
   const url = "https://api.cloudflare.com/client/v4/accounts/" +
-    CLOUDFLARE_ACCOUNT_ID + "/ai/run/" + encodeURIComponent(model);
+    CLOUDFLARE_ACCOUNT_ID + "/ai/run/" + model;
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -149,10 +149,26 @@ async function removeImage(path) {
   }
 }
 
+async function removeImageIfJobNotCompleted(jobId, path) {
+  try {
+    const rows = await supabase(
+      "/rest/v1/armex_image_generations?id=eq." + encodeURIComponent(jobId) + "&select=status",
+      { method: "GET", signal: AbortSignal.timeout(10000) },
+    );
+    if (Array.isArray(rows) && rows[0]?.status === "completed") return;
+    await removeImage(path);
+  } catch {
+    // Prefer retaining a possible completed output over deleting it after an
+    // ambiguous network failure. A later reconciliation can clean orphan files.
+    log("storage_cleanup_skipped_ambiguous_job_state", { job_id: jobId });
+  }
+}
+
 async function processJob(job) {
   const jobId = job.job_id;
   const storagePath = job.user_id + "/" + job.request_id + ".jpg";
   let leaseLost = false;
+  let uploaded = false;
   let heartbeatBusy = false;
 
   const heartbeatTimer = setInterval(async () => {
@@ -228,6 +244,7 @@ async function processJob(job) {
       // safely reclaim or terminally refund the job.
       log("failure_record_deferred_to_lease_recovery", { job_id: jobId, code });
     }
+    if (uploaded) await removeImageIfJobNotCompleted(jobId, storagePath);
   } finally {
     clearInterval(heartbeatTimer);
   }
