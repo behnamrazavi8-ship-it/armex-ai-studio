@@ -8,7 +8,9 @@ const required = (name) => {
 };
 
 const SUPABASE_URL = required("SUPABASE_URL").replace(/\/$/, "");
-const SUPABASE_SERVICE_ROLE_KEY = required("SUPABASE_SERVICE_ROLE_KEY");
+const SUPABASE_API_KEY = process.env.SUPABASE_SECRET_KEY?.trim() ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+if (!SUPABASE_API_KEY) throw new Error("Missing required environment variable: SUPABASE_SECRET_KEY");
 const CLOUDFLARE_ACCOUNT_ID = required("CLOUDFLARE_ACCOUNT_ID");
 const CLOUDFLARE_API_TOKEN = required("CLOUDFLARE_API_TOKEN");
 const IMAGE_BUCKET = "lokal-ai-images";
@@ -29,8 +31,8 @@ async function supabase(path, options = {}) {
   const response = await fetch(SUPABASE_URL + path, {
     ...options,
     headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: "Bearer " + SUPABASE_SERVICE_ROLE_KEY,
+      apikey: SUPABASE_API_KEY,
+      Authorization: "Bearer " + SUPABASE_API_KEY,
       ...(options.headers || {}),
     },
   });
@@ -113,8 +115,8 @@ async function uploadImage(path, bytes, mimeType) {
     {
       method: "POST",
       headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: "Bearer " + SUPABASE_SERVICE_ROLE_KEY,
+        apikey: SUPABASE_API_KEY,
+        Authorization: "Bearer " + SUPABASE_API_KEY,
         "Content-Type": mimeType,
         "x-upsert": "true",
         "Cache-Control": "3600",
@@ -136,8 +138,8 @@ async function removeImage(path) {
     const response = await fetch(SUPABASE_URL + "/storage/v1/object/" + IMAGE_BUCKET, {
       method: "DELETE",
       headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: "Bearer " + SUPABASE_SERVICE_ROLE_KEY,
+        apikey: SUPABASE_API_KEY,
+        Authorization: "Bearer " + SUPABASE_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ prefixes: [path] }),
