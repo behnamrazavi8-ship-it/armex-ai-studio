@@ -9,6 +9,7 @@ on:
       - "supabase/migrations/**"
       - "worker/**"
       - "Dockerfile"
+      - "tests/**"
   push:
     branches: [main, "feat/lokal-medium-image-worker"]
     paths:
@@ -67,3 +68,30 @@ jobs:
           PY
           node --check /tmp/lokal-inline-0.js
           node --check /tmp/lokal-inline-1.mjs
+
+  database-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Apply migration to disposable PostgreSQL and test billing/recovery
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/worker-db-contract.sql
