@@ -7,7 +7,7 @@ on:
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"\n      - "supabase/migrations/**"\n      - "worker/**"\n      - "Dockerfile"
   push:
-    branches: [main]
+    branches: [main, "feat/lokal-medium-image-worker"]
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
