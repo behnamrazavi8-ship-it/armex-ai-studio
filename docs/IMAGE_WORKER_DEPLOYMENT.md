@@ -20,9 +20,11 @@ Configure these as **server-side runtime secrets** on the Weblines Worker servic
 | Variable | Purpose |
 | --- | --- |
 | `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role secret; server-side only |
+| `SUPABASE_SECRET_KEY` | Supabase secret API key (`sb_secret_...`); server-side only |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with the required Workers AI run permission |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with Account → Workers AI → Read permission |
+
+The worker accepts the legacy `SUPABASE_SERVICE_ROLE_KEY` only as a temporary fallback. Prefer `SUPABASE_SECRET_KEY` for new deployments; Supabase says the legacy `service_role` API key is scheduled to stop working at the end of 2026.
 
 Optional:
 
