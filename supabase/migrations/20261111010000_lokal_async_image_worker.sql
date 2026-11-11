@@ -51,7 +51,7 @@ create or replace function public.armex_enqueue_image_generation(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $function$
 declare
   v_prior public.armex_image_generations%rowtype;
@@ -131,7 +131,7 @@ create or replace function public.armex_claim_image_job(p_worker_id uuid)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $function$
 declare
   v_expired record;
@@ -223,7 +223,7 @@ create or replace function public.armex_heartbeat_image_job(
 returns boolean
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $function$
 declare
   v_updated integer;
@@ -247,7 +247,7 @@ create or replace function public.armex_complete_image_job(
 returns boolean
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $function$
 declare
   v_updated integer;
@@ -289,7 +289,7 @@ create or replace function public.armex_fail_image_job(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, pg_temp
 as $function$
 declare
   v_job record;
