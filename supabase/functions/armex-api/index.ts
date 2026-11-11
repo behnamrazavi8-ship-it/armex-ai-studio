@@ -168,170 +168,92 @@ const generateImage = async (
 ): Promise<Response> => {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   const requestId = isUuid(body.request_id) ? body.request_id : "";
-  // FLUX.1 Schnell currently exposes its model-default output dimensions through this REST API.
   const aspectRatio = "1:1";
   const resolution = "1K";
-  const cloudflareAccountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID")?.trim() || "";
-  const cloudflareApiToken = Deno.env.get("CLOUDFLARE_API_TOKEN")?.trim() || "";
-  if (!cloudflareAccountId || !/^[a-f0-9]{32}$/i.test(cloudflareAccountId) || !cloudflareApiToken) {
-    return fail("Image generation is not configured; Cloudflare Workers AI credentials are required", 503, cors);
+
+  if (!prompt || prompt.length > 2048) {
+    return fail("A prompt between 1 and 2048 characters is required", 400, cors);
   }
-  if (!prompt || prompt.length > 2048) return fail("A prompt between 1 and 2048 characters is required", 400, cors);
-  if (!requestId) return fail("A UUID request_id is required for safe image billing", 400, cors);
+  if (!requestId) {
+    return fail("A UUID request_id is required for safe image billing", 400, cors);
+  }
   if (!Number.isSafeInteger(IMAGE_CREDIT_COST) || IMAGE_CREDIT_COST < 1 || IMAGE_CREDIT_COST > 1000) {
     return fail("Image billing configuration is invalid", 503, cors);
   }
 
-  const { data: prior, error: priorError } = await db.from("armex_image_generations")
-    .select("id,status,storage_path,credits_charged,actual_cost_usd,model,aspect_ratio,resolution,prompt,created_at")
-    .eq("user_id", userId).eq("request_id", requestId).maybeSingle();
-  if (priorError) return fail("Could not verify image request idempotency", 500, cors);
-  if (prior) {
-    if (prior.status === "completed" && prior.storage_path) {
-      try {
-        return json({ success: true, duplicate: true, image: {
-          id: prior.id, image_url: await signedImageUrl(db, prior.storage_path), prompt: prior.prompt,
-          model: prior.model, aspect_ratio: prior.aspect_ratio, resolution: prior.resolution,
-          credits_charged: prior.credits_charged, actual_cost_usd: prior.actual_cost_usd,
-          created_at: prior.created_at,
-        } }, 200, cors);
-      } catch {
-        return fail("Image was saved but its temporary access link could not be created; refresh image history", 500, cors);
-      }
-    }
-    return fail(prior.status === "pending"
-      ? "This image request is already processing; refresh image history shortly"
-      : "This request was already processed; create a new request to try again", 409, cors);
-  }
-
-  const { data: job, error: jobError } = await db.from("armex_image_generations").insert({
-    user_id: userId, request_id: requestId, prompt, model: IMAGE_MODEL,
-    aspect_ratio: aspectRatio, resolution, credits_charged: IMAGE_CREDIT_COST, status: "pending",
-  }).select("id").single();
-  if (jobError || !job) {
-    console.error("Image job creation failed", { requestId, code: jobError?.code });
-    return fail(jobError?.code === "23505" ? "This image request is already being processed" : "Could not start image generation", 409, cors);
-  }
-
-  const attemptId = crypto.randomUUID();
-  const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
-    p_user_id: userId, p_amount: IMAGE_CREDIT_COST, p_idempotency_key: "image_request:" + requestId,
-    p_description: "تولید تصویر در LOKAL AI",
-    p_metadata: { request_id: requestId, attempt_id: attemptId, model: IMAGE_MODEL, aspect_ratio: aspectRatio, resolution },
+  const { data, error } = await db.rpc("armex_enqueue_image_generation", {
+    p_user_id: userId,
+    p_request_id: requestId,
+    p_prompt: prompt,
+    p_model: IMAGE_MODEL,
+    p_aspect_ratio: aspectRatio,
+    p_resolution: resolution,
+    p_credits: IMAGE_CREDIT_COST,
   });
-  let debitConfirmed = !debitError && debited === true;
-  if (debitError) {
-    // A network error can occur after Postgres commits the debit. Verify the
-    // idempotency key before deciding whether a refund or retry is required.
-    const { data: existingDebit, error: debitLookupError } = await db
-      .from("armex_credit_transactions")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("idempotency_key", "image_request:" + requestId)
-      .maybeSingle();
-    debitConfirmed = !debitLookupError && Boolean(existingDebit);
+
+  if (error || !data) {
+    console.error("Image enqueue failed", { requestId, code: error?.code });
+    return fail("Could not enqueue image generation", 500, cors);
   }
-  if (!debitConfirmed) {
-    await db.from("armex_image_generations").update({
-      status: "failed", error_code: debitError ? "credit_reservation_failed" : "insufficient_credits",
-    }).eq("id", job.id).eq("user_id", userId);
-    if (debitError) {
-      console.error("Image credit reservation failed", { requestId, code: debitError.code });
-      return fail("Could not reserve image credits", 500, cors);
+  if (data.success !== true) {
+    if (data.code === "insufficient_credits") return fail("Insufficient credits", 402, cors);
+    if (data.code === "request_id_already_reserved") {
+      return fail("This request ID was already reserved; create a new request ID", 409, cors);
     }
-    return fail("Insufficient credits", 402, cors);
+    return fail("Could not reserve image credits", 500, cors);
   }
 
-  let debitCompleted = true;
-  let storagePath: string | null = null;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 110000);
-  try {
-    const providerUrl = "https://api.cloudflare.com/client/v4/accounts/" + cloudflareAccountId + "/ai/run/" + IMAGE_MODEL;
-    const providerResponse = await fetch(providerUrl, {
-      method: "POST", signal: controller.signal,
-      headers: {
-        Authorization: "Bearer " + cloudflareApiToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ prompt, steps: 4 }),
-    });
-    if (!providerResponse.ok) {
-      const providerError = await providerResponse.text();
-      console.error("Cloudflare Workers AI image request failed", { requestId, status: providerResponse.status, body: providerError.slice(0, 500) });
-      const refunded = await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_provider_error");
-      debitCompleted = false;
-      await db.from("armex_image_generations").update({ status: "failed", error_code: "provider_error" })
-        .eq("id", job.id).eq("user_id", userId);
-      return fail(refunded ? "Image provider failed; reserved credits were returned" : "Image provider failed and credit refund could not be confirmed", refunded ? 502 : 500, cors);
+  return json({
+    success: true,
+    duplicate: data.duplicate === true,
+    job: { id: data.job_id, status: data.status || "pending" },
+    credits_charged: IMAGE_CREDIT_COST,
+    model: IMAGE_MODEL,
+  }, 202, cors);
+};
+
+const getImageJobStatus = async (
+  db: SupabaseClient, userId: string, jobId: string, cors: HeadersInit,
+): Promise<Response> => {
+  if (!isUuid(jobId)) return fail("A valid job_id is required", 400, cors);
+
+  const { data: job, error } = await db.from("armex_image_generations")
+    .select("id,status,prompt,model,aspect_ratio,resolution,credits_charged,actual_cost_usd,storage_path,mime_type,error_code,created_at,completed_at")
+    .eq("id", jobId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Image status lookup failed", { jobId, code: error.code });
+    return fail("Could not load image job status", 500, cors);
+  }
+  if (!job) return fail("Image job not found", 404, cors);
+
+  let imageUrl: string | null = null;
+  if (job.status === "completed" && job.storage_path) {
+    try { imageUrl = await signedImageUrl(db, String(job.storage_path)); }
+    catch {
+      return fail("Image is saved but its temporary access link could not be created; refresh image history", 500, cors);
     }
+  }
 
-    const providerPayload = await providerResponse.json();
-    const result = providerPayload?.result ?? providerPayload;
-    const base64 = typeof result?.image === "string" ? result.image : "";
-    if (!base64 || base64.length > 28000000) {
-      const refunded = await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_invalid_response");
-      debitCompleted = false;
-      await db.from("armex_image_generations").update({ status: "failed", error_code: "invalid_image_response" })
-        .eq("id", job.id).eq("user_id", userId);
-      return fail(refunded ? "Image provider returned an invalid image; reserved credits were returned" : "Image response was invalid and the credit refund could not be confirmed", refunded ? 502 : 500, cors);
-    }
-
-    const mimeType = "image/jpeg";
-    const extensionByType: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
-    const extension = extensionByType[mimeType];
-    if (!extension) throw new Error("UNSUPPORTED_IMAGE_FORMAT");
-    const binary = atob(base64);
-    if (!binary.length || binary.length > 20 * 1024 * 1024) throw new Error("IMAGE_SIZE_LIMIT");
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
-
-    storagePath = userId + "/" + requestId + "." + extension;
-    const { error: uploadError } = await db.storage.from(IMAGE_BUCKET).upload(storagePath, bytes, {
-      contentType: mimeType, cacheControl: "3600", upsert: false,
-    });
-    if (uploadError) {
-      console.error("Generated image upload failed", { requestId, message: uploadError.message });
-      throw new Error("IMAGE_STORAGE_FAILED");
-    }
-
-    // Cloudflare's model-run response does not report per-request USD cost in this payload.
-    const actualCost = null;
-    const { data: completed, error: completeError } = await db.from("armex_image_generations").update({
-      status: "completed", storage_path: storagePath, mime_type: mimeType,
-      actual_cost_usd: actualCost, completed_at: new Date().toISOString(),
-    }).eq("id", job.id).eq("user_id", userId).select("id").maybeSingle();
-    if (completeError || !completed) {
-      console.error("Image job completion record failed", { requestId, code: completeError?.code });
-      throw new Error("IMAGE_RECORD_FAILED");
-    }
-
-    debitCompleted = false;
-    let imageUrl: string | null = null;
-    try { imageUrl = await signedImageUrl(db, storagePath); }
-    catch { console.warn("Image saved but signed URL could not be created", { requestId }); }
-    return json({ success: true, image: {
-      id: job.id, image_url: imageUrl, prompt, model: IMAGE_MODEL, aspect_ratio: aspectRatio,
-      resolution, credits_charged: IMAGE_CREDIT_COST, actual_cost_usd: actualCost,
-      created_at: new Date().toISOString(),
-    } }, 200, cors);
-  } catch (error) {
-    if (storagePath) await db.storage.from(IMAGE_BUCKET).remove([storagePath]).catch(() => undefined);
-    const refunded = debitCompleted
-      ? await refundCredits(db, userId, IMAGE_CREDIT_COST, requestId, attemptId, "image_server_error")
-      : true;
-    debitCompleted = false;
-    await db.from("armex_image_generations").update({
-      status: "failed", error_code: error instanceof Error ? error.message.slice(0, 80) : "image_server_error",
-      storage_path: null, mime_type: null,
-    }).eq("id", job.id).eq("user_id", userId);
-    const timedOut = error instanceof Error && error.name === "AbortError";
-    console.error("Image generation failed", { requestId, error: error instanceof Error ? error.message : "unknown", refund_confirmed: refunded });
-    return fail(timedOut
-      ? (refunded ? "Image generation timed out; reserved credits were returned" : "Image generation timed out and credit refund could not be confirmed")
-      : (refunded ? "Image generation failed; reserved credits were returned" : "Image generation failed and credit refund could not be confirmed"),
-      timedOut ? 504 : 500, cors);
-  } finally { clearTimeout(timeout); }
+  return json({
+    success: true,
+    job: {
+      id: job.id,
+      status: job.status,
+      prompt: job.prompt,
+      model: job.model,
+      aspect_ratio: job.aspect_ratio,
+      resolution: job.resolution,
+      credits_charged: job.credits_charged,
+      actual_cost_usd: job.actual_cost_usd,
+      error_code: job.error_code,
+      created_at: job.created_at,
+      completed_at: job.completed_at,
+      image_url: imageUrl,
+    },
+  }, 200, cors);
 };
 
 const handle = async (request: Request): Promise<Response> => {
@@ -449,6 +371,10 @@ const handle = async (request: Request): Promise<Response> => {
 
   if (request.method === "GET" && url.searchParams.get("action") === "images") {
     return await listGeneratedImages(db, userId, cors);
+  }
+
+  if (request.method === "GET" && url.searchParams.get("action") === "image_status") {
+    return await getImageJobStatus(db, userId, url.searchParams.get("job_id") || "", cors);
   }
 
   if (request.method === "GET") {
