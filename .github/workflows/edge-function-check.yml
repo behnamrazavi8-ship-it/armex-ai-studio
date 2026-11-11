@@ -19,6 +19,7 @@ on:
       - "supabase/migrations/**"
       - "worker/**"
       - "Dockerfile"
+      - "tests/**"
 
 permissions:
   contents: read
