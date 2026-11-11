@@ -98,7 +98,7 @@ insert into public.armex_wallets(user_id,balance) values
 ('00000000-0000-4000-8000-000000000002',5),
 ('00000000-0000-4000-8000-000000000003',100);
 
-\ir supabase/migrations/20261111010000_lokal_async_image_worker.sql
+\i supabase/migrations/20261111010000_lokal_async_image_worker.sql
 
 do $$
 declare
