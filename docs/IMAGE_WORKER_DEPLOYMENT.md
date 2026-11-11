@@ -1,6 +1,6 @@
-# LOKAL AI Micro Image Worker
+# LOKAL AI Medium Image Worker
 
-This branch adds an asynchronous image-generation worker. It is designed for the initial Weblines **Micro Worker** service (0.5 vCPU, 1 GB RAM, 5 GB disk). This is a deliberately constrained, single-job-at-a-time CPU coordinator. Model inference stays remote on Cloudflare Workers AI; Micro does not load model weights locally. It coordinates jobs and calls the configured Cloudflare Workers AI REST endpoint.
+This branch adds an asynchronous image-generation worker. It is designed for the Weblines **Medium Worker** service (2 vCPU, 4 GB RAM, 20 GB disk). This is a CPU coordinator/worker; model inference stays remote on Cloudflare Workers AI and no model weights are loaded locally. It coordinates jobs and calls the configured Cloudflare Workers AI REST endpoint.
 
 ## Architecture
 
@@ -11,7 +11,7 @@ This branch adds an asynchronous image-generation worker. It is designed for the
 5. Transient provider/storage errors use bounded exponential backoff. Exhausted or terminal failures are marked failed and refunded using one stable idempotency key per job.
 6. The frontend receives a job ID and polls the authenticated status endpoint. Only the owner can read the job through the Edge Function.
 
-The database job table is authoritative. Keep concurrency at exactly one on Micro. The worker buffers one provider response (up to the bucket's 20 MiB file limit) in memory, so do not run parallel image jobs on this 1 GB service. The container caps the V8 heap at 512 MiB as an additional guardrail. Idle polling defaults to 5 seconds to reduce unnecessary Supabase RPC traffic.
+The database job table is authoritative. Start with one worker process and one active image job. The worker buffers one provider response (up to the bucket's 20 MiB file limit) in memory. The container caps the V8 heap at 2048 MiB as a guardrail. Idle polling defaults to 2.5 seconds.
 
 ## Required environment variables
 
@@ -31,7 +31,7 @@ Optional:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PORT` | `8080` | Health endpoint port |
-| `WORKER_POLL_MS` | `5000` | Idle queue polling interval (clamped to 2–15 seconds) |
+| `WORKER_POLL_MS` | `2500` | Idle queue polling interval (clamped to 1–15 seconds) |
 
 ## Container
 
@@ -53,15 +53,15 @@ The RPCs are executable only by `service_role`; the job table has RLS enabled an
 2. Confirm the private Storage bucket `lokal-ai-images` exists and the Cloudflare credentials are ready.
 3. Apply the migration to the intended Supabase project.
 4. Deploy the updated `armex-api` Edge Function.
-5. Build the root Dockerfile and configure the four required runtime secrets on the Micro Worker service.
+5. Build the root Dockerfile and configure the four required runtime secrets on the Medium Worker service.
 6. Start exactly one worker instance; inspect logs and, from the container shell if available, confirm the local health endpoint with `curl -fsS http://127.0.0.1:8080/health` and run one end-to-end image job.
 7. Test duplicate request IDs, insufficient balance, provider 429/5xx, storage failure, worker restart/lease expiry, retry exhaustion, and exactly-once refund ledger behavior before enabling user traffic.
 
 No production migration, Edge Function deployment, Weblines Worker service creation, or paid service activation is performed by this branch.
 
-## Micro operating envelope
+## Medium operating envelope
 
-- Weblines Micro: 0.5 vCPU / 1 GB RAM / 5 GB disk. Weblines describes Micro as suitable for light production APIs and recommends Medium or above for heavy workers; this Micro configuration is therefore an initial low-volume trial, not a promise of sustained heavy throughput.
-- One worker process and one active image job maximum. Do not scale replicas or concurrency until memory, CPU throttling, queue age, and provider latency have been measured.
+- Weblines Medium: 2 vCPU / 4 GB RAM / 20 GB disk. This is the intended operational CPU worker size for the first production rollout.
+- One worker process and one active image job initially. Increase concurrency only after observing memory, CPU, queue age, and provider latency.
 - Keep image output capped at the existing private bucket limit (20 MiB). Store outputs in Supabase Storage, never on the container disk.
-- A future increase to Small/Medium should be driven by observed OOM restarts, CPU throttling, sustained queue backlog, or unacceptable queue latency.
+- Scale beyond Medium only if observed OOM restarts, CPU throttling, sustained queue backlog, or unacceptable queue latency justify it.
