@@ -166,7 +166,9 @@ async function removeImageIfJobNotCompleted(jobId, path) {
 
 async function processJob(job) {
   const jobId = job.job_id;
-  const storagePath = job.user_id + "/" + job.request_id + ".jpg";
+  // Each worker attempt writes to its own object so a stale lease owner cannot
+  // delete or overwrite a newer worker's output.
+  const storagePath = job.user_id + "/" + job.request_id + "-" + workerId + ".jpg";
   let leaseLost = false;
   let uploaded = false;
   let heartbeatBusy = false;
