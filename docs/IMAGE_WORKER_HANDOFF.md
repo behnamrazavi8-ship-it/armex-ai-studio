@@ -4,10 +4,10 @@ Last reviewed: 2026-11-11
 
 ## Fixed decisions
 
-- The planned first operational worker is **Weblines Micro: 0.5 vCPU, 1 GB RAM, 5 GB disk**. This is a low-volume, single-concurrency starting point; do not treat it as a heavy-worker capacity commitment.
-- Micro is a CPU job coordinator/worker, not a GPU inference host. The current image provider remains Cloudflare Workers AI; this is not yet LOKAL AI's own model inference engine.
+- The planned operational worker is **Weblines Medium: 2 vCPU, 4 GB RAM, 20 GB disk**. The Nano service `lokal-ai-test-worker` is test-only and must remain stopped and untouched.
+- Medium is a CPU job coordinator/worker, not a GPU inference host. The current image provider remains Cloudflare Workers AI; this is not yet LOKAL AI's own model inference engine.
 - Keep the existing test service `lokal-ai-test-worker` on Nano stopped and unchanged.
-- Do not create/start a paid Micro Worker service until branch review passes and the user explicitly authorizes service creation.
+- Do not create/start a paid Medium Worker service until branch review passes and the user explicitly authorizes service creation.
 - Do not apply the migration to the live Supabase project, deploy `armex-api`, merge this branch, or activate infrastructure without separate explicit approval.
 - Never request or place Supabase secret/service-role keys or provider tokens in chat, browser code, Git, logs, or build arguments. Configure them only as server-side runtime secrets when deployment is approved. Prefer `SUPABASE_SECRET_KEY` (`sb_secret_...`); the legacy `SUPABASE_SERVICE_ROLE_KEY` is only a temporary fallback.
 
@@ -75,16 +75,16 @@ Last reviewed: 2026-11-11
 - Auth leaked-password protection is disabled; review separately.
 - Performance advisor reports existing RLS init-plan and unindexed foreign-key recommendations on other project tables. These are not part of the image-worker migration and must not be changed as incidental scope.
 
-## Micro re-scope — 2026-11-11
+## Medium operational target — 2026-11-11
 
 - The former Nano service `lokal-ai-test-worker` is test-only, stopped, and must remain untouched. It is not the operational Worker.
-- The first operational target is a Weblines **Worker** background service on **Micro (0.5 vCPU, 1 GB RAM, 5 GB disk)**, not a public Custom App. Weblines documents Worker sources as Docker Image or public Git repository; this repository is public and has a root Dockerfile.
-- Micro is intentionally limited to one process and one active image job. The worker idle poll default is now 5 seconds, and the container limits the Node V8 heap to 512 MiB. These are conservative starting values, not a load-test result.
+- The operational target is a Weblines **Worker** background service on **Medium (2 vCPU, 4 GB RAM, 20 GB disk)**, not a public Custom App. Weblines documents Worker sources as Docker Image or public Git repository; this repository is public and has a root Dockerfile.
+- Start with one process and one active image job. The worker idle poll default is 2.5 seconds, and the container limits the Node V8 heap to 2048 MiB.
 - The model runs remotely through Cloudflare Workers AI; Micro only coordinates queue jobs and transfers the output. The existing 20 MiB private Storage bucket limit matches the worker's maximum decoded image size.
 - Current live Supabase read-only check: `armex_image_generations`, `armex_wallets`, `armex_credit_transactions`, both financial RPCs, and the private `lokal-ai-images` bucket exist. The image table's current status check still allows only `pending/completed/failed`; `armex_image_jobs` and all five queue RPCs are absent, so the feature migration remains a required, separately approved production rollout step.
 - Current Storage bucket settings: private, 20 MiB maximum, allowed MIME types JPEG/PNG/WebP. Existing authenticated SELECT policy restricts reads to the user's own top-level folder. Seven objects were present at inspection; no object data was modified.
 - The Worker service must receive secrets only through Weblines runtime environment settings. Do not use a public route/domain; the health listener is for local diagnostics only.
-- Micro is a constrained initial trial. Weblines' own guidance recommends Medium+ for heavy workers, so move up only when observed OOM, CPU throttling, backlog, or latency demonstrates the need.
+- Medium is the intended operational size. Start at concurrency one and increase only after measuring memory, CPU, queue backlog, and provider latency.
 
 ## Do not repeat
 
