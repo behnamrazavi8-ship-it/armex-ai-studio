@@ -1,5 +1,5 @@
 FROM node:22-alpine
-ENV NODE_ENV=production NODE_OPTIONS=--max-old-space-size=512
+ENV NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2048
 WORKDIR /app
 COPY worker/package.json ./package.json
 RUN npm install --omit=dev --ignore-scripts
