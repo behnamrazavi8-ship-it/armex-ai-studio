@@ -170,7 +170,7 @@ async function processJob(job) {
   // delete or overwrite a newer worker's output.
   const storagePath = job.user_id + "/" + job.request_id + "-" + workerId + ".jpg";
   let leaseLost = false;
-  let uploaded = false;
+  let uploadAttempted = false;
   let heartbeatBusy = false;
 
   const heartbeatTimer = setInterval(async () => {
@@ -199,8 +199,10 @@ async function processJob(job) {
       return;
     }
 
+    // A timeout may occur after Storage accepted the object but before its response arrived.
+    // Mark the attempt before the request so the catch path also checks for that orphan.
+    uploadAttempted = true;
     await uploadImage(storagePath, output.bytes, output.mimeType);
-    uploaded = true;
     if (leaseLost) {
       await removeImage(storagePath);
       log("job_abandoned_after_upload_lease_loss", { job_id: jobId });
@@ -247,7 +249,7 @@ async function processJob(job) {
       // safely reclaim or terminally refund the job.
       log("failure_record_deferred_to_lease_recovery", { job_id: jobId, code });
     }
-    if (uploaded) await removeImageIfJobNotCompleted(jobId, storagePath);
+    if (uploadAttempted) await removeImageIfJobNotCompleted(jobId, storagePath);
   } finally {
     clearInterval(heartbeatTimer);
   }
