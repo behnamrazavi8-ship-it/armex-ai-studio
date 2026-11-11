@@ -341,14 +341,13 @@ const handle = async (request: Request): Promise<Response> => {
     }, 200, cors);
   }
 
-  const openRouterKey = env("OPENROUTER_API_KEY");
   if (request.method === "GET" && url.searchParams.get("action") === "models") {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
       try {
         const response = await fetch(OPENROUTER_URL + "/models", {
-          headers: { Authorization: "Bearer " + openRouterKey },
+          headers: { Authorization: "Bearer " + env("OPENROUTER_API_KEY") },
           signal: controller.signal,
         });
         if (!response.ok) return fail("Model list is temporarily unavailable", 502, cors);
@@ -396,6 +395,7 @@ const handle = async (request: Request): Promise<Response> => {
     return await generateImage(db, userId, body, cors);
   }
 
+  const openRouterKey = env("OPENROUTER_API_KEY");
   const message = typeof body.message === "string" ? body.message.trim() : "";
   if (!message || message.length > MAX_MESSAGE_CHARS) {
     return fail("A message between 1 and " + MAX_MESSAGE_CHARS + " characters is required", 400, cors);
