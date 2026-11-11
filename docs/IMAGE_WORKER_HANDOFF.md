@@ -16,7 +16,8 @@ Last reviewed: 2026-11-11
 - Repository: `behnamrazavi8-ship-it/armex-ai-studio`
 - Working branch: `feat/lokal-medium-image-worker`
 - Base: `main`
-- At last compare: branch was 24 commits ahead and 0 behind `main`.
+- At latest compare after the review fixes: branch is 30 commits ahead and 0 behind `main`.
+- Latest branch commit confirmed from the last successful branch write: `9639980339cc3ebfae97a09f23a9c315ee71213b`.
 - Keep the work isolated on this branch until review is complete.
 
 ## Implementation currently on the branch
@@ -35,6 +36,27 @@ Last reviewed: 2026-11-11
 - It checks enqueue idempotency, insufficient balance, claim/heartbeat, retry, terminal failure/refund exactly once, successful completion without refund, lease exhaustion/refund, and RPC execution privileges.
 - GitHub Actions now has a separate PostgreSQL 16 service job for this contract test, alongside Deno and JavaScript syntax checks.
 - The latest GitHub status had not yet been verified at the time of this checkpoint. Do not describe the new database-contract workflow as passing until a successful run is observed.
+
+## Review pass — 2026-11-11
+
+- Reviewed the current migration, worker, Edge Function, browser flow, Dockerfile, database contract test, and GitHub Actions workflow.
+- Fixed a configuration coupling bug: the Edge Function no longer requires `OPENROUTER_API_KEY` for image enqueue, image status, or image history. The key is read only by OpenRouter chat/model-catalog routes.
+- Fixed an ambiguous-enqueue billing retry risk in the browser: the image request UUID is retained while the result is uncertain, retries reuse the same UUID, and a different prompt is blocked until the pending request is resolved. Terminal failure and insufficient-credit responses release the in-memory pending request.
+- Cloudflare's official FLUX.1 schnell documentation confirms the REST result contains a base64 `image` value; the worker's JSON/base64 decoding path matches that documented response. The model output is JPEG.
+- Supabase Storage's documented object-removal endpoint uses `DELETE /object/{bucket}` with a `prefixes` array; the worker cleanup request matches this contract.
+- Rechecked branch comparison: 30 commits ahead, 0 behind `main`. No merge or PR was created.
+- GitHub connector currently exposes commit status and PR-associated workflow runs, but not the push-run listing needed to verify this branch's latest Actions execution. The latest combined commit status returned no status entries. Therefore the new PostgreSQL contract job, Deno check, browser syntax check, and Docker build remain **unverified** until a run is visibly successful in GitHub Actions.
+- The SQL contract test is a disposable vanilla PostgreSQL fixture. It is useful for transaction/queue/refund logic but does not fully emulate Supabase roles, default grants, Storage, Edge Runtime, or the Cloudflare provider.
+- Browser idempotency state is currently in-memory. It protects retries while the page remains open, but a full page reload loses the pending UUID; a durable server-side request recovery path or carefully scoped browser persistence is still a pre-production hardening item.
+
+## Remaining review gates
+
+1. Verify the latest push-triggered GitHub Actions run and fix any failure on this branch only.
+2. Execute the SQL migration and ACL checks in a disposable Supabase-compatible environment, not the live project.
+3. Validate the Cloudflare token's Workers AI permissions, model access/limits, and actual REST response using a controlled non-production test.
+4. Verify the existing `lokal-ai-images` bucket is private and that its object policies and signed-URL behavior match the API.
+5. Complete a full non-production test: enqueue -> debit once -> claim -> provider output -> upload -> complete -> signed URL -> terminal failure/refund -> retry/idempotency.
+6. Only then present the exact production rollout steps for explicit approval.
 
 ## Live Supabase read-only findings
 
