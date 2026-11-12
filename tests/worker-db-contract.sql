@@ -145,6 +145,11 @@ begin
   if e->>'status' <> 'failed' or e->>'refunded' <> 'true' then raise exception 'terminal failure/refund mismatch: %',e; end if;
   if (select balance from public.armex_wallets where user_id=u1) <> 100 then raise exception 'terminal failure did not restore balance'; end if;
   if (select count(*) from public.armex_credit_transactions where user_id=u1 and idempotency_key='image_refund:'||job::text) <> 1 then raise exception 'refund ledger row count mismatch'; end if;
+  -- Replaying the same terminal failure must be rejected without a second refund.
+  e := public.armex_fail_image_job(job,wid,'TEST_REPLAY',false);
+  if e->>'accepted' <> 'false' then raise exception 'terminal failure replay was unexpectedly accepted: %',e; end if;
+  if (select balance from public.armex_wallets where user_id=u1) <> 100 then raise exception 'replayed terminal failure changed wallet balance'; end if;
+  if (select count(*) from public.armex_credit_transactions where user_id=u1 and idempotency_key='image_refund:'||job::text) <> 1 then raise exception 'replayed terminal failure duplicated refund ledger row'; end if;
 
   -- Duplicate refund key cannot increase balance a second time.
   ok := public.armex_grant_credits(u1,20,'refund','image_refund:'||job::text,'duplicate refund','{}'::jsonb);
