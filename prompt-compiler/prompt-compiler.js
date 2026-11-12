@@ -9,7 +9,7 @@
   const RULES = [
     { key: "subject", re: /(?:یک\s+)?خودروی\s+Dodge\s+Challenger|Dodge\s+Challenger/iu, en: "Dodge Challenger" },
     { key: "color", re: /قرمز/gu, en: "red" },
-    { key: "count", re: /(?:فقط\s+)?یک\s+(?:خودرو|ماشین)/gu, en: "exactly one car" },
+    { key: "count", re: /(?:فقط\s+)?یک\\s+(?:خودرو|خودروی|ماشین)/gu, en: "exactly one car" },
     { key: "state", re: /هر\s+دو\s+در\s+(?:کاملاً\s+)?باز/gu, en: "both doors fully open" },
     { key: "environment", re: /پارکینگ\s+طبقاتی/gu, en: "a multi-storey parking garage" },
     { key: "camera", re: /نمای\s+سه[‌ -]?ربع\s+جلو/gu, en: "front three-quarter view" },
