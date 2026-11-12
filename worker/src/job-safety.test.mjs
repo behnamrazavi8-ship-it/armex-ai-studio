@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { hashBytes } from "./diagnostics.mjs";
 import {
+  assertStoredImageBytesMatch,
   compareStoredImageBytes,
   isRetryableHttpStatus,
   shouldRemoveUncommittedUpload,
@@ -47,4 +48,19 @@ test("failed or ambiguous uploads are cleanup candidates unless generation compl
   assert.equal(shouldRemoveUncommittedUpload({
     uploadAttempted: true, storagePath: null, generationStatus: "failed",
   }), false);
+});
+
+test("Storage verification rejects bytes that differ from the provider output", () => {
+  const providerBytes = Buffer.from("original-image");
+  const storedBytes = Buffer.from("truncated-image");
+  assert.throws(
+    () => assertStoredImageBytesMatch(storedBytes, hashBytes(providerBytes)),
+    (error) => error.message === "STORAGE_IMAGE_BYTES_MISMATCH" && error.retryable === true,
+  );
+});
+
+test("Storage verification accepts exact provider bytes", () => {
+  const providerBytes = Buffer.from("original-image");
+  const result = assertStoredImageBytesMatch(providerBytes, hashBytes(providerBytes));
+  assert.equal(result.matches_provider_bytes, true);
 });
