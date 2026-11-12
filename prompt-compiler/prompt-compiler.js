@@ -43,7 +43,7 @@
     }
 
     // Keep the source text and require manual review for any meaningful unmapped residue.
-    const residue = remaining.join("").replace(/[\s.,:؛،!؟()\-]+/g, "").trim();
+    const residue = remaining.join("").replace(/(?:^|\s)(?:و|در)(?=\s|$)/g, " ").replace(/[\s.,:؛،!؟()\-]+/g, "").trim();
     const unresolved = residue ? [residue] : [];
     const byKey = {};
     for (const clause of clauses) {
