@@ -1,7 +1,7 @@
 # LOKAL AI Prompt Compiler — offline MVP
 
 ## Scope
-Version 0.3.0 is a deterministic, offline Persian phrase compiler. It remains a narrow MVP, not a general-purpose Persian translator, and is not enabled in the live image-generation path.
+Version 0.3.1 is a deterministic, offline Persian phrase compiler. It remains a narrow MVP, not a general-purpose Persian translator, and is not enabled in the live image-generation path.
 
 ## Contract
 - Preserve the trimmed original prompt in `original`.
@@ -20,6 +20,9 @@ The fixture includes Dodge Challenger subject recognition (English and a limited
 - Unrecognized meaningful text fails closed rather than being dropped.
 - The UI still sends the original prompt; this compiler is not wired into production generation.
 - Any future live integration must show a compiled preview and require explicit user approval before a paid image job.
+
+## Verification
+The offline Node.js 22 test suite contains 14 tests. The latest GitHub Actions run on commit `f3bd6469f84533017192a290802eb6fcf458e370` completed with 14 passed and 0 failed.
 
 ## Run tests
 From the repository root: `node --test prompt-compiler/*.test.mjs` (Node.js 22).
