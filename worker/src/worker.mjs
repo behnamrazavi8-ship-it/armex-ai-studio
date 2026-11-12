@@ -1,5 +1,8 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { decodeCloudflareImageOutput } from "./image-output.mjs";
+import { hashBytes, promptFingerprint } from "./diagnostics.mjs";
+import { assertStoredImageBytesMatch, isRetryableHttpStatus, shouldRemoveUncommittedUpload } from "./job-safety.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -14,6 +17,7 @@ if (!SUPABASE_API_KEY) throw new Error("Missing required environment variable: S
 const CLOUDFLARE_ACCOUNT_ID = required("CLOUDFLARE_ACCOUNT_ID");
 const CLOUDFLARE_API_TOKEN = required("CLOUDFLARE_API_TOKEN");
 const IMAGE_BUCKET = "lokal-ai-images";
+const VERIFY_STORED_IMAGE_BYTES = process.env.VERIFY_STORED_IMAGE_BYTES === "true";
 const DEFAULT_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const POLL_MS = Math.min(15000, Math.max(1000, Number(process.env.WORKER_POLL_MS || 2500)));
 const workerId = randomUUID();
@@ -41,7 +45,7 @@ async function supabase(path, options = {}) {
   try { parsed = body ? JSON.parse(body) : null; } catch { parsed = body; }
   if (!response.ok) {
     const error = new Error("SUPABASE_HTTP_" + response.status);
-    error.retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    error.retryable = isRetryableHttpStatus(response.status);
     error.status = response.status;
     throw error;
   }
@@ -84,28 +88,28 @@ async function runProvider(job) {
 
   if (!response.ok) {
     const error = new Error("IMAGE_PROVIDER_HTTP_" + response.status);
-    error.retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    error.retryable = isRetryableHttpStatus(response.status);
     error.status = response.status;
     throw error;
   }
 
+  const contentType = response.headers.get("content-type") || "unknown";
   const payload = await response.json();
-  const imageBase64 = typeof payload?.result?.image === "string"
-    ? payload.result.image
-    : typeof payload?.image === "string" ? payload.image : "";
-  if (!imageBase64 || imageBase64.length > 28000000) {
-    const error = new Error("INVALID_IMAGE_PROVIDER_RESPONSE");
+  try {
+    const image = decodeCloudflareImageOutput(payload);
+    return {
+      ...image,
+      provider: {
+        http_status: response.status,
+        content_type: contentType.slice(0, 100),
+        has_result_image: typeof payload?.result?.image === "string",
+        has_top_level_image: typeof payload?.image === "string",
+      },
+    };
+  } catch (error) {
     error.retryable = false;
     throw error;
   }
-
-  const bytes = Buffer.from(imageBase64, "base64");
-  if (!bytes.length || bytes.length > 20 * 1024 * 1024) {
-    const error = new Error("IMAGE_SIZE_LIMIT");
-    error.retryable = false;
-    throw error;
-  }
-  return { bytes, mimeType: "image/jpeg", extension: "jpg" };
 }
 
 async function uploadImage(path, bytes, mimeType) {
@@ -127,10 +131,33 @@ async function uploadImage(path, bytes, mimeType) {
   );
   if (!response.ok) {
     const error = new Error("IMAGE_STORAGE_HTTP_" + response.status);
-    error.retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    error.retryable = isRetryableHttpStatus(response.status);
     error.status = response.status;
     throw error;
   }
+}
+
+async function verifyStoredImage(path, expectedSha256) {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const response = await fetch(
+    SUPABASE_URL + "/storage/v1/object/" + IMAGE_BUCKET + "/" + encodedPath,
+    {
+      method: "GET",
+      headers: {
+        apikey: SUPABASE_API_KEY,
+        Authorization: "Bearer " + SUPABASE_API_KEY,
+      },
+      signal: AbortSignal.timeout(30000),
+    },
+  );
+  if (!response.ok) {
+    const error = new Error("STORAGE_VERIFY_HTTP_" + response.status);
+    error.status = response.status;
+    error.retryable = isRetryableHttpStatus(response.status);
+    throw error;
+  }
+  const storedBytes = Buffer.from(await response.arrayBuffer());
+  log("storage_bytes_verified", assertStoredImageBytesMatch(storedBytes, expectedSha256));
 }
 
 async function removeImage(path) {
@@ -157,7 +184,8 @@ async function removeImageIfJobNotCompleted(jobId, path) {
       "/rest/v1/armex_image_generations?id=eq." + encodeURIComponent(jobId) + "&select=status",
       { method: "GET", signal: AbortSignal.timeout(10000) },
     );
-    if (Array.isArray(rows) && rows[0]?.status === "completed") return;
+    const generationStatus = Array.isArray(rows) ? rows[0]?.status : null;
+    if (!shouldRemoveUncommittedUpload({ uploadAttempted: true, storagePath: path, generationStatus })) return;
     await removeImage(path);
   } catch {
     // Prefer retaining a possible completed output over deleting it after an
@@ -170,7 +198,7 @@ async function processJob(job) {
   const jobId = job.job_id;
   // Each worker attempt writes to its own object so a stale lease owner cannot
   // delete or overwrite a newer worker's output.
-  const storagePath = job.user_id + "/" + job.request_id + "-" + workerId + ".jpg";
+  let storagePath = null;
   let leaseLost = false;
   let uploadAttempted = false;
   let heartbeatBusy = false;
@@ -194,8 +222,25 @@ async function processJob(job) {
   }, 45000);
 
   try {
-    log("job_started", { job_id: jobId, attempt: job.attempt_count, model: job.model });
+    const promptInfo = promptFingerprint(job.prompt);
+    log("job_started", {
+      job_id: jobId,
+      attempt: job.attempt_count,
+      model: job.model || DEFAULT_MODEL,
+      prompt_length: promptInfo.length,
+      prompt_sha256: promptInfo.sha256,
+    });
     const output = await runProvider(job);
+    const providerBytesSha256 = hashBytes(output.bytes);
+    log("provider_output_received", {
+      job_id: jobId,
+      ...output.provider,
+      image_bytes: output.bytes.length,
+      image_sha256: providerBytesSha256,
+      image_mime_type: output.mimeType,
+      image_signature: output.extension,
+    });
+    storagePath = job.user_id + "/" + job.request_id + "-" + workerId + "." + output.extension;
     if (leaseLost) {
       log("job_abandoned_after_lease_loss", { job_id: jobId });
       return;
@@ -205,6 +250,9 @@ async function processJob(job) {
     // Mark the attempt before the request so the catch path also checks for that orphan.
     uploadAttempted = true;
     await uploadImage(storagePath, output.bytes, output.mimeType);
+    if (VERIFY_STORED_IMAGE_BYTES) {
+      await verifyStoredImage(storagePath, providerBytesSha256);
+    }
     if (leaseLost) {
       await removeImage(storagePath);
       log("job_abandoned_after_upload_lease_loss", { job_id: jobId });
@@ -243,6 +291,7 @@ async function processJob(job) {
       log("job_failed", {
         job_id: jobId,
         code,
+        http_status: error?.status || null,
         retryable,
         outcome: result?.status || result?.code || "unknown",
       });
@@ -251,7 +300,7 @@ async function processJob(job) {
       // safely reclaim or terminally refund the job.
       log("failure_record_deferred_to_lease_recovery", { job_id: jobId, code });
     }
-    if (uploadAttempted) await removeImageIfJobNotCompleted(jobId, storagePath);
+    if (uploadAttempted && storagePath) await removeImageIfJobNotCompleted(jobId, storagePath);
   } finally {
     clearInterval(heartbeatTimer);
   }
