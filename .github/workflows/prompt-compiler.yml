@@ -1,0 +1,26 @@
+name: Prompt compiler offline tests
+
+on:
+  pull_request:
+    paths:
+      - "prompt-compiler/**"
+      - ".github/workflows/prompt-compiler.yml"
+  push:
+    branches:
+      - "feat/lokal-prompt-compiler"
+    paths:
+      - "prompt-compiler/**"
+      - ".github/workflows/prompt-compiler.yml"
+
+jobs:
+  prompt-compiler-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run offline prompt compiler tests
+        run: node --test prompt-compiler/*.test.mjs
