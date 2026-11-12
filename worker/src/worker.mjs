@@ -131,7 +131,7 @@ async function uploadImage(path, bytes, mimeType) {
   );
   if (!response.ok) {
     const error = new Error("IMAGE_STORAGE_HTTP_" + response.status);
-    error.retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    error.retryable = isRetryableHttpStatus(response.status);
     error.status = response.status;
     throw error;
   }
