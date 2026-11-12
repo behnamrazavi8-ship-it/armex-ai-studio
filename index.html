@@ -249,8 +249,9 @@ else{
  document.getElementById("usePromptInImage")?.addEventListener("click",()=>{
   const text=document.getElementById("promptResult")?.textContent?.trim()||"";
   if(!text){setImageStatus("ابتدا در Prompt Lab یک پرامپت بساز یا آن را بهبود بده.",true);return}
-  document.getElementById("imagePrompt").value=text.slice(0,2048);
-  setImageStatus("پرامپت Prompt Lab به استودیوی تصویر منتقل شد.");
+  if(text.length>2048){setImageStatus("طول پرامپت بیش از ۲۰۴۸ کاراکتر است. متن را کوتاه کن؛ هیچ بخشی از آن حذف نشد.",true);return}
+  document.getElementById("imagePrompt").value=text;
+  setImageStatus("پرامپت کامل Prompt Lab به استودیوی تصویر منتقل شد.");
  });
  let pendingImageRequestId=null,pendingImagePrompt=null;
  const waitForImageJob=async(session,jobId)=>{
