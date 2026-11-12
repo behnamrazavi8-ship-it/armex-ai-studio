@@ -1,24 +1,25 @@
 # LOKAL AI Prompt Compiler — offline MVP
 
 ## Scope
-Version 0.1.0 is a deterministic, offline Persian phrase compiler. It is deliberately a narrow proof of architecture, not a general-purpose Persian translator and not enabled in the live image-generation path.
+Version 0.2.0 is a deterministic, offline Persian phrase compiler. It remains a narrow MVP, not a general-purpose Persian translator, and is not enabled in the live image-generation path.
 
 ## Contract
 - Preserve the trimmed original prompt in `original`.
-- Extract recognized phrases into a language-neutral-ish `ir.fields` map and source-linked clauses.
-- Compile only when required fields are present and no meaningful source residue remains.
-- Never guess missing details. Unsupported phrases are returned in `unresolved`; `compiled` remains null.
+- Extract recognized phrases into `ir.fields` and source-linked clauses.
+- Compile only when required fields are present and no meaningful source residue or supported conflict remains.
+- Never guess missing details. Unsupported phrases and conflicts are returned in `unresolved`; `compiled` remains null.
 - No network, model, provider, credit, database, or Storage calls.
 
-## Current supported vocabulary
-The first fixture covers a Dodge Challenger brief: subject, red color, exactly one vehicle, both doors open, multi-storey parking garage, front three-quarter view, body/wheel detail, natural lighting, professional photorealistic style, and no additional vehicles.
+## Supported phrase vocabulary
+The fixture includes Dodge Challenger subject recognition (English and a limited Persian transliteration), red/blue/black colors, counts of one/two/three cars, open/closed door states, multi-storey parking garage variants, front three-quarter camera phrasing, body/wheel details, daylight/natural lighting, photorealistic style, and a no-extra-vehicles clause. A few synonyms are covered by automated tests.
 
-## Known limitations
-- The rule set is intentionally small and phrase-based.
-- It is not a semantic parser for arbitrary Persian prose.
-- Synonyms, negation scope, complex grammar, and conflicting instructions require additional rules and tests.
+## Safety and known limitations
+- Phrase rules are intentionally narrow; recognized patterns do not imply full Persian semantic understanding.
+- Conflicts are currently detected for color, count, and door state when distinct recognized values occur.
+- Negation scope, complex grammar, nuanced synonymy, and contradictory statements beyond those fields require additional rules/tests.
+- Unrecognized meaningful text fails closed rather than being dropped.
 - The UI still sends the original prompt; this compiler is not wired into production generation.
-- A future integration must show the compiled preview and require explicit approval before a paid image job.
+- Any future live integration must show a compiled preview and require explicit user approval before a paid image job.
 
 ## Run tests
 From the repository root: `node --test prompt-compiler/*.test.mjs` (Node.js 22).
