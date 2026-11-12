@@ -1,7 +1,6 @@
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const isString = (value) => typeof value === "string";
 const isNullableString = (value) => value === null || isString(value);
-const isStringArray = (value) => Array.isArray(value) && value.every(isString);
 
 export function validateSemanticPromptIR(value) {
   const errors = [];
@@ -25,57 +24,68 @@ export function validateSemanticPromptIR(value) {
     if (!Array.isArray(array) || array.length > max) { add(path, "Expected a bounded array"); return; }
     array.forEach((item, index) => { if (!itemCheck(item)) add(path + "[" + index + "]", "Invalid item"); });
   };
-  const checkStringObject = (path, item, keys) => isObject(item) &&
-    Object.keys(item).length === keys.length && keys.every((key) => key in item);
+  const exactObject = (item, keys) => isObject(item) && Object.keys(item).length === keys.length && keys.every((key) => key in item);
+  const boundedStrings = (array, maxItems, maxLength) =>
+    Array.isArray(array) && array.length <= maxItems && array.every((item) => isString(item) && item.length <= maxLength);
 
-  checkArray("subjects", value.subjects, 40, (x) => checkStringObject("subjects", x, ["name", "kind", "attributes", "position", "relations"]) &&
+  checkArray("subjects", value.subjects, 40, (x) =>
+    exactObject(x, ["name", "kind", "attributes", "position", "relations"]) &&
     isString(x.name) && x.name.length <= 300 && isString(x.kind) && x.kind.length <= 80 &&
-    isStringArray(x.attributes) && x.attributes.length <= 40 && x.attributes.every((s) => s.length <= 300) &&
-    isNullableString(x.position) && (x.position?.length ?? 0) <= 300 &&
-    isStringArray(x.relations) && x.relations.length <= 30 && x.relations.every((s) => s.length <= 300));
-  checkArray("actions", value.actions, 40, (x) => checkStringObject("actions", x, ["actor", "action", "target", "timing"]) &&
+    boundedStrings(x.attributes, 40, 300) && isNullableString(x.position) && (x.position?.length ?? 0) <= 300 &&
+    boundedStrings(x.relations, 30, 300));
+  checkArray("actions", value.actions, 40, (x) =>
+    exactObject(x, ["actor", "action", "target", "timing"]) &&
     isNullableString(x.actor) && isString(x.action) && x.action.length <= 300 &&
     isNullableString(x.target) && isNullableString(x.timing));
-  if (!checkStringObject("environment", value.environment, ["location", "time", "weather", "background", "details"]) ||
-      !["location", "time", "weather", "background"].every((k) => isNullableString(value.environment?.[k])) ||
-      !isStringArray(value.environment?.details)) add("environment", "Invalid environment object");
-  if (!checkStringObject("composition", value.composition, ["layout", "framing", "viewpoint", "subject_hierarchy", "depth"]) ||
-      !["layout", "framing", "viewpoint", "depth"].every((k) => isNullableString(value.composition?.[k])) ||
-      !isStringArray(value.composition?.subject_hierarchy)) add("composition", "Invalid composition object");
-  for (const key of ["style", "lighting", "color_palette", "materials", "mood"]) {
-    if (!isStringArray(value[key])) add(key, "Expected an array of strings");
-  }
-  if (!checkStringObject("camera", value.camera, ["shot", "angle", "lens", "movement", "focus"]) ||
-      !["shot", "angle", "lens", "movement", "focus"].every((k) => isNullableString(value.camera?.[k]))) add("camera", "Invalid camera object");
+  if (!exactObject(value.environment, ["location", "time", "weather", "background", "details"]) ||
+      !["location", "time", "weather", "background"].every((key) => isNullableString(value.environment?.[key])) ||
+      !boundedStrings(value.environment?.details, 40, 300)) add("environment", "Invalid environment object");
+  if (!exactObject(value.composition, ["layout", "framing", "viewpoint", "subject_hierarchy", "depth"]) ||
+      !["layout", "framing", "viewpoint", "depth"].every((key) => isNullableString(value.composition?.[key])) ||
+      !boundedStrings(value.composition?.subject_hierarchy, 20, 200)) add("composition", "Invalid composition object");
 
-  const textItem = (x) => checkStringObject("text_elements", x, ["content", "language", "placement", "typography"]) &&
-    isString(x.content) && x.content.length <= 500 && isNullableString(x.language) &&
-    isNullableString(x.placement) && isNullableString(x.typography);
-  checkArray("text_elements", value.text_elements, 30, textItem);
-
-  const constraintKeys = ["must_include", "must_avoid", "negative_constraints", "preserve_exactly"];
-  if (!checkStringObject("constraints", value.constraints, constraintKeys) ||
-      !constraintKeys.every((k) => isStringArray(value.constraints?.[k]))) add("constraints", "Invalid constraints object");
-
-  const outputKeys = ["aspect_ratio", "resolution", "duration_seconds", "frame_rate", "format", "other_parameters"];
-  if (!checkStringObject("output", value.output, outputKeys) ||
-      !isNullableString(value.output?.aspect_ratio) || !isNullableString(value.output?.resolution) ||
-      !isNullableString(value.output?.format) ||
-      !(value.output?.duration_seconds === null || (typeof value.output?.duration_seconds === "number" && value.output.duration_seconds >= 0 && value.output.duration_seconds <= 3600)) ||
-      !(value.output?.frame_rate === null || (typeof value.output?.frame_rate === "number" && value.output.frame_rate >= 1 && value.output.frame_rate <= 240)) ||
-      !Array.isArray(value.output?.other_parameters)) add("output", "Invalid output object");
-
-  checkArray("ambiguities", value.ambiguities, 20, (x) => checkStringObject("ambiguities", x, ["question", "reason", "blocks_execution"]) &&
-    isString(x.question) && isString(x.reason) && typeof x.blocks_execution === "boolean");
-  checkArray("assumptions", value.assumptions, 30, (x) => checkStringObject("assumptions", x, ["value", "basis"]) &&
-    isString(x.value) && isString(x.basis));
-
-  const bounded = [
+  for (const [key, maxItems, maxLength] of [
     ["style", 30, 200], ["lighting", 20, 200], ["color_palette", 30, 120],
     ["materials", 30, 160], ["mood", 20, 120],
-  ];
-  for (const [key, maxItems, maxLength] of bounded) {
-    if (Array.isArray(value[key]) && (value[key].length > maxItems || value[key].some((s) => s.length > maxLength))) add(key, "Array exceeds contract limits");
+  ]) {
+    if (!boundedStrings(value[key], maxItems, maxLength)) add(key, "Invalid bounded string array");
   }
+  if (!exactObject(value.camera, ["shot", "angle", "lens", "movement", "focus"]) ||
+      !["shot", "angle", "lens", "movement", "focus"].every((key) =>
+        isNullableString(value.camera?.[key]) && (value.camera?.[key]?.length ?? 0) <= 200)) {
+    add("camera", "Invalid camera object");
+  }
+  checkArray("text_elements", value.text_elements, 30, (x) =>
+    exactObject(x, ["content", "language", "placement", "typography"]) &&
+    isString(x.content) && x.content.length <= 500 &&
+    ["language", "placement", "typography"].every((key) => isNullableString(x[key])));
+
+  const constraintKeys = ["must_include", "must_avoid", "negative_constraints", "preserve_exactly"];
+  if (!exactObject(value.constraints, constraintKeys) ||
+      !constraintKeys.every((key) => boundedStrings(value.constraints?.[key], 50, 300))) {
+    add("constraints", "Invalid constraints object");
+  }
+
+  const outputKeys = ["aspect_ratio", "resolution", "duration_seconds", "frame_rate", "format", "other_parameters"];
+  if (!exactObject(value.output, outputKeys) ||
+      !isNullableString(value.output?.aspect_ratio) || !isNullableString(value.output?.resolution) ||
+      !isNullableString(value.output?.format) ||
+      !(value.output?.duration_seconds === null ||
+        (typeof value.output?.duration_seconds === "number" && value.output.duration_seconds >= 0 && value.output.duration_seconds <= 3600)) ||
+      !(value.output?.frame_rate === null ||
+        (typeof value.output?.frame_rate === "number" && value.output.frame_rate >= 1 && value.output.frame_rate <= 240))) {
+    add("output", "Invalid output object");
+  }
+  checkArray("output.other_parameters", value.output?.other_parameters, 30, (x) =>
+    exactObject(x, ["name", "value"]) && isString(x.name) && x.name.length <= 100 &&
+    isString(x.value) && x.value.length <= 300);
+  checkArray("ambiguities", value.ambiguities, 20, (x) =>
+    exactObject(x, ["question", "reason", "blocks_execution"]) &&
+    isString(x.question) && x.question.length <= 500 && isString(x.reason) &&
+    x.reason.length <= 500 && typeof x.blocks_execution === "boolean");
+  checkArray("assumptions", value.assumptions, 30, (x) =>
+    exactObject(x, ["value", "basis"]) && isString(x.value) && x.value.length <= 300 &&
+    isString(x.basis) && x.basis.length <= 300);
+
   return { ok: errors.length === 0, errors };
 }
