@@ -18,11 +18,11 @@ The fixture includes Dodge Challenger subject recognition (English and a limited
 - Conflicts are currently detected for color, count, and door state when distinct recognized values occur.
 - Negation scope is narrowly supported for door-state phrases (e.g. “doors are not open”); it is preserved explicitly and is not converted into its logical opposite. Affirmative/negated state combinations conflict. Complex grammar, nuanced synonymy, and contradictory statements beyond supported fields require additional rules/tests.
 - Unrecognized meaningful text fails closed rather than being dropped.
-- The UI still sends the original prompt; this compiler is not wired into production generation.
+- The Image Studio now routes Persian input through this compiler. A supported result is shown beside the original and requires a separate user approval before the existing image job endpoint receives the compiled English text. Unsupported Persian input is blocked. English prompts continue unchanged. No generation request or credit debit occurs during compilation or preview.
 - Any future live integration must show a compiled preview and require explicit user approval before a paid image job.
 
 ## Verification
-The offline Node.js 22 test suite contains 14 tests. The latest GitHub Actions run on commit `f3bd6469f84533017192a290802eb6fcf458e370` completed with 14 passed and 0 failed.
+The offline Node.js 22 test suite contains 19 tests (including the live-image prompt gate contract). The previous compiler-only baseline completed with 14 passed and 0 failed; the updated branch must pass the expanded 19-test suite before review.
 
 ## Run tests
 From the repository root: `node --test prompt-compiler/*.test.mjs` (Node.js 22).
