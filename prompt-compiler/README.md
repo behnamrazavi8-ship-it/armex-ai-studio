@@ -21,4 +21,4 @@ The first fixture covers a Dodge Challenger brief: subject, red color, exactly o
 - A future integration must show the compiled preview and require explicit approval before a paid image job.
 
 ## Run tests
-From `worker/`: `node --test src/*.test.mjs ../tests/prompt-compiler.test.mjs` (or run the prompt compiler test directly with Node 22).
+From the repository root: `node --test prompt-compiler/*.test.mjs` (Node.js 22).
