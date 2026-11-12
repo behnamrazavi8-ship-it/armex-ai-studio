@@ -17,3 +17,13 @@ export function shouldRemoveUncommittedUpload({ uploadAttempted, storagePath, ge
   if (!uploadAttempted || !storagePath) return false;
   return generationStatus !== "completed";
 }
+
+export function assertStoredImageBytesMatch(storedBytes, expectedSha256) {
+  const result = compareStoredImageBytes(storedBytes, expectedSha256);
+  if (!result.matches_provider_bytes) {
+    const error = new Error("STORAGE_IMAGE_BYTES_MISMATCH");
+    error.retryable = true;
+    throw error;
+  }
+  return result;
+}
