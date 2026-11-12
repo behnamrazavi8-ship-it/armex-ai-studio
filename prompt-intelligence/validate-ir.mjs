@@ -35,13 +35,13 @@ export function validateSemanticPromptIR(value) {
     boundedStrings(x.relations, 30, 300));
   checkArray("actions", value.actions, 40, (x) =>
     exactObject(x, ["actor", "action", "target", "timing"]) &&
-    isNullableString(x.actor) && isString(x.action) && x.action.length <= 300 &&
-    isNullableString(x.target) && isNullableString(x.timing));
+    isNullableString(x.actor) && (x.actor?.length ?? 0) <= 200 && isString(x.action) && x.action.length <= 300 &&
+    isNullableString(x.target) && (x.target?.length ?? 0) <= 200 && isNullableString(x.timing) && (x.timing?.length ?? 0) <= 200);
   if (!exactObject(value.environment, ["location", "time", "weather", "background", "details"]) ||
-      !["location", "time", "weather", "background"].every((key) => isNullableString(value.environment?.[key])) ||
+      !["location", "time", "weather", "background"].every((key) => isNullableString(value.environment?.[key]) && (value.environment?.[key]?.length ?? 0) <= ({ location: 500, time: 120, weather: 200, background: 1000 }[key])) ||
       !boundedStrings(value.environment?.details, 40, 300)) add("environment", "Invalid environment object");
   if (!exactObject(value.composition, ["layout", "framing", "viewpoint", "subject_hierarchy", "depth"]) ||
-      !["layout", "framing", "viewpoint", "depth"].every((key) => isNullableString(value.composition?.[key])) ||
+      !["layout", "framing", "viewpoint", "depth"].every((key) => isNullableString(value.composition?.[key]) && (value.composition?.[key]?.length ?? 0) <= (key === "depth" ? 200 : 300)) ||
       !boundedStrings(value.composition?.subject_hierarchy, 20, 200)) add("composition", "Invalid composition object");
 
   for (const [key, maxItems, maxLength] of [
@@ -58,7 +58,7 @@ export function validateSemanticPromptIR(value) {
   checkArray("text_elements", value.text_elements, 30, (x) =>
     exactObject(x, ["content", "language", "placement", "typography"]) &&
     isString(x.content) && x.content.length <= 500 &&
-    ["language", "placement", "typography"].every((key) => isNullableString(x[key])));
+    ["language", "placement", "typography"].every((key) => isNullableString(x[key]) && (x[key]?.length ?? 0) <= ({ language: 35, placement: 200, typography: 200 }[key])));
 
   const constraintKeys = ["must_include", "must_avoid", "negative_constraints", "preserve_exactly"];
   if (!exactObject(value.constraints, constraintKeys) ||
@@ -68,8 +68,9 @@ export function validateSemanticPromptIR(value) {
 
   const outputKeys = ["aspect_ratio", "resolution", "duration_seconds", "frame_rate", "format", "other_parameters"];
   if (!exactObject(value.output, outputKeys) ||
-      !isNullableString(value.output?.aspect_ratio) || !isNullableString(value.output?.resolution) ||
-      !isNullableString(value.output?.format) ||
+      !isNullableString(value.output?.aspect_ratio) || (value.output?.aspect_ratio?.length ?? 0) > 30 ||
+      !isNullableString(value.output?.resolution) || (value.output?.resolution?.length ?? 0) > 40 ||
+      !isNullableString(value.output?.format) || (value.output?.format?.length ?? 0) > 40 ||
       !(value.output?.duration_seconds === null ||
         (typeof value.output?.duration_seconds === "number" && value.output.duration_seconds >= 0 && value.output.duration_seconds <= 3600)) ||
       !(value.output?.frame_rate === null ||
