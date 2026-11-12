@@ -1,0 +1,124 @@
+{
+  "version": "1.0",
+  "purpose": "Model-evaluation inputs only; these are not topic rules or parser fixtures.",
+  "cases": [
+    {
+      "id": "fa-new-domain",
+      "language": "fa",
+      "prompt": "یک ایستگاه تحقیقاتی زیر آب در سیاره‌ای ناشناخته، با پنجره‌های شیشه‌ای بزرگ و موجودات نورانی در دوردست",
+      "must_preserve": [
+        "underwater research station",
+        "unknown planet",
+        "large glass windows",
+        "glowing creatures in distance"
+      ],
+      "must_not_invent": [
+        "specific real-world brand",
+        "specific camera lens",
+        "unrequested text"
+      ]
+    },
+    {
+      "id": "en-complex-scene",
+      "language": "en",
+      "prompt": "A tiny ceramic tea house balanced on the back of a sleeping whale, dawn fog, quiet and surreal; no people and no lettering.",
+      "must_preserve": [
+        "tea house on whale",
+        "sleeping whale",
+        "dawn fog",
+        "quiet surreal mood",
+        "no people",
+        "no lettering"
+      ],
+      "must_not_invent": [
+        "people",
+        "signage",
+        "extra animals"
+      ]
+    },
+    {
+      "id": "fa-exact-constraints",
+      "language": "fa",
+      "prompt": "دقیقاً سه بادکنک زرد، فقط سه عدد، روی پس‌زمینه کاملاً مشکی؛ هیچ نوشته‌ای نباشد و رنگ بادکنک‌ها تغییر نکند.",
+      "must_preserve": [
+        "exactly three balloons",
+        "yellow",
+        "pure black background",
+        "no text",
+        "do not change balloon color"
+      ],
+      "must_not_invent": [
+        "additional balloons",
+        "other colors",
+        "text"
+      ]
+    },
+    {
+      "id": "mixed-language",
+      "language": "fa-EN",
+      "prompt": "یک ربات کوچک با بدنه brushed titanium کنار یک درخت انار، cinematic but minimal, 9:16 vertical.",
+      "must_preserve": [
+        "small robot",
+        "brushed titanium body",
+        "pomegranate tree",
+        "cinematic minimal style",
+        "9:16 vertical"
+      ],
+      "must_not_invent": [
+        "brand",
+        "extra characters"
+      ]
+    },
+    {
+      "id": "ambiguity",
+      "language": "fa",
+      "prompt": "یک تصویر از او با لباس رسمی در یک فضای مدرن",
+      "must_preserve": [
+        "formal clothing",
+        "modern environment"
+      ],
+      "expected_behavior": "If the referent of 'او' is unavailable from context, mark a blocking ambiguity instead of inventing identity or appearance."
+    },
+    {
+      "id": "conflict",
+      "language": "en",
+      "prompt": "Show exactly one red bicycle and exactly two blue bicycles in the same frame.",
+      "must_preserve": [
+        "red bicycle",
+        "blue bicycles"
+      ],
+      "expected_behavior": "Surface the conflict in count/subject constraints; do not silently choose one count."
+    },
+    {
+      "id": "no-parameter-inference",
+      "language": "en",
+      "prompt": "A portrait of a lighthouse surrounded by storm clouds.",
+      "must_preserve": [
+        "lighthouse portrait",
+        "storm clouds"
+      ],
+      "must_not_invent": [
+        "9:16 aspect ratio",
+        "specific resolution",
+        "camera lens"
+      ]
+    },
+    {
+      "id": "video-motion",
+      "language": "fa",
+      "prompt": "ویدئوی ۶ ثانیه‌ای از باز شدن آرام گل در سپیده‌دم، دوربین ثابت و بدون حرکت سریع.",
+      "must_preserve": [
+        "video",
+        "6 seconds",
+        "flower slowly opening",
+        "dawn",
+        "static camera",
+        "no fast motion"
+      ],
+      "must_not_invent": [
+        "frame rate",
+        "resolution"
+      ]
+    }
+  ]
+}
