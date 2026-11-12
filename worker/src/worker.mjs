@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { decodeCloudflareImageOutput } from "./image-output.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -90,22 +91,12 @@ async function runProvider(job) {
   }
 
   const payload = await response.json();
-  const imageBase64 = typeof payload?.result?.image === "string"
-    ? payload.result.image
-    : typeof payload?.image === "string" ? payload.image : "";
-  if (!imageBase64 || imageBase64.length > 28000000) {
-    const error = new Error("INVALID_IMAGE_PROVIDER_RESPONSE");
+  try {
+    return decodeCloudflareImageOutput(payload);
+  } catch (error) {
     error.retryable = false;
     throw error;
   }
-
-  const bytes = Buffer.from(imageBase64, "base64");
-  if (!bytes.length || bytes.length > 20 * 1024 * 1024) {
-    const error = new Error("IMAGE_SIZE_LIMIT");
-    error.retryable = false;
-    throw error;
-  }
-  return { bytes, mimeType: "image/jpeg", extension: "jpg" };
 }
 
 async function uploadImage(path, bytes, mimeType) {
@@ -170,7 +161,7 @@ async function processJob(job) {
   const jobId = job.job_id;
   // Each worker attempt writes to its own object so a stale lease owner cannot
   // delete or overwrite a newer worker's output.
-  const storagePath = job.user_id + "/" + job.request_id + "-" + workerId + ".jpg";
+  let storagePath = null;
   let leaseLost = false;
   let uploadAttempted = false;
   let heartbeatBusy = false;
@@ -196,6 +187,7 @@ async function processJob(job) {
   try {
     log("job_started", { job_id: jobId, attempt: job.attempt_count, model: job.model });
     const output = await runProvider(job);
+    storagePath = job.user_id + "/" + job.request_id + "-" + workerId + "." + output.extension;
     if (leaseLost) {
       log("job_abandoned_after_lease_loss", { job_id: jobId });
       return;
@@ -251,7 +243,7 @@ async function processJob(job) {
       // safely reclaim or terminally refund the job.
       log("failure_record_deferred_to_lease_recovery", { job_id: jobId, code });
     }
-    if (uploadAttempted) await removeImageIfJobNotCompleted(jobId, storagePath);
+    if (uploadAttempted && storagePath) await removeImageIfJobNotCompleted(jobId, storagePath);
   } finally {
     clearInterval(heartbeatTimer);
   }
