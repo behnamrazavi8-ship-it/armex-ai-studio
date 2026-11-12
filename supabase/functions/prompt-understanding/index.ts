@@ -39,8 +39,6 @@ Deno.serve(async (request: Request) => {
   if (request.method !== "POST") return reply({ success: false, error: "Method not allowed" }, 405, cors);
   if (origin && !allowedOrigins.includes(origin)) return reply({ success: false, error: "Origin not allowed" }, 403, cors);
 
-  const contentLength = Number(request.headers.get("content-length") || "0");
-  if (contentLength > MAX_BODY_BYTES) return reply({ success: false, error: "Request is too large" }, 413, cors);
 
   const { data: auth, error: authError } = await createSupabaseContext(request, { auth: "user" });
   const userId = auth?.userClaims?.id;
@@ -51,10 +49,17 @@ Deno.serve(async (request: Request) => {
 
   let body: Record<string, unknown>;
   try {
-    const parsed = await request.json();
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
+      return reply({ success: false, error: "Request is too large" }, 413, cors);
+    }
+    const parsed = JSON.parse(rawBody);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid");
     body = parsed as Record<string, unknown>;
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "Request is too large") {
+      return reply({ success: false, error: "Request is too large" }, 413, cors);
+    }
     return reply({ success: false, error: "Invalid JSON body" }, 400, cors);
   }
 
