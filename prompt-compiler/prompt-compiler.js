@@ -5,7 +5,7 @@
 (function (root) {
   "use strict";
 
-  const VERSION = "0.3.0";
+  const VERSION = "0.3.1";
   const RULES = [
     { key: "subject", re: /(?:یک\s+)?خودروی\s+Dodge\s+Challenger|Dodge\s+Challenger|دوج\s+چلنج(?:ر|ِر)/giu, en: "Dodge Challenger" },
     { key: "color", re: /قرمز|سرخ/gu, en: "red" },
@@ -33,7 +33,7 @@
     if (original.length > 2048) return { ok: false, version: VERSION, original, ir: null, compiled: null, unresolved: ["prompt exceeds 2048 characters"] };
 
     const normalized = original.replace(/[؛،。]/g, ".").replace(/\s+/g, " ").trim();
-    const remaining = normalized.split("");
+    const consumed = new Array(normalized.length).fill(false);
     const clauses = [];
 
     for (const rule of RULES) {
@@ -43,14 +43,15 @@
         const value = match[0];
         const start = match.index;
         const end = start + value.length;
-        // Avoid double-interpreting text consumed by a more specific negation rule.
-        if (remaining.slice(start, end).some((ch) => ch !== " ")) continue;
+        // Skip a match only when it overlaps text already claimed by a more specific rule.
+        if (consumed.slice(start, end).some(Boolean)) continue;
         clauses.push({ key: rule.key, source: value, english: rule.en });
-        for (let i = start; i < end; i++) remaining[i] = " ";
+        for (let i = start; i < end; i++) consumed[i] = true;
       }
       rule.re.lastIndex = 0;
     }
 
+    const remaining = Array.from(normalized, (ch, i) => consumed[i] ? " " : ch);
     const residue = remaining.join("").replace(/(?:^|\s)(?:و|در|از)(?=\s|$)/g, " ").replace(/[\s.,:؛،!؟()\-]+/g, "").trim();
     const unresolved = residue ? ["unrecognized text: " + residue] : [];
     const byKey = {};
