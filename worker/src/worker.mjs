@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { decodeCloudflareImageOutput } from "./image-output.mjs";
 import { hashBytes, promptFingerprint } from "./diagnostics.mjs";
-import { compareStoredImageBytes, isRetryableHttpStatus, shouldRemoveUncommittedUpload } from "./job-safety.mjs";
+import { assertStoredImageBytesMatch, isRetryableHttpStatus, shouldRemoveUncommittedUpload } from "./job-safety.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -88,7 +88,7 @@ async function runProvider(job) {
 
   if (!response.ok) {
     const error = new Error("IMAGE_PROVIDER_HTTP_" + response.status);
-    error.retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    error.retryable = isRetryableHttpStatus(response.status);
     error.status = response.status;
     throw error;
   }
@@ -151,11 +151,13 @@ async function verifyStoredImage(path, expectedSha256) {
     },
   );
   if (!response.ok) {
-    log("storage_verify_failed", { status: response.status });
-    return;
+    const error = new Error("STORAGE_VERIFY_HTTP_" + response.status);
+    error.status = response.status;
+    error.retryable = isRetryableHttpStatus(response.status);
+    throw error;
   }
   const storedBytes = Buffer.from(await response.arrayBuffer());
-  log("storage_bytes_verified", compareStoredImageBytes(storedBytes, expectedSha256));
+  log("storage_bytes_verified", assertStoredImageBytesMatch(storedBytes, expectedSha256));
 }
 
 async function removeImage(path) {
