@@ -156,7 +156,7 @@
  
  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
  $$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
- $('[data-tool]').forEach(b=>b.addEventListener('click',()=>{
+ $$('[data-tool]').forEach(b=>b.addEventListener('click',()=>{
   const tool=b.dataset.tool;
   if(tool==='video'){
    const type=document.getElementById('contentType');
