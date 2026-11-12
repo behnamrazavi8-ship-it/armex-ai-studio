@@ -80,7 +80,17 @@
     return { ok: unresolved.length === 0, version: VERSION, original, ir, compiled, unresolved };
   }
 
-  const api = Object.freeze({ VERSION, compilePersianPrompt });
+  function prepareImagePrompt(input) {
+    if (typeof input !== "string") throw new TypeError("prompt must be a string");
+    const original = input.trim();
+    if (!original) return { mode: "blocked", original, compiled: null, result: null, reason: "empty prompt" };
+    if (/[\u0600-\u06FF]/u.test(original)) {
+      const result = compilePersianPrompt(original);
+      return { mode: result.ok ? "review" : "blocked", original, compiled: result.compiled, result };
+    }
+    return { mode: "direct", original, compiled: original, result: null };
+  }
+  const api = Object.freeze({ VERSION, compilePersianPrompt, prepareImagePrompt });
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.LokalPromptCompiler = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
