@@ -1,7 +1,7 @@
 # LOKAL AI Prompt Compiler — offline MVP
 
 ## Scope
-Version 0.3.1 is a deterministic, offline Persian phrase compiler. It remains a narrow MVP, not a general-purpose Persian translator, and is not enabled in the live image-generation path.
+Version 0.3.1 is a deterministic, offline Persian phrase compiler. It remains a narrow MVP, not a general-purpose Persian translator. The Image Studio integration uses it only for Persian prompts.
 
 ## Contract
 - Preserve the trimmed original prompt in `original`.
@@ -19,7 +19,8 @@ The fixture includes Dodge Challenger subject recognition (English and a limited
 - Negation scope is narrowly supported for door-state phrases (e.g. “doors are not open”); it is preserved explicitly and is not converted into its logical opposite. Affirmative/negated state combinations conflict. Complex grammar, nuanced synonymy, and contradictory statements beyond supported fields require additional rules/tests.
 - Unrecognized meaningful text fails closed rather than being dropped.
 - The Image Studio now routes Persian input through this compiler. A supported result is shown beside the original and requires a separate user approval before the existing image job endpoint receives the compiled English text. Unsupported Persian input is blocked. English prompts continue unchanged. No generation request or credit debit occurs during compilation or preview.
-- Any future live integration must show a compiled preview and require explicit user approval before a paid image job.
+- The isolated `prompt-compiler-preview.html` page has no Supabase/Auth/Worker connection and never submits a paid image job.
+- The integrated Image Studio still uses the existing live image endpoint after explicit approval of the compiled prompt. No production deployment or paid inference was performed during this change.
 
 ## Verification
 The offline Node.js 22 test suite contains 19 tests (including the live-image prompt gate contract). The previous compiler-only baseline completed with 14 passed and 0 failed; the updated branch must pass the expanded 19-test suite before review.
