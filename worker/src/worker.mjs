@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { decodeCloudflareImageOutput } from "./image-output.mjs";
 import { hashBytes, promptFingerprint } from "./diagnostics.mjs";
+import { compareStoredImageBytes, isRetryableHttpStatus, shouldRemoveUncommittedUpload } from "./job-safety.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -44,7 +45,7 @@ async function supabase(path, options = {}) {
   try { parsed = body ? JSON.parse(body) : null; } catch { parsed = body; }
   if (!response.ok) {
     const error = new Error("SUPABASE_HTTP_" + response.status);
-    error.retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    error.retryable = isRetryableHttpStatus(response.status);
     error.status = response.status;
     throw error;
   }
@@ -154,12 +155,7 @@ async function verifyStoredImage(path, expectedSha256) {
     return;
   }
   const storedBytes = Buffer.from(await response.arrayBuffer());
-  const storedSha256 = hashBytes(storedBytes);
-  log("storage_bytes_verified", {
-    stored_bytes: storedBytes.length,
-    stored_sha256: storedSha256,
-    matches_provider_bytes: storedSha256 === expectedSha256,
-  });
+  log("storage_bytes_verified", compareStoredImageBytes(storedBytes, expectedSha256));
 }
 
 async function removeImage(path) {
@@ -186,7 +182,8 @@ async function removeImageIfJobNotCompleted(jobId, path) {
       "/rest/v1/armex_image_generations?id=eq." + encodeURIComponent(jobId) + "&select=status",
       { method: "GET", signal: AbortSignal.timeout(10000) },
     );
-    if (Array.isArray(rows) && rows[0]?.status === "completed") return;
+    const generationStatus = Array.isArray(rows) ? rows[0]?.status : null;
+    if (!shouldRemoveUncommittedUpload({ uploadAttempted: true, storagePath: path, generationStatus })) return;
     await removeImage(path);
   } catch {
     // Prefer retaining a possible completed output over deleting it after an
