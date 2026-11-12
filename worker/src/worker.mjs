@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { decodeCloudflareImageOutput } from "./image-output.mjs";
+import { hashBytes, promptFingerprint } from "./diagnostics.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -15,6 +16,7 @@ if (!SUPABASE_API_KEY) throw new Error("Missing required environment variable: S
 const CLOUDFLARE_ACCOUNT_ID = required("CLOUDFLARE_ACCOUNT_ID");
 const CLOUDFLARE_API_TOKEN = required("CLOUDFLARE_API_TOKEN");
 const IMAGE_BUCKET = "lokal-ai-images";
+const VERIFY_STORED_IMAGE_BYTES = process.env.VERIFY_STORED_IMAGE_BYTES === "true";
 const DEFAULT_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const POLL_MS = Math.min(15000, Math.max(1000, Number(process.env.WORKER_POLL_MS || 2500)));
 const workerId = randomUUID();
@@ -90,9 +92,19 @@ async function runProvider(job) {
     throw error;
   }
 
+  const contentType = response.headers.get("content-type") || "unknown";
   const payload = await response.json();
   try {
-    return decodeCloudflareImageOutput(payload);
+    const image = decodeCloudflareImageOutput(payload);
+    return {
+      ...image,
+      provider: {
+        http_status: response.status,
+        content_type: contentType.slice(0, 100),
+        has_result_image: typeof payload?.result?.image === "string",
+        has_top_level_image: typeof payload?.image === "string",
+      },
+    };
   } catch (error) {
     error.retryable = false;
     throw error;
@@ -122,6 +134,32 @@ async function uploadImage(path, bytes, mimeType) {
     error.status = response.status;
     throw error;
   }
+}
+
+async function verifyStoredImage(path, expectedSha256) {
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  const response = await fetch(
+    SUPABASE_URL + "/storage/v1/object/" + IMAGE_BUCKET + "/" + encodedPath,
+    {
+      method: "GET",
+      headers: {
+        apikey: SUPABASE_API_KEY,
+        Authorization: "Bearer " + SUPABASE_API_KEY,
+      },
+      signal: AbortSignal.timeout(30000),
+    },
+  );
+  if (!response.ok) {
+    log("storage_verify_failed", { status: response.status });
+    return;
+  }
+  const storedBytes = Buffer.from(await response.arrayBuffer());
+  const storedSha256 = hashBytes(storedBytes);
+  log("storage_bytes_verified", {
+    stored_bytes: storedBytes.length,
+    stored_sha256: storedSha256,
+    matches_provider_bytes: storedSha256 === expectedSha256,
+  });
 }
 
 async function removeImage(path) {
@@ -185,8 +223,24 @@ async function processJob(job) {
   }, 45000);
 
   try {
-    log("job_started", { job_id: jobId, attempt: job.attempt_count, model: job.model });
+    const promptInfo = promptFingerprint(job.prompt);
+    log("job_started", {
+      job_id: jobId,
+      attempt: job.attempt_count,
+      model: job.model || DEFAULT_MODEL,
+      prompt_length: promptInfo.length,
+      prompt_sha256: promptInfo.sha256,
+    });
     const output = await runProvider(job);
+    const providerBytesSha256 = hashBytes(output.bytes);
+    log("provider_output_received", {
+      job_id: jobId,
+      ...output.provider,
+      image_bytes: output.bytes.length,
+      image_sha256: providerBytesSha256,
+      image_mime_type: output.mimeType,
+      image_signature: output.extension,
+    });
     storagePath = job.user_id + "/" + job.request_id + "-" + workerId + "." + output.extension;
     if (leaseLost) {
       log("job_abandoned_after_lease_loss", { job_id: jobId });
@@ -197,6 +251,9 @@ async function processJob(job) {
     // Mark the attempt before the request so the catch path also checks for that orphan.
     uploadAttempted = true;
     await uploadImage(storagePath, output.bytes, output.mimeType);
+    if (VERIFY_STORED_IMAGE_BYTES) {
+      await verifyStoredImage(storagePath, providerBytesSha256);
+    }
     if (leaseLost) {
       await removeImage(storagePath);
       log("job_abandoned_after_upload_lease_loss", { job_id: jobId });
@@ -235,6 +292,7 @@ async function processJob(job) {
       log("job_failed", {
         job_id: jobId,
         code,
+        http_status: error?.status || null,
         retryable,
         outcome: result?.status || result?.code || "unknown",
       });
