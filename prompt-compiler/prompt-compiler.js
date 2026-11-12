@@ -5,7 +5,7 @@
 (function (root) {
   "use strict";
 
-  const VERSION = "0.2.0";
+  const VERSION = "0.3.0";
   const RULES = [
     { key: "subject", re: /(?:یک\s+)?خودروی\s+Dodge\s+Challenger|Dodge\s+Challenger|دوج\s+چلنج(?:ر|ِر)/giu, en: "Dodge Challenger" },
     { key: "color", re: /قرمز|سرخ/gu, en: "red" },
@@ -14,6 +14,8 @@
     { key: "count", re: /(?:فقط\s+)?یک\s+(?:خودرو|خودروی|ماشین)/gu, en: "exactly one car" },
     { key: "count", re: /(?:فقط\s+)?دو\s+(?:خودرو|خودروی|ماشین)/gu, en: "exactly two cars" },
     { key: "count", re: /(?:فقط\s+)?سه\s+(?:خودرو|خودروی|ماشین)/gu, en: "exactly three cars" },
+    { key: "state", re: /(?:هر\s+دو\s+)?در(?:ها)?\s+(?:کاملاً\s+)?باز\s+(?:نباشد|نباشند|نیست|نیستند)/gu, en: "doors are not open" },
+    { key: "state", re: /(?:هر\s+دو\s+)?در(?:ها)?\s+(?:کاملاً\s+)?بسته\s+(?:نباشد|نباشند|نیست|نیستند)/gu, en: "doors are not closed" },
     { key: "state", re: /(?:هر\s+دو\s+)?در(?:ها)?\s+(?:کاملاً\s+)?باز/gu, en: "both doors open" },
     { key: "state", re: /(?:هر\s+دو\s+)?در(?:ها)?\s+(?:کاملاً\s+)?بسته/gu, en: "both doors closed" },
     { key: "environment", re: /پارکینگ\s+(?:طبقاتی|چندطبقه)/gu, en: "a multi-storey parking garage" },
@@ -21,7 +23,7 @@
     { key: "details", re: /جزئیات\s+(?:واقعی|دقیق)\s+بدنه\s+و\s+چرخ(?:‌ها)?/gu, en: "realistic bodywork and wheel details" },
     { key: "lighting", re: /نور\s+(?:طبیعی|روز)/gu, en: "natural daylight" },
     { key: "style", re: /عکاسی\s+حرفه‌ای|واقع‌گرایانه|فوتورئال(?:یستی)?/gu, en: "professional photorealistic automotive photography" },
-    { key: "negative", re: /بدون\s+(?:خودروی|ماشین)\s+اضافی|خودروی\s+دیگری\s+نباشد/gu, en: "no additional vehicles" }
+    { key: "negative", re: /بدون\s+(?:خودروی|ماشین)\s+اضافی|(?:هیچ\s+)?خودروی\s+دیگری\s+نباشد|(?:هیچ\s+)?ماشین\s+دیگری\s+نباشد/gu, en: "no additional vehicles" }
   ];
 
   function compilePersianPrompt(input) {
@@ -39,8 +41,12 @@
       let match;
       while ((match = rule.re.exec(normalized)) !== null) {
         const value = match[0];
+        const start = match.index;
+        const end = start + value.length;
+        // Avoid double-interpreting text consumed by a more specific negation rule.
+        if (remaining.slice(start, end).some((ch) => ch !== " ")) continue;
         clauses.push({ key: rule.key, source: value, english: rule.en });
-        for (let i = match.index; i < match.index + value.length; i++) remaining[i] = " ";
+        for (let i = start; i < end; i++) remaining[i] = " ";
       }
       rule.re.lastIndex = 0;
     }
