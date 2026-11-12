@@ -114,9 +114,11 @@ declare
   job uuid;
   wid uuid := '20000000-0000-4000-8000-000000000001';
   ok boolean;
+  prompt_text constant text := 'یک دوج چلنجر قرمز با هر دو درِ باز، داخل پارکینگ طبقاتی؛ نور طبیعی، نمای سه‌ربع از جلو، جزئیات دقیق بدنه و رینگ‌ها. 🚗';
 begin
   -- Enqueue and idempotent duplicate: exactly one debit and one durable job.
-  e := public.armex_enqueue_image_generation(u1,r1,'test prompt','test/model','1:1','1K',20);
+  -- The exact Persian Unicode prompt must survive database persistence and queue claim.
+  e := public.armex_enqueue_image_generation(u1,r1,prompt_text,'test/model','1:1','1K',20);
   if e->>'success' <> 'true' then raise exception 'enqueue failed: %',e; end if;
   e := public.armex_enqueue_image_generation(u1,r1,'test prompt','test/model','1:1','1K',20);
   if e->>'duplicate' <> 'true' then raise exception 'duplicate request was not idempotent: %',e; end if;
@@ -127,6 +129,12 @@ begin
   j := public.armex_claim_image_job(wid);
   job := (j->>'job_id')::uuid;
   if j->>'attempt_count' <> '1' then raise exception 'first claim attempt mismatch: %',j; end if;
+  if j->>'prompt' is distinct from prompt_text then
+    raise exception 'Persian prompt changed between enqueue and worker claim: expected %, got %',prompt_text,j->>'prompt';
+  end if;
+  if job is distinct from (e->>'job_id')::uuid then
+    raise exception 'claimed job ID does not match the enqueued generation';
+  end if;
   if public.armex_heartbeat_image_job(job,wid) is distinct from true then raise exception 'heartbeat rejected active lease'; end if;
   e := public.armex_fail_image_job(job,wid,'TEST_RETRY',true);
   if e->>'status' <> 'queued' then raise exception 'retry did not requeue: %',e; end if;
