@@ -320,17 +320,30 @@ else{
   if(!session){requestAuth();return}
   imageButton.disabled=true;setImageStatus("در حال رزرو اعتبار و ساخت تصویر؛ ممکن است تا یک دقیقه زمان ببرد...");
   try{
-   const result=await callArmexApi(session,"",{
+   const queued=await callArmexApi(session,"",{
     action:"generate_image",request_id:crypto.randomUUID(),prompt,
     aspect_ratio:"1:1",resolution:"1K"
    });
-   if(result.success!==true||!result.image)throw new Error("پاسخ موتور تصویر معتبر نیست.");
-   if(result.image.image_url){
-    const preview=document.getElementById("generatedImage"),link=document.getElementById("downloadGeneratedImage");
-    preview.src=result.image.image_url;link.dataset.url=result.image.image_url;setDownloadProgress(false,"",0,false);imagePreview.hidden=false;
+   if(queued.success!==true||!queued.job?.id)throw new Error("پاسخ ثبت درخواست تصویر معتبر نیست.");
+   const jobId=queued.job.id;
+   let completedJob=null;
+   for(let attempt=0;attempt<48;attempt++){
+    setImageStatus("در حال ساخت تصویر واقعی… "+Math.min(99,Math.round((attempt+1)/48*100)).toLocaleString("fa-IR")+"٪");
+    await new Promise(resolve=>setTimeout(resolve,2500));
+    const status=await callArmexApi(session,"?action=image_status&job_id="+encodeURIComponent(jobId));
+    const job=status.job;
+    if(status.success!==true||!job)throw new Error("وضعیت درخواست تصویر معتبر نیست.");
+    if(job.status==="completed"){completedJob=job;break}
+    if(job.status==="failed")throw new Error(job.error_code||"IMAGE_GENERATION_FAILED");
+    if(!["pending","processing","queued"].includes(job.status))throw new Error("وضعیت ناشناخته درخواست تصویر: "+String(job.status));
    }
-   document.getElementById("imageMeta").textContent=String(result.image.model||"FLUX.1 Schnell")+" · "+Number(result.image.credits_charged||20).toLocaleString("fa-IR")+" اعتبار مصرف شد";
-   setImageStatus(result.image.image_url?"تصویر با موفقیت ساخته و در گالری خصوصی ذخیره شد.":"تصویر ذخیره شد؛ برای دریافت پیوند نمایش، گالری را تازه‌سازی کن.");
+   if(!completedJob)throw new Error("زمان انتظار ساخت تصویر تمام شد؛ گالری را تازه‌سازی کن تا وضعیت نهایی بررسی شود.");
+   if(!completedJob.image_url)throw new Error("تصویر ساخته شده اما پیوند امن نمایش آن آماده نیست؛ گالری را تازه‌سازی کن.");
+   const imageResult={image_url:completedJob.image_url,model:completedJob.model||queued.model,credits_charged:completedJob.credits_charged||queued.credits_charged||20};
+   const preview=document.getElementById("generatedImage"),link=document.getElementById("downloadGeneratedImage");
+   preview.src=imageResult.image_url;link.dataset.url=imageResult.image_url;setDownloadProgress(false,"",0,false);imagePreview.hidden=false;
+   document.getElementById("imageMeta").textContent=String(imageResult.model||"FLUX.1 Schnell")+" · "+Number(imageResult.credits_charged).toLocaleString("fa-IR")+" اعتبار مصرف شد";
+   setImageStatus("تصویر با موفقیت ساخته و در گالری خصوصی ذخیره شد.");
    await Promise.all([loadWalletBalance(session),loadImageGallery(session)]);
   }catch(error){
    const raw=String(error?.message||"");
