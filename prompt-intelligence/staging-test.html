@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>LOKAL AI — Staging Prompt Intelligence Test</title>
+  <style>
+    :root{color-scheme:dark;font-family:Tahoma,Arial,sans-serif;background:#090d0c;color:#e8f0ec}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -20%,#123329 0,transparent 55%),#090d0c;padding:24px}
+    main{max-width:760px;margin:32px auto;border:1px solid #234238;border-radius:18px;background:#101715;padding:24px;box-shadow:0 18px 60px #0008}
+    h1{font-size:22px;margin:0 0 8px;color:#a6f0c8}
+    p{color:#b7c8c0;line-height:1.8}
+    .note{font-size:13px;color:#8fa69b}
+    label{display:block;margin:14px 0 7px;color:#c9ddd3}
+    input,textarea,select{width:100%;border:1px solid #315348;border-radius:10px;background:#0a100e;color:#eef7f2;padding:12px;font:inherit}
+    textarea{min-height:150px;resize:vertical;line-height:1.8}
+    button{border:0;border-radius:10px;padding:12px 18px;background:#176b4c;color:white;font:inherit;font-weight:bold;cursor:pointer;margin-top:14px}
+    button.secondary{background:#263c34}
+    button:disabled{opacity:.55;cursor:wait}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .hidden{display:none}
+    pre{direction:ltr;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;background:#080d0b;border:1px solid #263d34;border-radius:10px;padding:14px;min-height:90px;font:12px/1.7 ui-monospace,monospace}
+    .status{margin-top:12px;color:#a6f0c8;min-height:24px;line-height:1.7}
+    .danger{color:#ffb2a9}
+    @media(max-width:600px){body{padding:10px}main{margin:10px auto;padding:18px}.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>LOKAL AI · آزمایشگاه فهم پرامپت</h1>
+  <p>این صفحه فقط به پروژه Supabase مربوط به Staging متصل است. درخواست‌ها تحلیل معنایی می‌شوند؛ هیچ تصویر یا ویدئویی تولید نمی‌شود و هیچ اعتباری کسر نخواهد شد.</p>
+  <p class="note">از حساب آزمایشی Staging استفاده کن. رمز فقط برای ورود مستقیم به Supabase Auth ارسال می‌شود و در این صفحه ذخیره یا نمایش داده نمی‌شود.</p>
+
+  <section id="login">
+    <h2>ورود به حساب آزمایشی Staging</h2>
+    <label for="email">ایمیل</label>
+    <input id="email" type="email" autocomplete="username" placeholder="ایمیل حساب Staging">
+    <label for="password">رمز عبور</label>
+    <input id="password" type="password" autocomplete="current-password" placeholder="رمز حساب Staging">
+    <button id="loginBtn" disabled>در حال آماده‌سازی...</button>
+    <button id="googleLoginBtn" class="secondary" type="button">ورود با حساب Google</button>
+    <div class="status" id="loginStatus" role="status" aria-live="polite">در حال بارگذاری ابزار ورود امن...</div>
+  </section>
+
+  <section id="tester" class="hidden">
+    <div class="row">
+      <div><span class="note" id="signedIn"></span></div>
+      <div style="text-align:left"><button id="logoutBtn" class="secondary">خروج</button></div>
+    </div>
+    <label for="media">نوع رسانه</label>
+    <select id="media">
+      <option value="image">تصویر</option>
+      <option value="video">ویدئو</option>
+      <option value="audio">صوت</option>
+      <option value="design">طراحی</option>
+    </select>
+    <label for="prompt">پرامپت برای تحلیل</label>
+    <textarea id="prompt">یک ایستگاه تحقیقاتی زیر آب در سیاره‌ای ناشناخته، با پنجره‌های شیشه‌ای بزرگ و موجودات نورانی در دوردست؛ بدون حضور انسان.</textarea>
+    <button id="analyzeBtn">تحلیل پرامپت</button>
+    <div class="status" id="testStatus" role="status" aria-live="polite"></div>
+    <label for="result">خروجی Semantic Prompt IR</label>
+    <pre id="result">هنوز درخواستی ارسال نشده است.</pre>
+  </section>
+</main>
+<script src="/lokal-config.js"></script>
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const loginStatus = $("loginStatus");
+  const testStatus = $("testStatus");
+  const setLoginStatus = (message, isError = false) => {
+    loginStatus.textContent = message;
+    loginStatus.className = isError ? "status danger" : "status";
+  };
+  const setTestStatus = (message, isError = false) => {
+    testStatus.textContent = message;
+    testStatus.className = isError ? "status danger" : "status";
+  };
+
+  async function boot() {
+    try {
+      if (!window.LOKAL_CONFIG?.supabaseUrl || !window.LOKAL_CONFIG?.supabaseAnonKey) {
+        throw new Error("تنظیمات اتصال به Supabase در این پیش‌نمایش بارگذاری نشده است.");
+      }
+
+      // Dynamic import lets the page show a readable error if the CDN is unavailable.
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const supabase = createClient(window.LOKAL_CONFIG.supabaseUrl, window.LOKAL_CONFIG.supabaseAnonKey, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      });
+
+      async function refreshSession() {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        const session = data?.session;
+        $("login").classList.toggle("hidden", !!session);
+        $("tester").classList.toggle("hidden", !session);
+        if (session) $("signedIn").textContent = "وارد شده‌ای: " + (session.user.email || "Staging user");
+      }
+
+      $("loginBtn").addEventListener("click", async () => {
+        const button = $("loginBtn");
+        button.disabled = true;
+        setLoginStatus("در حال بررسی اطلاعات ورود...");
+        try {
+          const email = $("email").value.trim();
+          const password = $("password").value;
+          if (!email || !password) throw new Error("ایمیل و رمز عبور را وارد کن.");
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          $("password").value = "";
+          await refreshSession();
+          setTestStatus("ورود موفق بود. حالا می‌توانی پرامپت را آزمایش کنی.");
+        } catch (error) {
+          setLoginStatus(error?.message || "ورود ناموفق بود؛ دوباره تلاش کن.", true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      $("googleLoginBtn").addEventListener("click", async () => {
+        const button = $("googleLoginBtn");
+        button.disabled = true;
+        setLoginStatus("در حال انتقال امن به Google برای ورود به حساب Staging...");
+        try {
+          const redirectTo = window.location.href.split("#")[0];
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo }
+          });
+          if (error) throw error;
+        } catch (error) {
+          setLoginStatus(error?.message || "ورود با Google ناموفق بود.", true);
+          button.disabled = false;
+        }
+      });
+
+      $("logoutBtn").addEventListener("click", async () => {
+        try {
+          const { error } = await supabase.auth.signOut();
+          if (error) throw error;
+          setLoginStatus("از حساب Staging خارج شدی.");
+          await refreshSession();
+        } catch (error) {
+          setTestStatus(error?.message || "خروج ناموفق بود.", true);
+        }
+      });
+
+      $("analyzeBtn").addEventListener("click", async () => {
+        const prompt = $("prompt").value.trim();
+        if (!prompt) return setTestStatus("ابتدا یک پرامپت وارد کن.", true);
+        $("analyzeBtn").disabled = true;
+        $("result").textContent = "در حال تحلیل...";
+        setTestStatus("درخواست به سرویس Prompt Intelligence ارسال شد...");
+        try {
+          const { data, error } = await supabase.functions.invoke("prompt-understanding", {
+            body: { prompt, media_type: $("media").value }
+          });
+          if (error) throw error;
+          if (!data?.success) throw new Error(data?.error || "پاسخ سرویس ناموفق بود.");
+          $("result").textContent = JSON.stringify(data, null, 2);
+          setTestStatus("تحلیل موفق بود · بدون تولید خروجی و بدون کسر اعتبار");
+        } catch (error) {
+          $("result").textContent = String(error?.message || error);
+          setTestStatus("تست ناموفق بود. جزئیات خطا در خروجی نمایش داده شده است.", true);
+        } finally {
+          $("analyzeBtn").disabled = false;
+        }
+      });
+
+      await refreshSession();
+      $("loginBtn").disabled = false;
+      $("loginBtn").textContent = "ورود و آماده‌سازی تست";
+      setLoginStatus("اتصال Staging آماده است. با حساب آزمایشی وارد شو.");
+    } catch (error) {
+      $("loginBtn").disabled = true;
+      $("loginBtn").textContent = "ورود در دسترس نیست";
+      setLoginStatus(error?.message || "بارگذاری ابزار ورود ناموفق بود. صفحه را دوباره بارگذاری کن.", true);
+    }
+  }
+
+  boot();
+</script>
+</body>
+</html>
