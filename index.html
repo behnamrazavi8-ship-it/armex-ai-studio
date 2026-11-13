@@ -370,10 +370,10 @@ else{
    if(!session){requestAuth();return}
    imageButton.disabled=true;setImageStatus("در حال تحلیل معنایی پرامپت؛ هنوز هیچ اعتباری از کیف پول کسر نمی‌شود...");
    try{
-    const promptResponse=await fetch("https://pismnyrbbdrreugpxjcj.supabase.co/functions/v1/prompt-understanding",{
+    const promptResponse=await fetch("config.promptIntelligenceUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding"",{
      method:"POST",
      headers:{
-      "apikey":config.supabaseAnonKey,
+      "apikey":config.promptIntelligenceAnonKey,
       "Authorization":"Bearer "+session.access_token,
       "Content-Type":"application/json"
      },
