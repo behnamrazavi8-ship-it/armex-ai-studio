@@ -156,6 +156,10 @@ Deno.serve(async (request: Request) => {
     return reply({ success: false, error: "Unsupported media_type" }, 400, cors);
   }
 
+  const apiKey = Deno.env.get("OPENROUTER_API_KEY")?.trim();
+  if (!apiKey) return reply({ success: false, error: "Prompt understanding is not configured yet" }, 503, cors);
+  const model = Deno.env.get("PROMPT_UNDERSTANDING_MODEL")?.trim() || DEFAULT_MODEL;
+
   let quotaResult: { ok: boolean; data: unknown; status: number };
   try {
     quotaResult = await stagingRestRequest(
@@ -175,9 +179,6 @@ Deno.serve(async (request: Request) => {
     return reply({ success: false, error: "Rate limit reached. Please try again later." }, 429, cors);
   }
 
-  const apiKey = Deno.env.get("OPENROUTER_API_KEY")?.trim();
-  if (!apiKey) return reply({ success: false, error: "Prompt understanding is not configured yet" }, 503, cors);
-  const model = Deno.env.get("PROMPT_UNDERSTANDING_MODEL")?.trim() || DEFAULT_MODEL;
   const requestId = crypto.randomUUID();
   const startedAt = Date.now();
   const controller = new AbortController();
