@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - "feat/universal-prompt-intelligence"
+      - "feat/staging-semantic-ir-image-pipeline"
     paths:
       - "prompt-intelligence/**"
       - ".github/workflows/prompt-ir-tests.yml"
@@ -22,7 +23,7 @@ jobs:
         with:
           node-version: 22
       - name: Validate Semantic Prompt IR contract
-        run: node --test prompt-intelligence/validate-ir.test.mjs
+        run: node --test prompt-intelligence/validate-ir.test.mjs prompt-intelligence/render-image-prompt.test.mjs
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
