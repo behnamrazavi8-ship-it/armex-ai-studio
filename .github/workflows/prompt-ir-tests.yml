@@ -3,6 +3,7 @@ name: Prompt IR contract tests
 on:
   pull_request:
     paths:
+      - "index.html"
       - "prompt-intelligence/**"
       - "supabase/functions/prompt-understanding/**"
       - ".github/workflows/prompt-ir-tests.yml"
@@ -11,6 +12,7 @@ on:
       - "feat/universal-prompt-intelligence"
       - "feat/staging-semantic-ir-image-pipeline"
     paths:
+      - "index.html"
       - "prompt-intelligence/**"
       - ".github/workflows/prompt-ir-tests.yml"
 
@@ -29,6 +31,10 @@ jobs:
           deno-version: v2.x
       - name: Type-check Staging Edge Function
         run: deno check --no-lock supabase/functions/prompt-understanding/index.ts
+      - name: Check Image Studio inline module syntax
+        run: |
+          node -e "const fs=require('node:fs'); const html=fs.readFileSync('index.html','utf8'); const matches=[...html.matchAll(/<script type=\"module\">([\\s\\S]*?)<\\/script>/g)]; if(matches.length!==1) throw new Error('Expected one inline module script'); fs.writeFileSync('/tmp/lokal-index-module.mjs',matches[0][1]);"
+          node --check /tmp/lokal-index-module.mjs
       - name: Parse JSON Schema and evaluation cases
         run: |
           node -e "JSON.parse(require('node:fs').readFileSync('prompt-intelligence/semantic-prompt-ir.schema.json', 'utf8'))"
