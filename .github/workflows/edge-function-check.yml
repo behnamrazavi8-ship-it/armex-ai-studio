@@ -36,6 +36,8 @@ jobs:
         run: deno check supabase/functions/armex-api/index.ts
       - name: Syntax-check image worker
         run: node --check worker/src/worker.mjs
+      - name: Test Supabase worker auth headers
+        run: node --test tests/worker-auth-headers.test.mjs
       - name: Build worker container
         run: docker build --pull -t lokal-ai-image-worker:ci .
       - name: Syntax-check browser JavaScript
