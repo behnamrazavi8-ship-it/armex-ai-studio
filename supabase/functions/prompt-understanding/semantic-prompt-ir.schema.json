@@ -1,0 +1,480 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "input_language",
+    "media_type",
+    "user_intent",
+    "subjects",
+    "actions",
+    "environment",
+    "composition",
+    "style",
+    "camera",
+    "lighting",
+    "color_palette",
+    "materials",
+    "mood",
+    "text_elements",
+    "constraints",
+    "output",
+    "ambiguities",
+    "assumptions"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0"
+    },
+    "input_language": {
+      "type": "string"
+    },
+    "media_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video",
+        "audio",
+        "design"
+      ]
+    },
+    "user_intent": {
+      "type": "string"
+    },
+    "subjects": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "kind",
+          "attributes",
+          "position",
+          "relations"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "attributes": {
+            "type": "array",
+            "maxItems": 40,
+            "items": {
+              "type": "string"
+            }
+          },
+          "position": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "relations": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "actor",
+          "action",
+          "target",
+          "timing"
+        ],
+        "properties": {
+          "actor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "target": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timing": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "location",
+        "time",
+        "weather",
+        "background",
+        "details"
+      ],
+      "properties": {
+        "location": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "time": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "weather": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "background": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "details": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "composition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layout",
+        "framing",
+        "viewpoint",
+        "subject_hierarchy",
+        "depth"
+      ],
+      "properties": {
+        "layout": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "framing": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "viewpoint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "subject_hierarchy": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string"
+          }
+        },
+        "depth": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "style": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string"
+      }
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shot",
+        "angle",
+        "lens",
+        "movement",
+        "focus"
+      ],
+      "properties": {
+        "shot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "angle": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lens": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "movement": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "focus": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "lighting": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string"
+      }
+    },
+    "color_palette": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string"
+      }
+    },
+    "materials": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string"
+      }
+    },
+    "mood": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string"
+      }
+    },
+    "text_elements": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "language",
+          "placement",
+          "typography"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "language": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "placement": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "typography": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "must_include",
+        "must_avoid",
+        "negative_constraints",
+        "preserve_exactly"
+      ],
+      "properties": {
+        "must_include": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string"
+          }
+        },
+        "must_avoid": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string"
+          }
+        },
+        "negative_constraints": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string"
+          }
+        },
+        "preserve_exactly": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aspect_ratio",
+        "resolution",
+        "duration_seconds",
+        "frame_rate",
+        "format",
+        "other_parameters"
+      ],
+      "properties": {
+        "aspect_ratio": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolution": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "duration_seconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 3600
+        },
+        "frame_rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 240
+        },
+        "format": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "other_parameters": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ambiguities": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "question",
+          "reason",
+          "blocks_execution"
+        ],
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "blocks_execution": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "basis"
+        ],
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
