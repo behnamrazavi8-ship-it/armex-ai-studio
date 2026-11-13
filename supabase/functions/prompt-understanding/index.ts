@@ -1,8 +1,8 @@
-import { createSupabaseContext } from "npm:@supabase/server@1";
 import { validateSemanticPromptIR } from "./validate-ir.mjs";
 import semanticPromptIrSchema from "./semantic-prompt-ir.schema.json" with { type: "json" };
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
+
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const MAX_PROMPT_CHARS = 8000;
 const MAX_BODY_BYTES = 12000;
@@ -55,6 +55,59 @@ const reply = (body: Record<string, unknown>, status: number, cors: HeadersInit)
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...cors },
   });
 
+
+const verifyProductionUser = async (request: Request): Promise<string | null> => {
+  const authorization = request.headers.get("Authorization") ?? "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match) return null;
+
+  const productionUrl = Deno.env.get("PRODUCTION_SUPABASE_URL")?.trim().replace(/\/$/, "") ?? "";
+  const productionAnonKey = Deno.env.get("PRODUCTION_SUPABASE_ANON_KEY")?.trim() ?? "";
+  if (!productionUrl || !productionAnonKey) throw new Error("PRODUCTION_AUTH_BRIDGE_NOT_CONFIGURED");
+
+  const response = await fetch(productionUrl + "/auth/v1/user", {
+    method: "GET",
+    headers: {
+      apikey: productionAnonKey,
+      Authorization: "Bearer " + match[1],
+    },
+  });
+  if (!response.ok) return null;
+  const user = await response.json().catch(() => null);
+  return typeof user?.id === "string" ? user.id : null;
+};
+
+const stagingRestRequest = async (
+  path: string,
+  method: "POST",
+  body: Record<string, unknown>,
+): Promise<{ ok: boolean; data: unknown; status: number }> => {
+  const stagingUrl = Deno.env.get("SUPABASE_URL")?.trim().replace(/\/$/, "") ?? "";
+  const stagingKey = (
+    Deno.env.get("SUPABASE_SECRET_KEY") ??
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+    ""
+  ).trim();
+  if (!stagingUrl || !stagingKey) throw new Error("STAGING_ADMIN_NOT_CONFIGURED");
+
+  const headers: Record<string, string> = {
+    apikey: stagingKey,
+    "Content-Type": "application/json",
+  };
+  // New sb_secret_ keys are API keys, not JWTs; do not send them as Bearer tokens.
+  if (!stagingKey.startsWith("sb_secret_")) {
+    headers.Authorization = "Bearer " + stagingKey;
+  }
+
+  const response = await fetch(stagingUrl + path, {
+    method,
+    headers,
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => null);
+  return { ok: response.ok, data, status: response.status };
+};
+
 Deno.serve(async (request: Request) => {
   const origin = request.headers.get("Origin");
   const cors = corsHeaders(origin);
@@ -64,10 +117,16 @@ Deno.serve(async (request: Request) => {
   if (origin && !isAllowedOrigin(origin)) return reply({ success: false, error: "Origin not allowed" }, 403, cors);
 
 
-  const { data: auth, error: authError } = await createSupabaseContext(request, { auth: "user" });
-  const userId = auth?.userClaims?.id;
-  const db = auth?.supabaseAdmin;
-  if (authError || !userId || !db) {
+  let userId: string | null = null;
+  try {
+    userId = await verifyProductionUser(request);
+  } catch (error) {
+    console.error("Production auth bridge is not configured", {
+      reason: error instanceof Error ? error.message : "unknown",
+    });
+    return reply({ success: false, error: "Prompt understanding is not configured yet" }, 503, cors);
+  }
+  if (!userId) {
     return reply({ success: false, error: "A valid signed-in session is required" }, 401, cors);
   }
 
@@ -96,18 +155,29 @@ Deno.serve(async (request: Request) => {
     return reply({ success: false, error: "Unsupported media_type" }, 400, cors);
   }
 
-  const { data: allowed, error: quotaError } = await db.rpc("consume_prompt_intelligence_quota", { p_user_id: userId });
-  if (quotaError) {
-    console.error("Prompt quota check failed", { code: quotaError.code });
-    return reply({ success: false, error: "Prompt understanding is temporarily unavailable" }, 503, cors);
-  }
-  if (allowed !== true) {
-    return reply({ success: false, error: "Rate limit reached. Please try again later." }, 429, cors);
-  }
-
   const apiKey = Deno.env.get("OPENROUTER_API_KEY")?.trim();
   if (!apiKey) return reply({ success: false, error: "Prompt understanding is not configured yet" }, 503, cors);
   const model = Deno.env.get("PROMPT_UNDERSTANDING_MODEL")?.trim() || DEFAULT_MODEL;
+
+  let quotaResult: { ok: boolean; data: unknown; status: number };
+  try {
+    quotaResult = await stagingRestRequest(
+      "/rest/v1/rpc/consume_prompt_intelligence_quota",
+      "POST",
+      { p_user_id: userId },
+    );
+  } catch (error) {
+    console.error("Prompt quota check failed", { reason: error instanceof Error ? error.message : "unknown" });
+    return reply({ success: false, error: "Prompt understanding is temporarily unavailable" }, 503, cors);
+  }
+  if (!quotaResult.ok) {
+    console.error("Prompt quota check failed", { status: quotaResult.status });
+    return reply({ success: false, error: "Prompt understanding is temporarily unavailable" }, 503, cors);
+  }
+  if (quotaResult.data !== true) {
+    return reply({ success: false, error: "Rate limit reached. Please try again later." }, 429, cors);
+  }
+
   const requestId = crypto.randomUUID();
   const startedAt = Date.now();
   const controller = new AbortController();
@@ -234,16 +304,20 @@ Deno.serve(async (request: Request) => {
   } finally {
     clearTimeout(timeout);
     const latency = Date.now() - startedAt;
-    const { error: usageError } = await db.from("prompt_intelligence_usage").insert({
-      user_id: userId,
-      model,
-      prompt_tokens: promptTokens,
-      completion_tokens: completionTokens,
-      total_tokens: totalTokens,
-      provider_cost_usd: providerCost,
-      latency_ms: latency,
-      outcome,
-    });
-    if (usageError) console.error("Prompt usage record could not be saved", { requestId, code: usageError.code });
+    const usageResult = await stagingRestRequest(
+      "/rest/v1/prompt_intelligence_usage",
+      "POST",
+      {
+        user_id: userId,
+        model,
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+        provider_cost_usd: providerCost,
+        latency_ms: latency,
+        outcome,
+      },
+    ).catch((error) => ({ ok: false, status: 0, data: null }));
+    if (!usageResult.ok) console.error("Prompt usage record could not be saved", { requestId, status: usageResult.status });
   }
 });

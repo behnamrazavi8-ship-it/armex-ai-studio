@@ -370,10 +370,17 @@ else{
    if(!session){requestAuth();return}
    imageButton.disabled=true;setImageStatus("در حال تحلیل معنایی پرامپت؛ هنوز هیچ اعتباری از کیف پول کسر نمی‌شود...");
    try{
-    const {data,error}=await supabase.functions.invoke("prompt-understanding",{
-     body:{prompt:originalPrompt,media_type:"image"}
+    const promptResponse=await fetch(config.promptIntelligenceUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding",{
+     method:"POST",
+     headers:{
+      "apikey":config.promptIntelligenceAnonKey,
+      "Authorization":"Bearer "+session.access_token,
+      "Content-Type":"application/json"
+     },
+     body:JSON.stringify({prompt:originalPrompt,media_type:"image"})
     });
-    if(error)throw error;
+    const data=await promptResponse.json().catch(()=>({}));
+    if(!promptResponse.ok)throw new Error(data?.error||("Prompt analysis HTTP "+promptResponse.status));
     if(data?.success!==true||!data?.ir)throw new Error(data?.error||"پاسخ تحلیل معنایی معتبر نیست.");
     const ir=data.ir;
     if(ir.media_type!=="image")throw new Error("نوع رسانه تحلیل‌شده تصویر نیست.");
