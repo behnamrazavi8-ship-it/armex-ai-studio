@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { supabaseAuthHeaders } from "./supabase-auth.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -31,8 +32,7 @@ async function supabase(path, options = {}) {
   const response = await fetch(SUPABASE_URL + path, {
     ...options,
     headers: {
-      apikey: SUPABASE_API_KEY,
-      Authorization: "Bearer " + SUPABASE_API_KEY,
+      ...supabaseAuthHeaders(SUPABASE_API_KEY),
       ...(options.headers || {}),
     },
   });
@@ -115,8 +115,7 @@ async function uploadImage(path, bytes, mimeType) {
     {
       method: "POST",
       headers: {
-        apikey: SUPABASE_API_KEY,
-        Authorization: "Bearer " + SUPABASE_API_KEY,
+        ...supabaseAuthHeaders(SUPABASE_API_KEY),
         "Content-Type": mimeType,
         "x-upsert": "true",
         "Cache-Control": "3600",
@@ -138,8 +137,7 @@ async function removeImage(path) {
     const response = await fetch(SUPABASE_URL + "/storage/v1/object/" + IMAGE_BUCKET, {
       method: "DELETE",
       headers: {
-        apikey: SUPABASE_API_KEY,
-        Authorization: "Bearer " + SUPABASE_API_KEY,
+        ...supabaseAuthHeaders(SUPABASE_API_KEY),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ prefixes: [path] }),
