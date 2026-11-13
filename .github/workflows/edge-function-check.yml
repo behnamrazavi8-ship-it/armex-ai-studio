@@ -11,7 +11,7 @@ on:
       - "Dockerfile"
       - "tests/**"
   push:
-    branches: [main, "feat/lokal-medium-image-worker"]
+    branches: [main, "feat/lokal-medium-image-worker", "feat/staging-semantic-ir-image-pipeline"]
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
