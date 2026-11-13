@@ -370,7 +370,7 @@ else{
    if(!session){requestAuth();return}
    imageButton.disabled=true;setImageStatus("در حال تحلیل معنایی پرامپت؛ هنوز هیچ اعتباری از کیف پول کسر نمی‌شود...");
    try{
-    const promptResponse=await fetch("config.promptIntelligenceUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding"",{
+    const promptResponse=await fetch(config.promptIntelligenceUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding",{
      method:"POST",
      headers:{
       "apikey":config.promptIntelligenceAnonKey,
