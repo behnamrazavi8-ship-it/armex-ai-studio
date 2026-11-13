@@ -93,7 +93,6 @@ const stagingRestRequest = async (
   const headers: Record<string, string> = {
     apikey: stagingKey,
     "Content-Type": "application/json",
-    Prefer: "return=minimal",
   };
   // New sb_secret_ keys are API keys, not JWTs; do not send them as Bearer tokens.
   if (!stagingKey.startsWith("sb_secret_")) {
