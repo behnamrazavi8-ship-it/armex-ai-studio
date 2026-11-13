@@ -1,5 +1,0 @@
-project_id = "pismnyrbbdrreugpxjcj"
-
-[functions.prompt-understanding]
-# The function validates Production access tokens itself before any quota/provider work.
-verify_jwt = false
