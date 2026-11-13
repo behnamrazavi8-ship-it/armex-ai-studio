@@ -17,9 +17,21 @@ Required top-level keys: version, input_language, media_type, user_intent, subje
 version must be "1.0"; media_type must be image, video, audio, or design.
 For absent nullable values use null; for absent collections use []. Return JSON only.`;
 
-const allowedOrigins = ["https://lokal-ai.net", "https://www.lokal-ai.net"];
+const isAllowedOrigin = (origin: string | null): boolean => {
+  if (!origin) return true;
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === "https:" && (
+      parsed.hostname === "lokal-ai.net" ||
+      parsed.hostname === "www.lokal-ai.net" ||
+      parsed.hostname.endsWith(".armex-ai-studio.pages.dev")
+    );
+  } catch {
+    return false;
+  }
+};
 const corsHeaders = (origin: string | null): HeadersInit => ({
-  ...(origin && allowedOrigins.includes(origin) ? { "Access-Control-Allow-Origin": origin } : {}),
+  ...(origin && isAllowedOrigin(origin) ? { "Access-Control-Allow-Origin": origin } : {}),
   "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Max-Age": "86400",
@@ -37,7 +49,7 @@ Deno.serve(async (request: Request) => {
 
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (request.method !== "POST") return reply({ success: false, error: "Method not allowed" }, 405, cors);
-  if (origin && !allowedOrigins.includes(origin)) return reply({ success: false, error: "Origin not allowed" }, 403, cors);
+  if (origin && !isAllowedOrigin(origin)) return reply({ success: false, error: "Origin not allowed" }, 403, cors);
 
 
   const { data: auth, error: authError } = await createSupabaseContext(request, { auth: "user" });
