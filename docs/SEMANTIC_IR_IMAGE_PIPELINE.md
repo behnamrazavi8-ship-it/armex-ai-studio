@@ -25,7 +25,9 @@ This document describes the Staging-only integration path. It does not authorize
 - `prompt-intelligence/staging-test.html` remains an analysis-only laboratory. It must continue to state that it does not generate images or debit image credits.
 - Image generation is integrated into the authenticated Image Studio in `index.html`.
 - Semantic IR remains provider-neutral. The deterministic renderer is the adapter between the IR and the current FLUX prompt input.
+- The first renderer preserves the original input language; it does not yet add a separate Persian-to-English translation pass. Validate actual image quality before deciding whether a dedicated rendering/translation stage is needed.
 - The raw user request is retained in the rendered prompt so explicit constraints are not lost when an individual IR field is incomplete.
+- The request UUID is reused in in-memory page state after uncertain enqueue/poll results. A full page reload currently loses that pending state; durable reload recovery is a pre-production hardening item.
 
 ## Staging rollout gates
 
