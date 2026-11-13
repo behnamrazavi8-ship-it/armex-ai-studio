@@ -294,50 +294,6 @@ const getImageJobStatus = async (
   }, 200, cors);
 };
 
-const getImageJobStatus = async (
-  db: SupabaseClient, userId: string, jobId: string, cors: HeadersInit,
-): Promise<Response> => {
-  if (!isUuid(jobId)) return fail("A valid job_id is required", 400, cors);
-
-  const { data: job, error } = await db.from("armex_image_generations")
-    .select("id,status,prompt,model,aspect_ratio,resolution,credits_charged,actual_cost_usd,storage_path,mime_type,error_code,created_at,completed_at")
-    .eq("id", jobId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Image status lookup failed", { jobId, code: error.code });
-    return fail("Could not load image job status", 500, cors);
-  }
-  if (!job) return fail("Image job not found", 404, cors);
-
-  let imageUrl: string | null = null;
-  if (job.status === "completed" && job.storage_path) {
-    try { imageUrl = await signedImageUrl(db, String(job.storage_path)); }
-    catch {
-      return fail("Image is saved but its temporary access link could not be created; refresh image history", 500, cors);
-    }
-  }
-
-  return json({
-    success: true,
-    job: {
-      id: job.id,
-      status: job.status,
-      prompt: job.prompt,
-      model: job.model,
-      aspect_ratio: job.aspect_ratio,
-      resolution: job.resolution,
-      credits_charged: job.credits_charged,
-      actual_cost_usd: job.actual_cost_usd,
-      error_code: job.error_code,
-      created_at: job.created_at,
-      completed_at: job.completed_at,
-      image_url: imageUrl,
-    },
-  }, 200, cors);
-};
-
 const VIDEO_CREDIT_COST = Number(Deno.env.get("VIDEO_CREDIT_COST") ?? "0");
 const VIDEO_BUCKET = "lokal-ai-videos";
 const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
