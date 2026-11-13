@@ -40,6 +40,7 @@
     <label for="password">رمز عبور</label>
     <input id="password" type="password" autocomplete="current-password" placeholder="رمز حساب Staging">
     <button id="loginBtn" disabled>در حال آماده‌سازی...</button>
+    <button id="googleLoginBtn" class="secondary" type="button">ورود با حساب Google</button>
     <div class="status" id="loginStatus" role="status" aria-live="polite">در حال بارگذاری ابزار ورود امن...</div>
   </section>
 
@@ -114,6 +115,23 @@
         } catch (error) {
           setLoginStatus(error?.message || "ورود ناموفق بود؛ دوباره تلاش کن.", true);
         } finally {
+          button.disabled = false;
+        }
+      });
+
+      $("googleLoginBtn").addEventListener("click", async () => {
+        const button = $("googleLoginBtn");
+        button.disabled = true;
+        setLoginStatus("در حال انتقال امن به Google برای ورود به حساب Staging...");
+        try {
+          const redirectTo = window.location.href.split("#")[0];
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo }
+          });
+          if (error) throw error;
+        } catch (error) {
+          setLoginStatus(error?.message || "ورود با Google ناموفق بود.", true);
           button.disabled = false;
         }
       });
