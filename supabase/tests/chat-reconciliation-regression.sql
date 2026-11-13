@@ -1,0 +1,373 @@
+-- SQL-level regression tests for the staged chat-request migrations.
+-- Runs only against the disposable PostgreSQL service in GitHub Actions.
+begin;
+
+-- Security regression checks: the request ledger is service-role-only.
+do $privilege_test$
+declare
+  fn regprocedure;
+  fn_list regprocedure[] := array[
+    'public.armex_claim_chat_request(uuid,uuid)'::regprocedure,
+    'public.armex_complete_chat_request(uuid,uuid,jsonb)'::regprocedure,
+    'public.armex_fail_chat_request(uuid,uuid,text)'::regprocedure,
+    'public.armex_record_chat_provider_evidence(uuid,uuid,text,text,integer,jsonb,text)'::regprocedure,
+    'public.armex_claim_chat_reconciliation(integer,integer)'::regprocedure,
+    'public.armex_release_chat_reconciliation(uuid,uuid,uuid,text)'::regprocedure,
+    'public.armex_set_chat_recovery_metadata(uuid,uuid,text,text,uuid,integer,uuid,numeric,numeric,integer)'::regprocedure,
+    'public.armex_persist_chat_response_atomic(uuid,uuid,uuid,text,text,integer,integer,integer,numeric,text)'::regprocedure
+  ];
+begin
+  if not (select c.relrowsecurity from pg_class c where c.oid='public.armex_chat_requests'::regclass) then
+    raise exception 'chat request ledger must have RLS enabled';
+  end if;
+  if has_table_privilege('anon','public.armex_chat_requests','SELECT')
+     or has_table_privilege('anon','public.armex_chat_requests','INSERT')
+     or has_table_privilege('anon','public.armex_chat_requests','UPDATE')
+     or has_table_privilege('anon','public.armex_chat_requests','DELETE')
+     or has_table_privilege('anon','public.armex_chat_requests','TRUNCATE')
+     or has_table_privilege('authenticated','public.armex_chat_requests','SELECT')
+     or has_table_privilege('authenticated','public.armex_chat_requests','INSERT')
+     or has_table_privilege('authenticated','public.armex_chat_requests','UPDATE')
+     or has_table_privilege('authenticated','public.armex_chat_requests','DELETE')
+     or has_table_privilege('authenticated','public.armex_chat_requests','TRUNCATE') then
+    raise exception 'chat request ledger must not grant table privileges to anon/authenticated';
+  end if;
+  if not has_table_privilege('service_role','public.armex_chat_requests','SELECT')
+     or not has_table_privilege('service_role','public.armex_chat_requests','INSERT')
+     or not has_table_privilege('service_role','public.armex_chat_requests','UPDATE')
+     or not has_table_privilege('service_role','public.armex_chat_requests','DELETE') then
+    raise exception 'service_role is missing required chat request ledger privileges';
+  end if;
+  foreach fn in array fn_list loop
+    if has_function_privilege('anon',fn,'EXECUTE')
+       or has_function_privilege('authenticated',fn,'EXECUTE') then
+      raise exception 'untrusted role can execute privileged RPC: %', fn;
+    end if;
+    if not has_function_privilege('service_role',fn,'EXECUTE') then
+      raise exception 'service_role is missing required RPC execute grant: %', fn;
+    end if;
+  end loop;
+end $privilege_test$;
+
+
+
+-- Failure state must be blocked until any confirmed chat debit has a
+-- matching idempotent refund record. Accepted provider work is never failed.
+do $failure_refund_guard_regression$
+declare
+  v_user uuid := gen_random_uuid();
+  v_no_debit_request uuid := gen_random_uuid();
+  v_debited_request uuid := gen_random_uuid();
+  v_accepted_request uuid := gen_random_uuid();
+  v_attempt uuid := gen_random_uuid();
+  v_accepted_attempt uuid := gen_random_uuid();
+  v_failed boolean;
+  v_status text;
+begin
+  insert into auth.users(id) values (v_user);
+
+  -- Pre-debit validation failures may be marked failed without a refund.
+  perform public.armex_claim_chat_request(v_user, v_no_debit_request);
+  if not public.armex_fail_chat_request(v_user, v_no_debit_request, 'validation_failed') then
+    raise exception 'request with no debit should be fail-able';
+  end if;
+
+  -- A durable debit without its exact refund ledger entry must stay processing.
+  perform public.armex_claim_chat_request(v_user, v_debited_request);
+  if not public.armex_set_chat_recovery_metadata(
+    v_user, v_debited_request, 'prompt', 'test/model', null, 1, v_attempt, null, null, 1
+  ) then
+    raise exception 'refund guard recovery metadata should persist';
+  end if;
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_debited_request, 'rejected', 'debited', 400, null, 'provider_rejected'
+  ) then
+    raise exception 'rejected provider evidence should persist';
+  end if;
+  insert into public.armex_credit_transactions(
+    user_id, amount, transaction_type, idempotency_key, metadata
+  ) values (
+    v_user, -1, 'usage', 'ai_request:' || v_debited_request::text,
+    jsonb_build_object('request_id', v_debited_request::text, 'attempt_id', v_attempt::text)
+  );
+
+  v_failed := public.armex_fail_chat_request(v_user, v_debited_request, 'provider_rejected_400');
+  if v_failed then
+    raise exception 'debited request must not fail before refund is recorded';
+  end if;
+  select status into v_status from public.armex_chat_requests
+  where user_id = v_user and request_id = v_debited_request;
+  if v_status <> 'processing' then
+    raise exception 'request without refund must remain processing';
+  end if;
+
+  -- A matching key with the wrong type/metadata is not refund evidence.
+  insert into public.armex_credit_transactions(
+    user_id, amount, transaction_type, idempotency_key, metadata
+  ) values (
+    v_user, 1, 'purchase',
+    'ai_refund:' || v_debited_request::text || ':' || v_attempt::text || ':provider_error',
+    '{}'::jsonb
+  );
+  if public.armex_fail_chat_request(v_user, v_debited_request, 'provider_rejected_400') then
+    raise exception 'refund key with wrong type or metadata must not authorize failure';
+  end if;
+
+  -- Only an exact refund matching amount, type, request, attempt and reason is accepted.
+  update public.armex_credit_transactions
+  set transaction_type = 'refund',
+      metadata = jsonb_build_object(
+        'request_id', v_debited_request::text,
+        'attempt_id', v_attempt::text,
+        'reason', 'provider_error'
+      )
+  where user_id = v_user
+    and idempotency_key =
+      'ai_refund:' || v_debited_request::text || ':' || v_attempt::text || ':provider_error';
+  if not public.armex_fail_chat_request(v_user, v_debited_request, 'provider_rejected_400') then
+    raise exception 'request may fail after exact refund evidence is durable';
+  end if;
+
+  -- Even a refund record cannot authorize failing an accepted provider result.
+  perform public.armex_claim_chat_request(v_user, v_accepted_request);
+  if not public.armex_set_chat_recovery_metadata(
+    v_user, v_accepted_request, 'prompt', 'test/model', null, 1, v_accepted_attempt, null, null, 1
+  ) then
+    raise exception 'accepted guard metadata should persist';
+  end if;
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_accepted_request, 'accepted', 'debited', 200,
+    '{"choices":[{"message":{"content":"billable answer"}}]}'::jsonb, 'accepted'
+  ) then
+    raise exception 'accepted guard evidence should persist';
+  end if;
+  insert into public.armex_credit_transactions(
+    user_id, amount, transaction_type, idempotency_key, metadata
+  ) values (
+    v_user, -1, 'usage', 'ai_request:' || v_accepted_request::text,
+    jsonb_build_object('request_id', v_accepted_request::text, 'attempt_id', v_accepted_attempt::text)
+  );
+  if public.armex_fail_chat_request(v_user, v_accepted_request, 'operator_failure') then
+    raise exception 'accepted provider request must not be failed through generic RPC';
+  end if;
+  -- Keep this deliberately held accepted request out of the later happy-path claim.
+  update public.armex_chat_requests
+  set diagnostic_code = 'manual_review:accepted_failure_guard_test'
+  where user_id = v_user and request_id = v_accepted_request;
+end $failure_refund_guard_regression$;
+
+-- Lease claim parameters must be bounded even when callers pass explicit NULL.
+do $lease_parameter_regression$
+declare
+  v_rejected boolean := false;
+begin
+  begin
+    perform * from public.armex_claim_chat_reconciliation(null, 120);
+  exception when others then
+    if sqlerrm <> 'invalid reconciliation lease parameters' then raise; end if;
+    v_rejected := true;
+  end;
+  if not v_rejected then
+    raise exception 'NULL batch limit must be rejected';
+  end if;
+
+  v_rejected := false;
+  begin
+    perform * from public.armex_claim_chat_reconciliation(5, null);
+  exception when others then
+    if sqlerrm <> 'invalid reconciliation lease parameters' then raise; end if;
+    v_rejected := true;
+  end;
+  if not v_rejected then
+    raise exception 'NULL lease duration must be rejected';
+  end if;
+end $lease_parameter_regression$;
+
+do $main_regression$
+declare
+  v_user uuid := gen_random_uuid();
+  v_request uuid := gen_random_uuid();
+  v_attempt uuid := gen_random_uuid();
+  v_claim record;
+  v_lease uuid;
+  v_payload jsonb;
+  v_again jsonb;
+  v_count integer;
+begin
+  insert into auth.users(id) values (v_user);
+
+  select * into v_claim
+  from public.armex_claim_chat_request(v_user, v_request);
+  if v_claim.outcome <> 'claimed' then
+    raise exception 'first request claim should be claimed, got %', v_claim.outcome;
+  end if;
+
+  select * into v_claim
+  from public.armex_claim_chat_request(v_user, v_request);
+  if v_claim.outcome <> 'processing' then
+    raise exception 'duplicate in-flight request should be processing, got %', v_claim.outcome;
+  end if;
+
+  if not public.armex_set_chat_recovery_metadata(
+    v_user, v_request, 'test prompt', 'test/model', null, 7, v_attempt, 0.1, 0.2, 12
+  ) then
+    raise exception 'recovery metadata should be persisted once';
+  end if;
+
+  -- The legacy completion RPC must not bypass provider/debit evidence or
+  -- atomic message+usage persistence.
+  begin
+    perform public.armex_complete_chat_request(
+      v_user, v_request, '{"success":true,"answer":"unverified"}'::jsonb
+    );
+    raise exception 'legacy completion RPC must reject requests without durable evidence';
+  exception when others then
+    if sqlerrm <> 'chat request is not eligible for completion' then raise; end if;
+  end;
+  if public.armex_set_chat_recovery_metadata(
+    v_user, v_request, 'changed prompt', 'test/model', null, 7, v_attempt, 0.1, 0.2, 12
+  ) then
+    raise exception 'recovery metadata must be immutable after first write';
+  end if;
+
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'accepted', 'debited', 200,
+    '{"choices":[{"message":{"content":"Recovered answer"},"finish_reason":"stop"}]}'::jsonb,
+    'provider_accepted'
+  ) then
+    raise exception 'accepted provider evidence should persist';
+  end if;
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'accepted', 'debited', 200,
+    '{"choices":[{"message":{"content":"Recovered answer"},"finish_reason":"stop"}]}'::jsonb,
+    'provider_accepted_retry'
+  ) then
+    raise exception 'identical accepted provider evidence should be idempotent';
+  end if;
+  if public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'accepted', 'debited', 200,
+    '{"choices":[{"message":{"content":"Tampered answer"},"finish_reason":"stop"}]}'::jsonb,
+    'attempted_snapshot_replacement'
+  ) then
+    raise exception 'accepted provider response snapshot must be immutable';
+  end if;
+  if public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'accepted', 'debited', 201,
+    '{"choices":[{"message":{"content":"Recovered answer"},"finish_reason":"stop"}]}'::jsonb,
+    'attempted_status_replacement'
+  ) then
+    raise exception 'accepted provider HTTP status must be immutable';
+  end if;
+  if public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'rejected', 'debited', 400, null, 'attempted_downgrade'
+  ) then
+    raise exception 'accepted provider evidence must not be downgraded';
+  end if;
+
+  select * into v_claim
+  from public.armex_claim_chat_reconciliation(5, 120);
+  if v_claim.request_id is distinct from v_request then
+    raise exception 'expected request to be claimed for reconciliation';
+  end if;
+  v_lease := v_claim.reconciliation_lease_token;
+  if v_lease is null then raise exception 'lease token must be present'; end if;
+
+  v_payload := public.armex_persist_chat_response_atomic(
+    v_user, v_request, v_lease, 'Recovered answer', 'test/model',
+    12, 4, 16, 0.0003, 'stop'
+  );
+  if v_payload->>'success' <> 'true' then
+    raise exception 'atomic persistence should return success payload';
+  end if;
+  if (select status from public.armex_chat_requests where user_id=v_user and request_id=v_request) <> 'completed' then
+    raise exception 'request should be completed atomically';
+  end if;
+
+  select count(*) into v_count from public.armex_messages
+  where user_id=v_user and request_id=v_request;
+  if v_count <> 2 then raise exception 'expected exactly 2 request-linked messages, got %', v_count; end if;
+
+  select count(*) into v_count from public.armex_usage where request_id=v_request;
+  if v_count <> 1 then raise exception 'expected exactly 1 usage row, got %', v_count; end if;
+
+  v_again := public.armex_persist_chat_response_atomic(
+    v_user, v_request, v_lease, 'Recovered answer', 'test/model',
+    12, 4, 16, 0.0003, 'stop'
+  );
+  if v_again is distinct from v_payload then
+    raise exception 'repeated atomic persistence should return the stored response';
+  end if;
+  select count(*) into v_count from public.armex_messages
+  where user_id=v_user and request_id=v_request;
+  if v_count <> 2 then raise exception 'idempotent retry duplicated messages'; end if;
+  select count(*) into v_count from public.armex_usage where request_id=v_request;
+  if v_count <> 1 then raise exception 'idempotent retry duplicated usage'; end if;
+
+  select count(*) into v_count from public.armex_claim_chat_reconciliation(5, 120);
+  if v_count <> 0 then raise exception 'completed request must not be claimable'; end if;
+end $main_regression$;
+
+-- A retryable release must never erase an existing manual-review hold.
+do $manual_review_diagnostic_regression$
+declare
+  v_user uuid := gen_random_uuid();
+  v_request uuid := gen_random_uuid();
+  v_claim record;
+  v_lease uuid;
+  v_diagnostic text;
+begin
+  insert into auth.users(id) values (v_user);
+  perform public.armex_claim_chat_request(v_user, v_request);
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'accepted', 'debited', 200,
+    '{"choices":[{"message":{"content":"Held for review"}}]}'::jsonb,
+    'accepted_before_review'
+  ) then
+    raise exception 'provider evidence should persist for manual-review regression';
+  end if;
+
+  select * into v_claim from public.armex_claim_chat_reconciliation(1, 120);
+  if v_claim.request_id is distinct from v_request then
+    raise exception 'manual-review regression request should be claimed';
+  end if;
+  v_lease := v_claim.reconciliation_lease_token;
+
+  update public.armex_chat_requests
+  set diagnostic_code = 'manual_review:operator_required'
+  where user_id = v_user and request_id = v_request;
+
+  if not public.armex_release_chat_reconciliation(
+    v_user, v_request, v_lease, 'retryable:transient_write_error'
+  ) then
+    raise exception 'lease should be released while preserving manual-review hold';
+  end if;
+
+  select diagnostic_code into v_diagnostic
+  from public.armex_chat_requests
+  where user_id = v_user and request_id = v_request;
+  if v_diagnostic <> 'manual_review:operator_required' then
+    raise exception 'manual-review diagnostic was overwritten: %', v_diagnostic;
+  end if;
+end $manual_review_diagnostic_regression$;
+
+-- Separate request proves ambiguous provider outcomes are excluded from claims.
+do $ambiguous_regression$
+declare
+  v_user uuid := gen_random_uuid();
+  v_request uuid := gen_random_uuid();
+  v_claim record;
+begin
+  insert into auth.users(id) values (v_user);
+  perform public.armex_claim_chat_request(v_user, v_request);
+  if not public.armex_record_chat_provider_evidence(
+    v_user, v_request, 'unknown', 'unknown', null, null, 'timeout_ambiguous'
+  ) then
+    raise exception 'ambiguous evidence should be persisted';
+  end if;
+  select * into v_claim from public.armex_claim_chat_reconciliation(5, 120);
+  if v_claim.request_id is not null then
+    raise exception 'ambiguous provider outcome must not be automatically claimed';
+  end if;
+end $ambiguous_regression$;
+
+rollback;

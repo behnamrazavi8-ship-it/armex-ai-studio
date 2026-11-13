@@ -1,17 +1,22 @@
 name: Edge Function and frontend checks
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
-      - "supabase/functions/armex-api/**"
+      - "supabase/functions/**"
+      - "supabase/migrations/**"
+      - "supabase/tests/**"
   push:
-    branches: [main]
+    branches: [main, "feat/**"]
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
-      - "supabase/functions/armex-api/**"
+      - "supabase/functions/**"
+      - "supabase/migrations/**"
+      - "supabase/tests/**"
 
 permissions:
   contents: read
@@ -19,13 +24,121 @@ permissions:
 jobs:
   quality-check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lokal_reconciliation_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lokal_reconciliation_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: lokal_reconciliation_test
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Test Production-derived core schema baseline
+        run: |
+          createdb lokal_core_baseline_test
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/tests/core-baseline-fixture.sql
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261107000000_lokal_user_projects.sql
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261107010000_lokal_image_generation.sql
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261108000000_lokal_core_schema_baseline.sql
+          psql -d lokal_core_baseline_test -v ON_ERROR_STOP=1 -f supabase/tests/core-baseline-invariants.sql
+
+      - name: Test RunPod worker CPU contract
+        run: python -m unittest discover -s runpod-worker/tests -v
+
       - name: Type-check armex-api
         run: deno check supabase/functions/armex-api/index.ts
+
+      - name: Type-check chat reconciliation worker
+        run: deno check supabase/functions/armex-chat-reconciler/index.ts
+
+      - name: Test chat request billing lifecycle
+        run: deno test supabase/functions/armex-api/chat-request-lifecycle_test.ts
+
+      - name: Test credit ledger evidence matching
+        run: deno test supabase/functions/armex-api/credit-ledger-policy_test.ts
+
+      - name: Test Zarinpal payment callback recovery policy
+        run: deno test supabase/functions/armex-api/payment-callback-policy_test.ts
+
+      - name: Test Zarinpal payment request recovery policy
+        run: deno test supabase/functions/armex-api/payment-request-policy_test.ts
+
+      - name: Type-check Zarinpal payment request recovery policy
+        run: deno check supabase/functions/armex-api/payment-request-policy.ts
+
+      - name: Test durable RunPod video output contract
+        run: deno test supabase/functions/armex-api/video-output-policy_test.ts
+
+      - name: Test RunPod callback and refund retry policy
+        run: deno test supabase/functions/armex-api/runpod-callback-policy_test.ts
+
+      - name: Test video recovery policy
+        run: deno test supabase/functions/armex-api/video-recovery-policy_test.ts
+
+      - name: Simulate concurrent payment and video callback recovery
+        run: deno test supabase/functions/armex-api/provider-callback-simulation_test.ts
+
+      - name: Test chat request reconciliation policy
+        run: deno test supabase/functions/armex-api/chat-request-reconciliation_test.ts
+
+      - name: Test deterministic chat recovery payload
+        run: deno test supabase/functions/armex-chat-reconciler/recovery-payload_test.ts
+
+      - name: Build disposable payment and video PostgreSQL fixture
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/provider-callback-fixture.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109180000_video_and_payment_orders.sql
+
+      - name: Test concurrent payment and video callbacks in PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/provider-callback-concurrency.sql
+
+      - name: Test wallet RPCs in isolated disposable PostgreSQL database
+        run: |
+          createdb lokal_wallet_rpc_test
+          psql -d lokal_wallet_rpc_test -v ON_ERROR_STOP=1 -f supabase/tests/wallet-rpc-fixture.sql
+          psql -d lokal_wallet_rpc_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261109240000_wallet_rpc_idempotency_hardening.sql
+          psql -d lokal_wallet_rpc_test -v ON_ERROR_STOP=1 -f supabase/tests/wallet-rpc-invariants.sql
+
+      - name: Test signup and referral activation in isolated PostgreSQL database
+        run: |
+          createdb lokal_signup_referral_test
+          psql -d lokal_signup_referral_test -v ON_ERROR_STOP=1 -f supabase/tests/signup-referral-fixture.sql
+          psql -d lokal_signup_referral_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261109240000_wallet_rpc_idempotency_hardening.sql
+          psql -d lokal_signup_referral_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261109250000_signup_referral_idempotency_hardening.sql
+          psql -d lokal_signup_referral_test -v ON_ERROR_STOP=1 -f supabase/tests/signup-referral-invariants.sql
+
+      - name: Build disposable PostgreSQL schema fixture
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-fixture.sql
+
+      - name: Apply staged chat migrations to disposable PostgreSQL
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109190000_durable_chat_request_idempotency.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109200000_chat_request_reconciliation_evidence.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109210000_chat_recovery_metadata.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109220000_chat_atomic_recovery_persistence.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261109230000_chat_failure_refund_guard.sql
+
+      - name: Test chat recovery SQL invariants
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-regression.sql
+
+      - name: Test multi-session chat reconciliation races
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/chat-reconciliation-concurrency.sql
 
       - name: Syntax-check browser JavaScript
         run: |
@@ -57,6 +170,74 @@ jobs:
           missing = [item for item in required if item not in ids]
           if missing:
               raise SystemExit("Missing required UI ids: " + ", ".join(missing))
+          payment_contract = [
+              "pendingPaymentRequestMemory", "allowPending=false",
+              "request_closed===true", "retry_allowed===true",
+              "result.pending===true", "pendingPaymentRequestMemory[session.user.id]",
+              "until the callback resolves the order"
+          ]
+          missing_payment = [item for item in payment_contract if item not in html]
+          if missing_payment:
+              raise SystemExit("Missing safe payment retry UI contract: " + ", ".join(missing_payment))
           PY
           node --check /tmp/lokal-inline-0.js
           node --check /tmp/lokal-inline-1.mjs
+
+  worker-container-smoke:
+    name: Build and smoke-test RunPod worker container (no publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout PR source
+        uses: actions/checkout@v4
+
+      - name: Free unused runner image caches
+        run: |
+          echo "Disk before cleanup:"
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android
+          echo "Disk after cleanup:"
+          df -h /
+
+      - name: Check Docker and available disk
+        run: |
+          docker version
+          available_kb=$(df -Pk / | awk 'NR==2 {print $4}')
+          available_gb=$((available_kb / 1024 / 1024))
+          echo "Available disk: ${available_gb} GiB"
+          if [ "$available_gb" -lt 22 ]; then
+            echo "::error::Insufficient disk for the CUDA/PyTorch worker image; at least 22 GiB is required."
+            exit 1
+          fi
+
+      - name: Build Docker image locally (no push)
+        run: |
+          docker build --pull --progress=plain \
+            --tag lokal-ai-runpod-worker:ci \
+            --file runpod-worker/Dockerfile \
+            runpod-worker
+
+      - name: Smoke-test container runtime without GPU or model download
+        run: |
+          docker run --rm --entrypoint python lokal-ai-runpod-worker:ci \
+            -c 'import pathlib, shutil, torch, runpod, handler; \
+          repo = pathlib.Path("/opt/Wan2.2"); \
+          revision = handler.validate_model_revision(handler.WAN_MODEL_REVISION); \
+          assert (repo / "generate.py").is_file(), "Wan generate.py missing"; \
+          assert shutil.which("ffmpeg"), "ffmpeg executable missing"; \
+          assert shutil.which("ffprobe"), "ffprobe executable missing"; \
+          assert torch.version.cuda, "PyTorch build has no CUDA runtime"; \
+          print("Runtime imports: OK"); \
+          print("Wan source: OK"); \
+          print("Pinned model revision:", revision); \
+          print("FFmpeg tools: OK"); \
+          print("CUDA-enabled PyTorch:", torch.version.cuda); \
+          print("GPU visible to runner:", torch.cuda.is_available()); \
+          print("No model download or inference was started.")'
+
+      - name: Report local image size
+        if: success()
+        run: |
+          docker image inspect lokal-ai-runpod-worker:ci \
+            --format='Image ID: {{.Id}} | Size: {{.Size}} bytes'
+          echo "Image exists only on this temporary GitHub Actions runner; it is not pushed or published."

@@ -1,0 +1,73 @@
+name: RunPod Worker Docker Build (no push)
+
+on:
+  pull_request:
+    paths:
+      - "runpod-worker/**"
+      - ".github/workflows/runpod-worker-docker-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  docker-build:
+    name: Build worker image without publishing
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout PR source
+        uses: actions/checkout@v4
+
+      - name: Free unused runner image caches
+        run: |
+          echo "Disk before cleanup:"
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android
+          echo "Disk after cleanup:"
+          df -h /
+
+      - name: Check Docker and available disk
+        run: |
+          docker version
+          available_kb=$(df -Pk / | awk 'NR==2 {print $4}')
+          available_gb=$((available_kb / 1024 / 1024))
+          echo "Available disk: ${available_gb} GiB"
+          if [ "$available_gb" -lt 22 ]; then
+            echo "::error::Insufficient disk for the CUDA/PyTorch worker image; at least 22 GiB is required."
+            exit 1
+          fi
+
+      - name: Build Docker image locally (no push)
+        run: |
+          docker build --pull --progress=plain \
+            --tag lokal-ai-runpod-worker:pr-${{ github.event.pull_request.number }} \
+            --file runpod-worker/Dockerfile \
+            runpod-worker
+
+      - name: Smoke-test container runtime without GPU or model download
+        run: |
+          docker run --rm --entrypoint python \
+            lokal-ai-runpod-worker:pr-${{ github.event.pull_request.number }} \
+            -c '
+          import pathlib, shutil, torch, runpod, handler
+          repo = pathlib.Path("/opt/Wan2.2")
+          revision = handler.validate_model_revision(handler.WAN_MODEL_REVISION)
+          assert (repo / "generate.py").is_file(), "Wan generate.py missing"
+          assert shutil.which("ffmpeg"), "ffmpeg executable missing"
+          assert shutil.which("ffprobe"), "ffprobe executable missing"
+          assert torch.version.cuda, "PyTorch build has no CUDA runtime"
+          print("Runtime imports: OK")
+          print("Wan source: OK")
+          print("Pinned model revision:", revision)
+          print("FFmpeg tools: OK")
+          print("CUDA-enabled PyTorch:", torch.version.cuda)
+          print("GPU visible to runner:", torch.cuda.is_available())
+          print("No model download or inference was started.")
+          '
+
+      - name: Report local image size
+        if: success()
+        run: |
+          docker image inspect lokal-ai-runpod-worker:pr-${{ github.event.pull_request.number }} \
+            --format='Image ID: {{.Id}} | Size: {{.Size}} bytes'
+          echo "Image exists only on this temporary GitHub Actions runner; it is not pushed or published."

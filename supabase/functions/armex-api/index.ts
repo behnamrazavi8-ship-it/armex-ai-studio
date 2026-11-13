@@ -1,5 +1,21 @@
 import { createSupabaseContext } from "npm:@supabase/server@1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { chatRequestFailureAction } from "./chat-request-lifecycle.ts";
+import { hasDurableVerifiedPayment, isMatchingPaymentGrant, isValidProviderReference, paymentGrantIdempotencyKey, shouldCancelUnverifiedPayment } from "./payment-callback-policy.ts";
+import { findUnverifiedAuthorityForOrder, isDefinitiveZarinpalRequestRejection, isUnverifiedAuthorityForOrder, parsePaymentPackages, paymentCallbackUrlForOrder } from "./payment-request-policy.ts";
+import {
+  decideRunpodCallbackAction,
+  isDefinitiveRunpodRejection,
+  isMatchingRunpodStatusSnapshot,
+  isMatchingRunpodJobSnapshot,
+  runpodRefundIdempotencyKey,
+  runpodAuthorizationHeader,
+} from "./runpod-callback-policy.ts";
+import { isMatchingCreditDebit, isMatchingCreditRefund } from "./credit-ledger-policy.ts";
+import { resolveVideoDebitOutcome } from "./video-debit-policy.ts";
+import { assessVideoRecovery } from "./video-recovery-policy.ts";
+import { validateRunpodVideoOutput, wanSizeForAspectRatio } from "./video-output-policy.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -98,7 +114,9 @@ const refundCredits = async (
   reason: string,
 ) => {
   if (amount <= 0) return true;
-  const idempotencyKey = "ai_refund:" + requestId + ":" + attemptId + ":" + reason;
+  const idempotencyKey = reason === "video_refund" && requestId === attemptId
+    ? runpodRefundIdempotencyKey(requestId)
+    : "ai_refund:" + requestId + ":" + attemptId + ":" + reason;
   for (let attempt = 0; attempt < 2; attempt++) {
     const { data, error } = await db.rpc("armex_grant_credits", {
       p_user_id: userId,
@@ -112,11 +130,11 @@ const refundCredits = async (
 
     const { data: existing, error: lookupError } = await db
       .from("armex_credit_transactions")
-      .select("id")
+      .select("amount,transaction_type,metadata")
       .eq("user_id", userId)
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
-    if (!lookupError && existing) return true;
+    if (!lookupError && isMatchingCreditRefund(existing, amount, { requestId, attemptId, reason })) return true;
 
     if (error) {
       console.error("Credit refund attempt failed", {
@@ -128,6 +146,26 @@ const refundCredits = async (
   }
   console.error("Credit refund could not be confirmed", { requestId, reason });
   return false;
+};
+
+const markChatRequestFailed = async (
+  db: SupabaseClient,
+  userId: string,
+  requestId: string,
+  failureCode: string,
+): Promise<boolean> => {
+  const { data, error } = await db.rpc("armex_fail_chat_request", {
+    p_user_id: userId,
+    p_request_id: requestId,
+    p_failure_code: failureCode,
+  });
+  if (error || data !== true) {
+    console.error("Chat request failure state could not be saved", {
+      requestId, failureCode, code: error?.code,
+    });
+    return false;
+  }
+  return true;
 };
 
 
@@ -225,11 +263,11 @@ const generateImage = async (
     // idempotency key before deciding whether a refund or retry is required.
     const { data: existingDebit, error: debitLookupError } = await db
       .from("armex_credit_transactions")
-      .select("id")
+      .select("amount,transaction_type")
       .eq("user_id", userId)
       .eq("idempotency_key", "image_request:" + requestId)
       .maybeSingle();
-    debitConfirmed = !debitLookupError && Boolean(existingDebit);
+    debitConfirmed = !debitLookupError && isMatchingCreditDebit(existingDebit, IMAGE_CREDIT_COST);
   }
   if (!debitConfirmed) {
     await db.from("armex_image_generations").update({
@@ -334,6 +372,1053 @@ const generateImage = async (
   } finally { clearTimeout(timeout); }
 };
 
+
+const VIDEO_CREDIT_COST = Number(Deno.env.get("VIDEO_CREDIT_COST") ?? "0");
+const VIDEO_BUCKET = "lokal-ai-videos";
+const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+const RUNPOD_API = "https://api.runpod.ai/v2";
+
+const createVideoAdminClient = (): SupabaseClient => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
+  if (!supabaseUrl || !serviceKey) throw new Error("VIDEO_STORAGE_ADMIN_NOT_CONFIGURED");
+  return createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+};
+
+const verifyStoredVideo = async (
+  admin: SupabaseClient,
+  expected: { storagePath: string; mimeType: string; fileSizeBytes: number },
+): Promise<boolean | null> => {
+  const { data, error } = await admin.storage.from(VIDEO_BUCKET).info(expected.storagePath);
+  if (error) {
+    const status = Number((error as { statusCode?: string | number }).statusCode ?? 0);
+    return status === 404 ? false : null;
+  }
+  if (!data) return false;
+  return data.contentType === expected.mimeType && Number(data.size) === expected.fileSizeBytes &&
+    Number(data.size) <= VIDEO_MAX_BYTES;
+};
+
+const signedVideoUrl = async (storagePath: string): Promise<string> => {
+  const admin = createVideoAdminClient();
+  const { data, error } = await admin.storage.from(VIDEO_BUCKET).createSignedUrl(storagePath, 3600);
+  if (error || !data?.signedUrl) throw new Error("VIDEO_SIGNING_FAILED");
+  return data.signedUrl;
+};
+const ZARINPAL_API = "https://api.zarinpal.com/pg/v4/payment";
+
+const safeHttpsUrl = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" ? parsed.toString() : null;
+  } catch { return null; }
+};
+
+const videoProviderStatus = (status: string): string => ({
+  IN_QUEUE: "queued",
+  IN_PROGRESS: "processing",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+  TIMED_OUT: "failed",
+}[status] ?? "processing");
+
+const generateVideo = async (
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+): Promise<Response> => {
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  const aspectRatio = body.aspect_ratio === undefined ? "16:9" : body.aspect_ratio;
+  const wanSize = wanSizeForAspectRatio(aspectRatio);
+  if (!wanSize) return fail("Wan 2.2 TI2V-5B supports only 16:9 or 9:16 video output", 400, cors);
+  const requestId = isUuid(body.request_id) ? body.request_id : "";
+  const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
+  const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
+  if (!endpointId || !token) return fail("Video generation is not configured; RunPod endpoint credentials are required", 503, cors);
+  if (!prompt || prompt.length > 6000) return fail("A prompt between 1 and 6000 characters is required", 400, cors);
+  if (!requestId) return fail("A UUID request_id is required for safe video billing", 400, cors);
+  if (!Number.isSafeInteger(VIDEO_CREDIT_COST) || VIDEO_CREDIT_COST < 1) {
+    return fail("Video billing is not configured; set VIDEO_CREDIT_COST", 503, cors);
+  }
+
+  const { data: prior, error: priorError } = await db.from("armex_video_generations")
+    .select("id,status,provider_job_id,result_url,credits_charged,created_at,updated_at")
+    .eq("user_id", userId).eq("request_id", requestId).maybeSingle();
+  if (priorError) return fail("Could not verify video request idempotency", 500, cors);
+  if (prior) return json({ success: true, duplicate: true, video: prior }, 200, cors);
+
+  const { data: job, error: insertError } = await db.from("armex_video_generations").insert({
+    user_id: userId, request_id: requestId, prompt, model: "wan2.2-ti2v-5b",
+    credits_charged: VIDEO_CREDIT_COST, status: "queued", provider_metadata: { aspect_ratio: aspectRatio, duration_seconds: 5 },
+  }).select("id").single();
+  if (insertError || !job) return fail("Could not create video job", insertError?.code === "23505" ? 409 : 500, cors);
+
+  let webhookUrl = "";
+  try { webhookUrl = await runpodWebhookUrl(job.id, requestId); }
+  catch {
+    await db.from("armex_video_generations").update({
+      status: "failed", error_code: "webhook_not_configured",
+    }).eq("id", job.id).eq("user_id", userId);
+    return fail("Video completion webhook is not configured", 503, cors);
+  }
+
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")?.trim() ?? "";
+  let storageUploadUrl = "";
+  const storagePath = userId + "/" + job.id + ".mp4";
+  try {
+    if (!supabaseAnonKey) throw new Error("SUPABASE_ANON_KEY_NOT_CONFIGURED");
+    const storageAdmin = createVideoAdminClient();
+    const { data: signedUpload, error: signedUploadError } = await storageAdmin.storage
+      .from(VIDEO_BUCKET).createSignedUploadUrl(storagePath, { upsert: true });
+    if (signedUploadError || !signedUpload?.signedUrl) throw new Error("VIDEO_SIGNED_UPLOAD_FAILED");
+    storageUploadUrl = signedUpload.signedUrl;
+  } catch (error) {
+    await db.from("armex_video_generations").update({
+      status: "failed", error_code: "video_storage_upload_not_configured",
+      updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+    console.error("Video storage upload authorization could not be prepared", {
+      requestId, reason: error instanceof Error ? error.message : "unknown",
+    });
+    return fail("Persistent video storage is not configured; no credits were charged", 503, cors);
+  }
+
+  const debitKey = "video_request:" + requestId;
+  const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
+    p_user_id: userId, p_amount: VIDEO_CREDIT_COST, p_idempotency_key: debitKey,
+    p_description: "رزرو اعتبار تولید ویدئو در LOKAL AI",
+    p_metadata: { request_id: requestId, model: "wan2.2-ti2v-5b", provider: "runpod" },
+  });
+  let debitOutcome: "confirmed" | "insufficient" | "rejected" | "uncertain" | "conflict";
+  if (debitError) {
+    const { data: existing, error: ledgerError } = await db.from("armex_credit_transactions")
+      .select("amount,transaction_type")
+      .eq("user_id", userId).eq("idempotency_key", debitKey).maybeSingle();
+    debitOutcome = resolveVideoDebitOutcome({
+      rpcError: true,
+      rpcData: debited,
+      ledgerError: Boolean(ledgerError),
+      ledgerFound: existing !== null,
+      ledgerMatches: isMatchingCreditDebit(existing, VIDEO_CREDIT_COST),
+    });
+  } else {
+    debitOutcome = resolveVideoDebitOutcome({
+      rpcError: false,
+      rpcData: debited,
+      ledgerError: false,
+      ledgerFound: false,
+      ledgerMatches: false,
+    });
+  }
+
+  if (debitOutcome === "uncertain" || debitOutcome === "conflict") {
+    const errorCode = debitOutcome === "conflict"
+      ? "credit_reservation_ledger_conflict"
+      : "credit_reservation_uncertain";
+    const { error: pendingError } = await db.from("armex_video_generations").update({
+      error_code: errorCode, updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+    if (pendingError) {
+      console.error("Video debit outcome is uncertain and pending marker failed", {
+        requestId, code: pendingError.code,
+      });
+    }
+    // Do not submit to RunPod until the reservation is positively confirmed.
+    // Keep the request queued so retries cannot create a second debit or GPU job.
+    return json({
+      success: true,
+      pending: true,
+      request_id: requestId,
+      video: { id: job.id, status: "queued", error_code: errorCode },
+      message: "Credit reservation needs reconciliation; no video job was submitted",
+    }, 202, cors);
+  }
+
+  if (debitOutcome !== "confirmed") {
+    const errorCode = debitOutcome === "insufficient"
+      ? "insufficient_credits"
+      : "credit_reservation_failed";
+    await db.from("armex_video_generations").update({
+      status: "failed", error_code: errorCode, updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+    return debitOutcome === "insufficient"
+      ? fail("Insufficient credits", 402, cors)
+      : fail("Could not reserve video credits", 500, cors);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/run", {
+      method: "POST",
+      headers: { Authorization: runpodAuthorizationHeader(token), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        input: {
+          task: "text_to_video", prompt, model: "wan2.2-ti2v-5b",
+          request_id: requestId, aspect_ratio: aspectRatio, size: wanSize, duration_seconds: 5,
+          storage_upload: {
+            path: storagePath,
+            signed_url: storageUploadUrl,
+            apikey: supabaseAnonKey,
+            authorization: "Bearer " + supabaseAnonKey,
+            content_type: "video/mp4",
+            max_bytes: VIDEO_MAX_BYTES,
+          },
+        },
+        // Reconciles jobs even when the /run response is lost after provider acceptance.
+        webhook: webhookUrl,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (error) {
+    // A timeout may happen after the provider accepted the job. Do not refund
+    // blindly: that could make a paid GPU job free. Keep it queued for review.
+    await db.from("armex_video_generations").update({ error_code: "provider_submission_uncertain" })
+      .eq("id", job.id).eq("user_id", userId);
+    console.error("RunPod submission outcome uncertain", { requestId, error: String(error) });
+    return json({ success: true, pending: true, request_id: requestId, video: { id: job.id, status: "queued", error_code: "provider_submission_uncertain" }, message: "Job submission is being reconciled; refresh status shortly" }, 202, cors);
+  }
+
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => "")).slice(0, 300);
+    const definitiveRejection = isDefinitiveRunpodRejection(response.status);
+    console.error("RunPod submission returned a non-success response", {
+      requestId, status: response.status, definitiveRejection, detail,
+    });
+
+    if (!definitiveRejection) {
+      // 408/409/425/429/5xx and unknown statuses cannot prove that RunPod did
+      // not accept the job. Keep the reservation and let webhook/polling/manual
+      // reconciliation resolve the outcome; never refund an ambiguous submit.
+      await db.from("armex_video_generations").update({
+        error_code: "provider_submission_uncertain",
+      }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+      return json({
+        success: true,
+        pending: true,
+        request_id: requestId,
+        video: {
+          id: job.id,
+          status: "queued",
+          error_code: "provider_submission_uncertain",
+        },
+        message: "Provider submission outcome is uncertain; credits remain reserved while the job is reconciled",
+      }, 202, cors);
+    }
+
+    const refunded = await refundCredits(db, userId, VIDEO_CREDIT_COST, job.id, job.id, "video_refund");
+    await db.from("armex_video_generations").update({
+      status: "failed",
+      refund_status: refunded ? "completed" : "pending",
+      error_code: "provider_rejected",
+    }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+    return fail(
+      refunded
+        ? "Video provider rejected the job; credits were returned"
+        : "Provider rejected the job but refund could not be confirmed",
+      refunded ? 502 : 500,
+      cors,
+    );
+  }
+
+  const payload = await response.json();
+  const providerJobId = typeof payload.id === "string" ? payload.id : "";
+  if (!providerJobId) {
+    await db.from("armex_video_generations").update({ error_code: "provider_job_id_missing" })
+      .eq("id", job.id).eq("user_id", userId);
+    return json({ success: true, pending: true, request_id: requestId, video: { id: job.id, status: "queued", error_code: "provider_job_id_missing" }, message: "Provider accepted the request; job ID reconciliation is required" }, 202, cors);
+  }
+  // A terminal webhook can arrive before the /run response. Only update a job
+  // that is still queued, so the late submission response cannot overwrite it.
+  const { error: updateError } = await db.from("armex_video_generations").update({
+    provider_job_id: providerJobId, status: videoProviderStatus(String(payload.status ?? "IN_QUEUE")),
+    provider_metadata: { delay_time: payload.delayTime ?? null, execution_time: payload.executionTime ?? null },
+    updated_at: new Date().toISOString(),
+  }).eq("id", job.id).eq("user_id", userId).eq("status", "queued");
+  if (updateError) return fail("Provider accepted the job but its tracking record could not be saved", 500, cors);
+  const { data: current, error: currentError } = await db.from("armex_video_generations")
+    .select("id,request_id,provider_job_id,status,result_url,refund_status")
+    .eq("id", job.id).eq("user_id", userId).single();
+  if (currentError || !current) return fail("Could not confirm video job status", 500, cors);
+  return json({ success: true, video: current }, 202, cors);
+};
+
+const runpodWebhookSignature = async (
+  secret: string, jobId: string, requestId: string,
+): Promise<string> => {
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC", key, new TextEncoder().encode(jobId + ":" + requestId),
+  );
+  return Array.from(new Uint8Array(signature), (byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+const runpodWebhookUrl = async (jobId: string, requestId: string): Promise<string> => {
+  const base = (Deno.env.get("RUNPOD_WEBHOOK_CALLBACK_URL")?.trim() ||
+    (Deno.env.get("SUPABASE_URL")?.trim() + "/functions/v1/armex-api?action=runpod_callback"));
+  const secret = Deno.env.get("RUNPOD_WEBHOOK_SECRET")?.trim() ?? "";
+  if (!secret || !base.startsWith("https://")) throw new Error("RUNPOD_WEBHOOK_NOT_CONFIGURED");
+  const url = new URL(base);
+  url.searchParams.set("action", "runpod_callback");
+  url.searchParams.set("token", await runpodWebhookSignature(secret, jobId, requestId));
+  url.searchParams.set("job_id", jobId);
+  url.searchParams.set("request_id", requestId);
+  return url.toString();
+};
+
+const runpodWebhookCallback = async (request: Request): Promise<Response> => {
+  const url = new URL(request.url);
+  const secret = Deno.env.get("RUNPOD_WEBHOOK_SECRET")?.trim() ?? "";
+  const jobId = url.searchParams.get("job_id") ?? "";
+  const requestId = url.searchParams.get("request_id") ?? "";
+  const supplied = url.searchParams.get("token") ?? "";
+  if (!secret || !isUuid(jobId) || !isUuid(requestId)) {
+    return json({ success: false, error: "Unauthorized webhook" }, 401);
+  }
+  const expected = await runpodWebhookSignature(secret, jobId, requestId);
+  let mismatch = supplied.length ^ expected.length;
+  for (let i = 0; i < expected.length; i++) {
+    mismatch |= (supplied.charCodeAt(i) || 0) ^ expected.charCodeAt(i);
+  }
+  if (mismatch !== 0) return json({ success: false, error: "Unauthorized webhook" }, 401);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
+  if (!supabaseUrl || !serviceKey) return json({ success: false, error: "Webhook storage is not configured" }, 503);
+  const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
+  const providerJobId = typeof payload?.id === "string" ? payload.id : "";
+  const callbackStatus = typeof payload?.status === "string" ? payload.status : "";
+  const callbackInput = payload?.input && typeof payload.input === "object"
+    ? payload.input as Record<string, unknown> : {};
+  if (!payload || !providerJobId || callbackInput.request_id !== requestId ||
+      !["COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"].includes(callbackStatus)) {
+    return json({ success: false, error: "Invalid terminal job payload" }, 400);
+  }
+
+  // The signed callback URL authenticates the route, not the webhook body.
+  // Verify the provider job independently and use only its status/output data.
+  const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
+  const runpodToken = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
+  if (!endpointId || !runpodToken) {
+    return json({ success: false, error: "RunPod callback verification is not configured" }, 503);
+  }
+  let statusResponse: Response;
+  try {
+    statusResponse = await fetch(
+      RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/status/" + encodeURIComponent(providerJobId),
+      { headers: { Authorization: runpodAuthorizationHeader(runpodToken) }, signal: AbortSignal.timeout(15000) },
+    );
+  } catch {
+    return json({ success: false, pending: true, error: "RunPod status verification is temporarily unavailable" }, 503);
+  }
+  if (!statusResponse.ok) {
+    return json({ success: false, pending: true, error: "RunPod status verification could not be completed" }, 503);
+  }
+  const providerSnapshot = await statusResponse.json().catch(() => null);
+  if (!isMatchingRunpodStatusSnapshot(payload, providerSnapshot, requestId)) {
+    return json({ success: false, error: "Webhook does not match the current RunPod job status" }, 409);
+  }
+  const verifiedPayload = providerSnapshot as Record<string, unknown>;
+  const providerStatus = String(verifiedPayload.status);
+
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: job, error } = await admin.from("armex_video_generations")
+    .select("id,user_id,provider_job_id,status,credits_charged,refund_status,storage_path,mime_type,file_size_bytes")
+    .eq("id", jobId).eq("request_id", requestId).maybeSingle();
+  if (error || !job) return json({ success: false, error: "Video job not found" }, 404);
+  if (job.provider_job_id && job.provider_job_id !== providerJobId) {
+    return json({ success: false, error: "Provider job ID mismatch" }, 409);
+  }
+  const callbackAction = decideRunpodCallbackAction(job.status, job.refund_status, providerStatus);
+  if (callbackAction === "duplicate") {
+    return json({ success: true, duplicate: true }, 200);
+  }
+
+  if (providerStatus === "COMPLETED") {
+    const output = verifiedPayload.output && typeof verifiedPayload.output === "object"
+      ? verifiedPayload.output as Record<string, unknown> : {};
+    const durableOutput = validateRunpodVideoOutput(output, job.user_id, job.id);
+    const stored = durableOutput ? await verifyStoredVideo(admin, durableOutput) : false;
+    if (stored === null) {
+      return json({ success: false, pending: true, error: "Persistent video storage verification is temporarily unavailable" }, 503);
+    }
+    if (!durableOutput || !stored) {
+      const { data: claimed, error: claimError } = await admin.from("armex_video_generations").update({
+        provider_job_id: providerJobId, status: "failed", refund_status: "pending",
+        error_code: "worker_did_not_upload_durable_mp4", updated_at: new Date().toISOString(),
+      }).eq("id", job.id).in("status", ["queued", "processing"]).select("id").maybeSingle();
+      if (claimError) return json({ success: false, error: "Could not claim failed video result" }, 500);
+      if (!claimed) return json({ success: true, duplicate: true }, 200);
+      const refunded = await refundCredits(admin, job.user_id, Number(job.credits_charged), job.id, job.id, "video_refund");
+      const { error: saveError } = await admin.from("armex_video_generations").update({
+        refund_status: refunded ? "completed" : "pending", updated_at: new Date().toISOString(),
+      }).eq("id", job.id).eq("status", "failed");
+      if (saveError) return json({ success: false, error: "Could not persist video refund status" }, 500);
+      return json({ success: true, refund_status: refunded ? "completed" : "pending" }, 200);
+    }
+    const { data: saved, error: saveError } = await admin.from("armex_video_generations").update({
+      provider_job_id: providerJobId, status: "completed", result_url: null,
+      storage_path: durableOutput.storagePath, mime_type: durableOutput.mimeType,
+      file_size_bytes: durableOutput.fileSizeBytes,
+      completed_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    }).eq("id", job.id).in("status", ["queued", "processing"]).select("id").maybeSingle();
+    if (saveError) return json({ success: false, error: "Could not persist video result" }, 500);
+    if (!saved) return json({ success: true, duplicate: true }, 200);
+    return json({ success: true }, 200);
+  }
+
+  if (callbackAction !== "retry_refund") {
+    const terminalStatus = providerStatus === "CANCELLED" ? "cancelled" : "failed";
+    const { data: claimed, error: claimError } = await admin.from("armex_video_generations")
+      .update({
+        provider_job_id: providerJobId, status: terminalStatus, refund_status: "pending",
+        error_code: providerStatus === "TIMED_OUT" ? "provider_job_timed_out" : "provider_job_failed",
+        updated_at: new Date().toISOString(),
+      }).eq("id", job.id).in("status", ["queued", "processing"]).select("id").maybeSingle();
+    if (claimError) return json({ success: false, error: "Could not claim failed video job" }, 500);
+    if (!claimed) return json({ success: true, duplicate: true }, 200);
+  }
+  const refunded = await refundCredits(admin, job.user_id, Number(job.credits_charged), job.id, job.id, "video_refund");
+  const { error: saveError } = await admin.from("armex_video_generations").update({
+    refund_status: refunded ? "completed" : "pending", updated_at: new Date().toISOString(),
+  }).eq("id", job.id).in("status", ["failed", "cancelled"]);
+  if (saveError) return json({ success: false, error: "Could not persist video refund status" }, 500);
+  return json({ success: true, refund_status: refunded ? "completed" : "pending" }, 200);
+};
+
+const getVideoStatus = async (
+  db: SupabaseClient, userId: string, id: string, cors: HeadersInit,
+): Promise<Response> => {
+  if (!isUuid(id)) return fail("A valid video job ID is required", 400, cors);
+  const { data: job, error } = await db.from("armex_video_generations")
+    .select("id,request_id,status,provider_job_id,result_url,storage_path,mime_type,file_size_bytes,error_code,credits_charged,refund_status,provider_metadata,created_at,updated_at")
+    .eq("id", id).eq("user_id", userId).maybeSingle();
+  if (error || !job) return fail("Video job not found", 404, cors);
+  if (["failed", "cancelled"].includes(job.status) && job.refund_status === "pending") {
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
+    if (refunded) await db.from("armex_video_generations").update({ refund_status: "completed", updated_at: new Date().toISOString() }).eq("id", job.id).eq("user_id", userId).in("status", ["failed", "cancelled"]);
+    return json({ success: refunded, video: { ...job, refund_status: refunded ? "completed" : "pending" } }, refunded ? 200 : 500, cors);
+  }
+  if (!job.provider_job_id) {
+    const recovery = assessVideoRecovery({
+      status: job.status,
+      providerJobId: job.provider_job_id,
+      errorCode: job.error_code,
+      createdAt: job.created_at,
+      nowMs: Date.now(),
+    });
+    if (recovery?.action === "manual_review") {
+      const metadata = job.provider_metadata && typeof job.provider_metadata === "object" &&
+          !Array.isArray(job.provider_metadata)
+        ? job.provider_metadata as Record<string, unknown>
+        : {};
+      let markedMetadata = metadata;
+      if (metadata.recovery_status !== recovery.recoveryStatus) {
+        markedMetadata = {
+          ...metadata,
+          recovery_status: recovery.recoveryStatus,
+          recovery_reason: recovery.reason,
+          recovery_marked_at: new Date().toISOString(),
+        };
+        const { data: marked, error: markError } = await db.from("armex_video_generations")
+          .update({ provider_metadata: markedMetadata })
+          .eq("id", job.id).eq("user_id", userId).eq("status", "queued")
+          .is("provider_job_id", null).eq("error_code", job.error_code)
+          .select("id").maybeSingle();
+        if (markError) return fail("Could not save video recovery marker", 500, cors);
+        if (!marked) {
+          const { data: latest, error: latestError } = await db.from("armex_video_generations")
+            .select("id,request_id,status,provider_job_id,result_url,storage_path,mime_type,file_size_bytes,error_code,credits_charged,refund_status,provider_metadata,created_at,updated_at")
+            .eq("id", job.id).eq("user_id", userId).maybeSingle();
+          if (latestError || !latest) return fail("Could not refresh video recovery status", 500, cors);
+          return json({ success: true, video: latest }, 200, cors);
+        }
+      }
+      return json({
+        success: true,
+        video: { ...job, provider_metadata: markedMetadata, recovery_status: recovery.recoveryStatus },
+      }, 200, cors);
+    }
+  }
+  if (job.status === "completed") {
+    if (!job.storage_path) return json({ success: true, video: job }, 200, cors);
+    try {
+      const resultUrl = await signedVideoUrl(job.storage_path);
+      return json({ success: true, video: { ...job, result_url: resultUrl } }, 200, cors);
+    } catch {
+      return fail("Video is stored but its private download link could not be created", 503, cors);
+    }
+  }
+  if (["failed", "cancelled"].includes(job.status) || !job.provider_job_id) {
+    return json({ success: true, video: job }, 200, cors);
+  }
+  const endpointId = Deno.env.get("RUNPOD_ENDPOINT_ID")?.trim() ?? "";
+  const token = Deno.env.get("RUNPOD_API_KEY")?.trim() ?? "";
+  if (!endpointId || !token) return fail("Video status provider is not configured", 503, cors);
+  const response = await fetch(RUNPOD_API + "/" + encodeURIComponent(endpointId) + "/status/" + encodeURIComponent(job.provider_job_id), {
+    headers: { Authorization: runpodAuthorizationHeader(token) }, signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) return fail("Could not retrieve video status", 502, cors);
+  const payload = await response.json();
+  if (!isMatchingRunpodJobSnapshot(payload, job.provider_job_id, job.request_id)) {
+    console.error("RunPod polling snapshot did not match the persisted video job", { videoJobId: job.id });
+    return fail("RunPod returned a status snapshot that does not match this video request", 502, cors);
+  }
+  const status = videoProviderStatus(String(payload.status));
+  const output = payload.output && typeof payload.output === "object"
+    ? payload.output as Record<string, unknown> : {};
+  const durableOutput = status === "completed"
+    ? validateRunpodVideoOutput(output, userId, job.id)
+    : null;
+  let storageVerified: boolean | null = null;
+  if (status === "completed" && durableOutput) {
+    try { storageVerified = await verifyStoredVideo(createVideoAdminClient(), durableOutput); }
+    catch { storageVerified = null; }
+    if (storageVerified === null) return fail("Persistent video storage verification is temporarily unavailable", 503, cors);
+  }
+  if (status === "completed" && (!durableOutput || !storageVerified)) {
+    const { data: claimed, error: claimError } = await db.from("armex_video_generations").update({
+      status: "failed", refund_status: "pending", error_code: "worker_did_not_upload_durable_mp4",
+      updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).in("status", ["queued", "processing"]).select("id").maybeSingle();
+    if (claimError) return fail("Could not claim failed video result", 500, cors);
+    if (!claimed) return json({ success: true, duplicate: true, video: job }, 200, cors);
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
+    await db.from("armex_video_generations").update({ refund_status: refunded ? "completed" : "pending", updated_at: new Date().toISOString() })
+      .eq("id", job.id).eq("user_id", userId).eq("status", "failed");
+    return fail(refunded ? "Video worker did not upload a durable MP4; credits were returned" : "Video output is missing and credit refund could not be confirmed", 502, cors);
+  }
+  if (status === "failed" || status === "cancelled") {
+    const { data: claimed, error: claimError } = await db.from("armex_video_generations").update({
+      status, refund_status: "pending",
+      error_code: String(payload.status) === "TIMED_OUT" ? "provider_job_timed_out" : "provider_job_failed",
+      updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).in("status", ["queued", "processing"]).select("id").maybeSingle();
+    if (claimError) return fail("Could not claim failed video job", 500, cors);
+    if (!claimed) return json({ success: true, duplicate: true, video: job }, 200, cors);
+    const refunded = await refundCredits(db, userId, Number(job.credits_charged), job.id, job.id, "video_refund");
+    const { error: failedSaveError } = await db.from("armex_video_generations").update({
+      refund_status: refunded ? "completed" : "pending", updated_at: new Date().toISOString(),
+    }).eq("id", job.id).eq("user_id", userId).eq("status", status);
+    if (failedSaveError || !refunded) return fail("Video failed; automatic credit refund is pending and will be retried", 500, cors);
+    return json({ success: true, video: { ...job, status, refund_status: "completed" } }, 200, cors);
+  }
+  const update: Record<string, unknown> = {
+    status, updated_at: new Date().toISOString(),
+    ...(durableOutput ? {
+      result_url: null, storage_path: durableOutput.storagePath,
+      mime_type: durableOutput.mimeType, file_size_bytes: durableOutput.fileSizeBytes,
+      completed_at: new Date().toISOString(),
+    } : {}),
+  };
+  const { data: saved, error: saveError } = await db.from("armex_video_generations").update(update)
+    .eq("id", job.id).eq("user_id", userId).in("status", ["queued", "processing"]).select("id").maybeSingle();
+  if (saveError) return fail("Could not save video status", 500, cors);
+  if (!saved) return json({ success: true, duplicate: true, video: job }, 200, cors);
+  const refreshed = { ...job, ...update };
+  if (durableOutput) {
+    try { refreshed.result_url = await signedVideoUrl(durableOutput.storagePath); }
+    catch { return fail("Video is stored but its private download link could not be created", 503, cors); }
+  }
+  return json({ success: true, video: refreshed }, 200, cors);
+};
+
+const configuredPaymentPackages = () => {
+  try {
+    return parsePaymentPackages(JSON.parse(Deno.env.get("PAYMENT_PACKAGES") ?? "[]"));
+  } catch { return []; }
+};
+
+const createZarinpalPayment = async (
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+): Promise<Response> => {
+  const packageId = typeof body.package_id === "string" ? body.package_id : "";
+  const requestId = isUuid(body.request_id) ? body.request_id : "";
+  const merchantId = Deno.env.get("ZARINPAL_MERCHANT_ID")?.trim() ?? "";
+  const packages = configuredPaymentPackages();
+  const pack = packages.find((p) => p.id === packageId);
+  if (!merchantId || !pack) return fail("Zarinpal is not configured or this credit package is unavailable", 503, cors);
+  if (!requestId) return fail("A UUID request_id is required for payment idempotency", 400, cors);
+
+  const baseCallbackUrl = Deno.env.get("ZARINPAL_CALLBACK_URL")?.trim() ||
+    "https://znendbwkmcldttugvwnr.supabase.co/functions/v1/armex-api?action=payment_callback";
+
+  const { data: prior, error: priorError } = await db.from("armex_payment_orders")
+    .select("id,status,provider,provider_reference,amount,currency,credits,package_id,provider_metadata")
+    .eq("user_id", userId).eq("idempotency_key", requestId).maybeSingle();
+  if (priorError) return fail("Could not verify payment request idempotency", 500, cors);
+
+  const paymentUrl = (authority: string) =>
+    "https://www.zarinpal.com/pg/StartPay/" + encodeURIComponent(authority);
+  const pendingResponse = (orderId: string, message: string) =>
+    json({ success: true, pending: true, reconciliation_required: true, order_id: orderId, message }, 202, cors);
+
+  if (prior) {
+    const priorMetadata = prior.provider_metadata && typeof prior.provider_metadata === "object" &&
+        !Array.isArray(prior.provider_metadata)
+      ? prior.provider_metadata as Record<string, unknown>
+      : {};
+    const packageMatches = prior.provider === "zarinpal" &&
+      prior.currency === "IRR" &&
+      Number(prior.amount) === pack.amount_irr &&
+      Number(prior.credits) === pack.credits &&
+      (!prior.package_id || prior.package_id === pack.id);
+    if (!packageMatches) {
+      return fail("This request ID is already bound to a different payment package; no new payment was created", 409, cors);
+    }
+    if (prior.status === "cancelled" ||
+        (prior.status === "failed" && priorMetadata.request_state === "rejected" &&
+          Number.isSafeInteger(priorMetadata.provider_code) &&
+          Number(priorMetadata.provider_code) < 0)) {
+      return json({
+        success: false,
+        request_closed: true,
+        retry_allowed: true,
+        order_id: prior.id,
+        message: prior.status === "cancelled"
+          ? "The previous payment was cancelled; you may start a new payment request"
+          : "Zarinpal definitively rejected the previous request; you may start a new payment request",
+      }, 200, cors);
+    }
+    if (prior.status === "pending" && isValidProviderReference(prior.provider_reference)) {
+      return json({ success: true, duplicate: true, order_id: prior.id,
+        payment_url: paymentUrl(String(prior.provider_reference)) }, 200, cors);
+    }
+    if (prior.status === "paid") {
+      if (hasDurableVerifiedPayment(prior.status, prior.provider_metadata)) {
+        return json({ success: true, duplicate: true, order_id: prior.id, already_paid: true }, 200, cors);
+      }
+      return pendingResponse(prior.id, "The order is marked paid without complete provider evidence; it is held for manual reconciliation");
+    }
+    if (prior.status !== "pending") {
+      return fail("This payment request is closed; use a new request ID only after confirming the previous order status", 409, cors);
+    }
+
+    // A previous request may have reached Zarinpal even though its response was
+    // lost. Never send another /request call for this idempotency key.
+    const metadata = priorMetadata;
+    const savedCallbackUrl = typeof metadata.callback_url === "string"
+      ? metadata.callback_url
+      : "";
+    if (!savedCallbackUrl) {
+      return pendingResponse(prior.id, "The original callback URL is not available; this order requires manual reconciliation");
+    }
+
+    let unverifiedResponse: Response;
+    try {
+      unverifiedResponse = await fetch(ZARINPAL_API + "/unVerified.json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ merchant_id: merchantId }),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch (error) {
+      console.warn("Zarinpal unverified-payment inquiry was inconclusive", {
+        orderId: prior.id,
+        errorName: error instanceof Error ? error.name : "unknown",
+      });
+      return pendingResponse(prior.id, "The provider could not be reached; the existing payment request remains held and will not be duplicated");
+    }
+
+    const unverifiedPayload = await unverifiedResponse.json().catch(() => null);
+    const recoveredAuthority = unverifiedResponse.ok
+      ? findUnverifiedAuthorityForOrder(unverifiedPayload, {
+        orderId: prior.id,
+        amount: pack.amount_irr,
+        callbackUrl: savedCallbackUrl,
+      })
+      : null;
+    if (!recoveredAuthority) {
+      const nextMetadata = {
+        ...metadata,
+        request_state: unverifiedResponse.ok ? "manual_review" : "ambiguous",
+        last_reconciliation_at: new Date().toISOString(),
+        last_reconciliation_http_status: unverifiedResponse.status,
+      };
+      await db.from("armex_payment_orders").update({
+        provider_metadata: nextMetadata,
+        updated_at: new Date().toISOString(),
+      }).eq("id", prior.id).eq("status", "pending");
+      return pendingResponse(prior.id, unverifiedResponse.ok
+        ? "No unique provider record matched this exact order, amount and callback URL; manual review is required"
+        : "The provider inquiry failed; this order remains pending for safe retry or manual review");
+    }
+
+    const recoveredMetadata = {
+      ...metadata,
+      request_state: "authority_recovered",
+      authority_recovered_at: new Date().toISOString(),
+    };
+    const { data: savedOrder, error: saveError } = await db.from("armex_payment_orders")
+      .update({
+        provider_reference: recoveredAuthority,
+        provider_metadata: recoveredMetadata,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", prior.id).eq("status", "pending").is("provider_reference", null)
+      .select("id,provider_reference").maybeSingle();
+    if (saveError || !savedOrder) {
+      const { data: persistedOrder, error: lookupError } = await db.from("armex_payment_orders")
+        .select("provider_reference").eq("id", prior.id).maybeSingle();
+      if (lookupError || persistedOrder?.provider_reference !== recoveredAuthority) {
+        console.error("Recovered Zarinpal authority could not be durably confirmed", {
+          orderId: prior.id,
+          code: saveError?.code ?? lookupError?.code,
+        });
+        return pendingResponse(prior.id, "A provider session was found but its authority could not be safely recorded; manual reconciliation is required");
+      }
+    }
+    return json({
+      success: true,
+      duplicate: true,
+      recovered: true,
+      order_id: prior.id,
+      payment_url: paymentUrl(recoveredAuthority),
+    }, 200, cors);
+  }
+
+  // Do not create another provider session while any earlier Zarinpal
+  // order is pending, whether its Authority is known or still ambiguous.
+  const { data: pendingOrder, error: pendingOrderError } = await db.from("armex_payment_orders")
+    .select("id").eq("user_id", userId).eq("provider", "zarinpal")
+    .eq("status", "pending").maybeSingle();
+  if (pendingOrderError) return fail("Could not check for an earlier unresolved payment", 500, cors);
+  if (pendingOrder) {
+    return fail("An earlier Zarinpal payment is still pending; retry that same request or wait for its confirmed callback before starting another", 409, cors);
+  }
+
+  const orderId = crypto.randomUUID();
+  let callbackUrl: string;
+  try {
+    callbackUrl = paymentCallbackUrlForOrder(baseCallbackUrl, orderId);
+  } catch {
+    return fail("The configured payment callback URL must be a valid HTTPS URL", 503, cors);
+  }
+  const requestAttemptId = crypto.randomUUID();
+  const requestStartedAt = new Date().toISOString();
+  const initialMetadata = {
+    request_state: "submitting",
+    request_attempt_id: requestAttemptId,
+    request_started_at: requestStartedAt,
+    callback_url: callbackUrl,
+  };
+  const { data: order, error: orderError } = await db.from("armex_payment_orders").insert({
+    id: orderId,
+    user_id: userId,
+    amount: pack.amount_irr,
+    currency: "IRR",
+    credits: pack.credits,
+    provider: "zarinpal",
+    package_id: pack.id,
+    idempotency_key: requestId,
+    status: "pending",
+    provider_metadata: initialMetadata,
+  }).select("id").single();
+  if (orderError || !order) {
+    console.error("Zarinpal order creation failed", { requestId, code: orderError?.code });
+    return fail(orderError?.code === "23505"
+      ? "An earlier payment request is already being created or reconciled; do not start another payment"
+      : "Could not create payment order", orderError?.code === "23505" ? 409 : 500, cors);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(ZARINPAL_API + "/request.json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        merchant_id: merchantId,
+        amount: pack.amount_irr,
+        currency: "IRR",
+        description: "خرید اعتبار " + pack.title + " در LOKAL AI",
+        callback_url: callbackUrl,
+        metadata: { order_id: order.id, user_id: userId },
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (error) {
+    const ambiguousMetadata = {
+      ...initialMetadata,
+      request_state: "ambiguous",
+      last_error_kind: error instanceof Error && error.name === "AbortError" ? "timeout" : "transport",
+      last_reconciliation_at: new Date().toISOString(),
+    };
+    const { error: stateError } = await db.from("armex_payment_orders").update({
+      provider_metadata: ambiguousMetadata,
+      updated_at: new Date().toISOString(),
+    }).eq("id", order.id).eq("status", "pending");
+    console.error("Zarinpal payment request outcome is ambiguous", {
+      orderId: order.id,
+      stateSaveCode: stateError?.code,
+    });
+    return pendingResponse(order.id, "The provider request timed out or the connection was interrupted; no second payment request will be sent automatically");
+  }
+
+  const payload = await response.json().catch(() => null);
+  const authority = payload?.data?.authority;
+  const code = Number(payload?.data?.code);
+  if (!response.ok || code !== 100 || typeof authority !== "string" || !authority.trim()) {
+    if (isDefinitiveZarinpalRequestRejection(response.status, payload)) {
+      const rejectedMetadata = {
+        ...initialMetadata,
+        request_state: "rejected",
+        provider_http_status: response.status,
+        provider_code: code,
+        rejected_at: new Date().toISOString(),
+      };
+      await db.from("armex_payment_orders").update({
+        status: "failed",
+        provider_metadata: rejectedMetadata,
+        updated_at: new Date().toISOString(),
+      }).eq("id", order.id).eq("status", "pending");
+      console.error("Zarinpal definitively rejected payment request", {
+        orderId: order.id,
+        httpStatus: response.status,
+        code,
+      });
+      return fail("Zarinpal rejected the payment request; no payment session was created", 502, cors);
+    }
+
+    const ambiguousMetadata = {
+      ...initialMetadata,
+      request_state: "ambiguous",
+      provider_http_status: response.status,
+      provider_code: Number.isSafeInteger(code) ? code : null,
+      last_reconciliation_at: new Date().toISOString(),
+    };
+    await db.from("armex_payment_orders").update({
+      provider_metadata: ambiguousMetadata,
+      updated_at: new Date().toISOString(),
+    }).eq("id", order.id).eq("status", "pending");
+    return pendingResponse(order.id, "Zarinpal returned an incomplete or ambiguous response; the order is held and will not be submitted again");
+  }
+
+  const authorityMetadata = {
+    ...initialMetadata,
+    request_state: "authority_received",
+    authority_received_at: new Date().toISOString(),
+    provider_code: code,
+  };
+  const { data: authoritySaved, error: authoritySaveError } = await db.from("armex_payment_orders")
+    .update({
+      provider_reference: authority,
+      provider_metadata: authorityMetadata,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", order.id).eq("status", "pending").is("provider_reference", null)
+    .select("id,provider_reference").maybeSingle();
+  if (authoritySaveError || !authoritySaved) {
+    const { data: persistedOrder, error: lookupError } = await db.from("armex_payment_orders")
+      .select("provider_reference").eq("id", order.id).maybeSingle();
+    if (lookupError || persistedOrder?.provider_reference !== authority) {
+      console.error("Zarinpal authority persistence could not be confirmed", {
+        orderId: order.id,
+        code: authoritySaveError?.code ?? lookupError?.code,
+      });
+      return pendingResponse(order.id, "The provider created a payment session but its authority could not be durably confirmed; do not retry with a new request");
+    }
+  }
+  return json({
+    success: true,
+    order_id: order.id,
+    payment_url: paymentUrl(authority),
+  }, 200, cors);
+};
+
+const zarinpalCallback = async (request: Request): Promise<Response> => {
+  const url = new URL(request.url);
+  const authority = url.searchParams.get("Authority") ?? "";
+  const status = url.searchParams.get("Status") ?? "";
+  const orderId = url.searchParams.get("order_id");
+  const merchantId = Deno.env.get("ZARINPAL_MERCHANT_ID")?.trim() ?? "";
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
+  if (!authority || !merchantId || !supabaseUrl || !serviceKey) {
+    return json({ success: false, error: "Payment callback is not configured" }, 503);
+  }
+  if (orderId && !isUuid(orderId)) {
+    return json({ success: false, error: "Invalid payment order reference" }, 400);
+  }
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  let orderQuery = admin.from("armex_payment_orders")
+    .select("id,user_id,amount,credits,status,provider_metadata,provider_reference")
+    .eq("provider", "zarinpal");
+  const { data: order, error } = orderId
+    ? await orderQuery.eq("id", orderId).maybeSingle()
+    : await orderQuery.eq("provider_reference", authority).maybeSingle();
+  if (error || !order) return json({ success: false, error: "Payment order not found" }, 404);
+  if (order.provider_reference && order.provider_reference !== authority) {
+    return json({ success: false, error: "Payment authority does not match this order" }, 409);
+  }
+
+  const existingMetadata = order.provider_metadata && typeof order.provider_metadata === "object" &&
+      !Array.isArray(order.provider_metadata)
+    ? order.provider_metadata as Record<string, unknown>
+    : {};
+
+  // The order_id query parameter is not a cryptographic proof by itself.
+  // When the Authority was not saved before the callback arrived, bind it to
+  // this order only through an exact provider-side unverified record.
+  if (!order.provider_reference) {
+    const savedCallbackUrl = typeof existingMetadata.callback_url === "string"
+      ? existingMetadata.callback_url
+      : "";
+    if (!orderId || !savedCallbackUrl) {
+      return json({ success: false, pending: true, error: "Payment authority cannot yet be safely bound to this order" }, 409);
+    }
+    let unverifiedResponse: Response;
+    try {
+      unverifiedResponse = await fetch(ZARINPAL_API + "/unVerified.json", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ merchant_id: merchantId }),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch {
+      return json({ success: false, pending: true, error: "Payment order requires provider reconciliation" }, 503);
+    }
+    const unverifiedPayload = await unverifiedResponse.json().catch(() => null);
+    if (!unverifiedResponse.ok || !isUnverifiedAuthorityForOrder(unverifiedPayload, {
+      orderId: order.id,
+      amount: Number(order.amount),
+      callbackUrl: savedCallbackUrl,
+      authority,
+    })) {
+      return json({ success: false, pending: true, error: "Provider evidence did not safely match this payment order" }, 409);
+    }
+    const { data: boundOrder, error: bindError } = await admin.from("armex_payment_orders")
+      .update({
+        provider_reference: authority,
+        provider_metadata: {
+          ...existingMetadata,
+          request_state: "authority_bound_to_callback",
+          authority_bound_at: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", order.id).is("provider_reference", null)
+      .select("id,provider_reference").maybeSingle();
+    if (bindError || !boundOrder) {
+      const { data: persistedOrder, error: lookupError } = await admin.from("armex_payment_orders")
+        .select("provider_reference").eq("id", order.id).maybeSingle();
+      if (lookupError || persistedOrder?.provider_reference !== authority) {
+        return json({ success: false, pending: true, error: "Payment authority binding needs manual reconciliation" }, 500);
+      }
+    }
+  }
+
+  // Once verification is durably recorded, wallet-credit retries must not
+  // depend on Zarinpal being available again.
+  const alreadyVerified = hasDurableVerifiedPayment(order.status, existingMetadata);
+  if (shouldCancelUnverifiedPayment(status, order.status)) {
+    const { data: cancelledOrder, error: cancelError } = await admin.from("armex_payment_orders")
+      .update({
+        status: "cancelled",
+        provider_reference: authority,
+        provider_metadata: { ...existingMetadata, request_state: "cancelled", callback_status: status },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", order.id).eq("status", "pending")
+      .select("id,status").maybeSingle();
+    if (cancelError) {
+      console.error("Could not persist Zarinpal cancellation", { orderId: order.id, code: cancelError.code });
+      return json({ success: false, pending: true, error: "Payment cancellation could not be durably recorded" }, 500);
+    }
+    if (!cancelledOrder) {
+      const { data: latestOrder, error: latestError } = await admin.from("armex_payment_orders")
+        .select("status").eq("id", order.id).maybeSingle();
+      if (latestError || !latestOrder) {
+        return json({ success: false, pending: true, error: "Payment status requires reconciliation" }, 500);
+      }
+      if (latestOrder.status === "cancelled") {
+        return json({ success: false, cancelled: true, order_id: order.id }, 200);
+      }
+      return json({
+        success: false,
+        pending: true,
+        order_id: order.id,
+        error: latestOrder.status === "paid"
+          ? "The order was already verified by another callback"
+          : "Payment status changed concurrently and requires reconciliation",
+      }, 409);
+    }
+    return json({ success: false, cancelled: true, order_id: order.id }, 200);
+  }
+
+  let refId: string | number | null = null;
+  if (alreadyVerified) {
+    const storedRefId = existingMetadata.ref_id;
+    refId = typeof storedRefId === "string" || typeof storedRefId === "number" ? storedRefId : null;
+  } else {
+    const verifyResponse = await fetch(ZARINPAL_API + "/verify.json", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ merchant_id: merchantId, amount: Number(order.amount), authority }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const verifyPayload = await verifyResponse.json().catch(() => ({}));
+    const verifyCode = Number(verifyPayload?.data?.code);
+    if (!verifyResponse.ok || ![100, 101].includes(verifyCode)) {
+      console.error("Zarinpal verification failed", { orderId: order.id, httpStatus: verifyResponse.status, code: verifyCode });
+      return json({ success: false, error: "Payment verification failed; no credits were added" }, 502);
+    }
+    const providerRef = verifyPayload?.data?.ref_id;
+    if (!isValidProviderReference(providerRef)) {
+      console.error("Zarinpal verification returned no durable provider reference", {
+        orderId: order.id,
+        code: verifyCode,
+      });
+      return json({ success: false, error: "Payment verification returned incomplete evidence; no credits were added" }, 502);
+    }
+    refId = providerRef;
+    const { error: paidError } = await admin.from("armex_payment_orders").update({
+      status: "paid",
+      provider_reference: authority,
+      paid_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      provider_metadata: {
+        ...existingMetadata,
+        ref_id: refId,
+        request_state: "verified",
+        verification_code: verifyCode,
+        verified_at: new Date().toISOString(),
+      },
+    }).eq("id", order.id).neq("status", "paid");
+    if (paidError) return json({ success: false, error: "Could not record verified payment" }, 500);
+  }
+
+  const grantKey = paymentGrantIdempotencyKey(order.id);
+  const { data: granted, error: grantError } = await admin.rpc("armex_grant_credits", {
+    p_user_id: order.user_id, p_amount: Number(order.credits), p_type: "purchase",
+    p_idempotency_key: grantKey,
+    p_description: "شارژ کیف پول پس از تأیید پرداخت زرین‌پال",
+    p_metadata: { order_id: order.id, provider: "zarinpal", ref_id: refId },
+  });
+  if (grantError || granted !== true) {
+    // armex_grant_credits returns false for an existing idempotency key.
+    // Confirm the durable row instead of reporting a successful duplicate as failure.
+    const { data: existingGrant, error: ledgerError } = await admin
+      .from("armex_credit_transactions")
+      .select("amount,transaction_type,metadata")
+      .eq("user_id", order.user_id)
+      .eq("idempotency_key", grantKey)
+      .maybeSingle();
+    if (ledgerError || !isMatchingPaymentGrant(existingGrant, {
+      orderId: order.id,
+      credits: Number(order.credits),
+    })) {
+      console.error("Verified payment credit grant could not be confirmed", {
+        orderId: order.id,
+        code: grantError?.code ?? ledgerError?.code,
+      });
+      return json({ success: false, error: "Payment was verified but wallet crediting needs retry" }, 500);
+    }
+  }
+  return new Response(`<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پرداخت موفق</title><body style="font-family:sans-serif;background:#07110f;color:#eafff8;padding:40px;text-align:center"><h2>پرداخت با موفقیت تأیید شد</h2><p>${Number(order.credits).toLocaleString("fa-IR")} اعتبار به کیف پول شما اضافه شد.</p><a style="color:#5ce5bd" href="https://lokal-ai.net/?payment=success#workspace-home">بازگشت به LOKAL AI</a></body></html>`, {status:200,headers:{"Content-Type":"text/html; charset=utf-8"}});
+};
+
 const handle = async (request: Request): Promise<Response> => {
   const origin = request.headers.get("Origin");
   const cors = corsFor(origin);
@@ -350,6 +1435,12 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   const url = new URL(request.url);
+  if (request.method === "GET" && url.searchParams.get("action") === "payment_callback") {
+    return await zarinpalCallback(request);
+  }
+  if (request.method === "POST" && url.searchParams.get("action") === "runpod_callback") {
+    return await runpodWebhookCallback(request);
+  }
   if (request.method === "GET" && url.searchParams.get("action") === "health") {
     return json({
       success: true,
@@ -357,7 +1448,7 @@ const handle = async (request: Request): Promise<Response> => {
       status: "online",
       api_version: "5.0",
       secure_api: true,
-      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger", "image_generation", "private_image_storage"],
+      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger", "image_generation", "video_generation", "zarinpal_payments", "private_image_storage"],
     }, 200, cors);
   }
 
@@ -380,6 +1471,40 @@ const handle = async (request: Request): Promise<Response> => {
 
   const db: SupabaseClient = supabaseContext.supabaseAdmin;
   const modelsAllowed = allowedModels();
+  if (request.method === "GET" && url.searchParams.get("action") === "conversations") {
+    const { data, error } = await db.from("armex_conversations")
+      .select("id,title,model,created_at,updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(50);
+    if (error) return fail("Could not load conversations", 500, cors);
+    return json({ success: true, conversations: data ?? [] }, 200, cors);
+  }
+  if (request.method === "GET" && url.searchParams.get("action") === "conversation_messages") {
+    const conversationId = url.searchParams.get("id") ?? "";
+    if (!isUuid(conversationId)) return fail("A valid conversation ID is required", 400, cors);
+    const { data: conversation, error: conversationError } = await db.from("armex_conversations")
+      .select("id")
+      .eq("id", conversationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (conversationError || !conversation) return fail("Conversation not found", 404, cors);
+    const { data, error } = await db.from("armex_messages")
+      .select("id,role,content,model,created_at")
+      .eq("conversation_id", conversationId)
+      .eq("user_id", userId)
+      .in("role", ["user", "assistant"])
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) return fail("Could not load conversation messages", 500, cors);
+    return json({ success: true, messages: (data ?? []).reverse() }, 200, cors);
+  }
+  if (request.method === "GET" && url.searchParams.get("action") === "payment_packages") {
+    return json({ success: true, packages: configuredPaymentPackages().map(({id,title,amount_irr,credits}) => ({id,title,amount_irr,credits})) }, 200, cors);
+  }
+  if (request.method === "GET" && url.searchParams.get("action") === "video_status") {
+    return await getVideoStatus(db, userId, url.searchParams.get("id") ?? "", cors);
+  }
 
   if (request.method === "GET" && url.searchParams.get("action") === "balance") {
     const { data: wallet, error: walletError } = await db.from("armex_wallets")
@@ -469,6 +1594,12 @@ const handle = async (request: Request): Promise<Response> => {
   if (body.action === "generate_image") {
     return await generateImage(db, userId, body, cors);
   }
+  if (body.action === "generate_video") {
+    return await generateVideo(db, userId, body, cors);
+  }
+  if (body.action === "create_payment") {
+    return await createZarinpalPayment(db, userId, body, cors);
+  }
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
   if (!message || message.length > MAX_MESSAGE_CHARS) {
@@ -514,15 +1645,31 @@ const handle = async (request: Request): Promise<Response> => {
     return fail("Could not verify request idempotency", 500, cors);
   }
   if (priorUsage) {
-    const { data: previousAnswer } = await db.from("armex_messages")
+    // New atomic writes associate both messages directly with request_id.
+    // Fall back to the legacy timestamp lookup for historical rows whose
+    // request_id column is still NULL.
+    let previousAnswer: { content: string } | null = null;
+    const { data: requestAnswer, error: requestAnswerError } = await db.from("armex_messages")
       .select("content")
       .eq("conversation_id", priorUsage.conversation_id)
       .eq("user_id", userId)
+      .eq("request_id", requestId)
       .eq("role", "assistant")
-      .lte("created_at", priorUsage.created_at)
-      .order("created_at", { ascending: false })
-      .limit(1)
       .maybeSingle();
+    if (!requestAnswerError && requestAnswer?.content) {
+      previousAnswer = requestAnswer;
+    } else {
+      const { data: legacyAnswer } = await db.from("armex_messages")
+        .select("content")
+        .eq("conversation_id", priorUsage.conversation_id)
+        .eq("user_id", userId)
+        .eq("role", "assistant")
+        .lte("created_at", priorUsage.created_at)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      previousAnswer = legacyAnswer;
+    }
     if (previousAnswer?.content) {
       return json({
         success: true,
@@ -543,8 +1690,48 @@ const handle = async (request: Request): Promise<Response> => {
     return fail("This request_id was already processed; use a new UUID for a new message", 409, cors);
   }
 
+  // Atomically claim this user/request pair before any provider invocation.
+  // A request left in "processing" is fail-closed: retries cannot trigger a second
+  // provider call. Recovery of ambiguous provider outcomes must be reconciled explicitly.
+  const { data: claimData, error: claimError } = await db.rpc("armex_claim_chat_request", {
+    p_user_id: userId,
+    p_request_id: requestId,
+  });
+  if (claimError) {
+    console.error("Chat request claim failed", { requestId, code: claimError.code });
+    return fail("Could not safely claim this chat request", 500, cors);
+  }
+  const claim = Array.isArray(claimData) ? claimData[0] : claimData;
+  if (!claim || claim.outcome !== "claimed") {
+    if (claim?.outcome === "completed" && claim.response_payload &&
+        typeof claim.response_payload === "object" && !Array.isArray(claim.response_payload)) {
+      return json(claim.response_payload as Json, 200, cors);
+    }
+    return fail(
+      claim?.outcome === "failed"
+        ? "This request has already failed; use a new request_id to retry"
+        : "This request is already processing; do not resubmit it",
+      409,
+      cors,
+    );
+  }
+
+  // Persist the minimum request context needed to recover a billable
+  // provider response locally. This write happens before debit/provider work.
+  let modelInfo: ModelInfo | null = null;
+  const catalogController = new AbortController();
+  const catalogTimeout = setTimeout(() => catalogController.abort(), 10000);
+  try {
+    modelInfo = await getModelInfo(openRouterKey, model, catalogController.signal);
+  } catch {
+    console.warn("Model pricing metadata unavailable; actual_cost_usd may be null", { model });
+  } finally {
+    clearTimeout(catalogTimeout);
+  }
+  const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
+  const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
+
   let conversation: { id: string } | null = null;
-  let createdConversation = false;
   let context: Array<{ role: "user" | "assistant"; content: string }> = [];
 
   if (conversationId) {
@@ -553,7 +1740,10 @@ const handle = async (request: Request): Promise<Response> => {
       .eq("id", conversationId)
       .eq("user_id", userId)
       .maybeSingle();
-    if (error || !data) return fail("Conversation not found", 404, cors);
+    if (error || !data) {
+      await markChatRequestFailed(db, userId, requestId, "conversation_not_found");
+      return fail("Conversation not found", 404, cors);
+    }
     conversation = data as { id: string };
 
     const { data: history, error: historyError } = await db.from("armex_messages")
@@ -563,7 +1753,10 @@ const handle = async (request: Request): Promise<Response> => {
       .in("role", ["user", "assistant"])
       .order("created_at", { ascending: false })
       .limit(MAX_CONTEXT_MESSAGES);
-    if (historyError) return fail("Could not load conversation history", 500, cors);
+    if (historyError) {
+      await markChatRequestFailed(db, userId, requestId, "conversation_history_failed");
+      return fail("Could not load conversation history", 500, cors);
+    }
     const chronological = (history ?? []).reverse().map((row: { role: string; content: string }) => ({
       role: row.role as "user" | "assistant",
       content: row.content,
@@ -579,37 +1772,95 @@ const handle = async (request: Request): Promise<Response> => {
 
   const promptChars = SYSTEM_PROMPT.length + context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
   const estimatedInputTokens = Math.max(1, Math.ceil(promptChars / 3));
+
+  // Persist pricing and token fallbacks so recovery reproduces normal usage accounting.
+  const { data: recoveryMetadataSaved, error: recoveryMetadataError } = await db.rpc(
+    "armex_set_chat_recovery_metadata",
+    {
+      p_user_id: userId,
+      p_request_id: requestId,
+      p_message: message,
+      p_model: model,
+      p_conversation_id: conversationId ?? null,
+      p_credits: chatCreditCost,
+      p_attempt_id: attemptId,
+      p_prompt_price: promptPrice >= 0 ? promptPrice : null,
+      p_completion_price: completionPrice >= 0 ? completionPrice : null,
+      p_estimated_input_tokens: estimatedInputTokens,
+    },
+  );
+  if (recoveryMetadataError || recoveryMetadataSaved !== true) {
+    await markChatRequestFailed(db, userId, requestId, "recovery_metadata_failed");
+    return fail("Could not safely prepare chat recovery metadata", 500, cors);
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+  let debitAttempted = false;
+  let debitOutcomeKnown = false;
   let debitCompleted = false;
+  let providerRequestStarted = false;
   try {
-    let modelInfo: ModelInfo | null = null;
-    const catalogController = new AbortController();
-    const catalogTimeout = setTimeout(() => catalogController.abort(), 10000);
-    try {
-      modelInfo = await getModelInfo(openRouterKey, model, catalogController.signal);
-    } catch {
-      console.warn("Model pricing metadata unavailable; actual_cost_usd will be null", { model });
-    } finally {
-      clearTimeout(catalogTimeout);
-    }
-    const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
-    const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
-
+    debitAttempted = true;
     const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
       p_user_id: userId,
       p_amount: chatCreditCost,
-      p_idempotency_key: "ai_request:" + requestId + ":" + attemptId,
+      p_idempotency_key: "ai_request:" + requestId,
       p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
       p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation?.id ?? null },
     });
     if (debitError) {
-      console.error("Credit debit failed", { requestId, code: debitError.code });
-      return fail("Could not reserve credits", 500, cors);
+      console.error("Credit debit returned an error; verifying its idempotency record", {
+        requestId, code: debitError.code,
+      });
+      const { data: existingDebit, error: debitLookupError } = await db
+        .from("armex_credit_transactions")
+        .select("amount,transaction_type")
+        .eq("user_id", userId)
+        .eq("idempotency_key", "ai_request:" + requestId)
+        .maybeSingle();
+      if (debitLookupError) {
+        // The debit may have committed despite the transport error. Keep the
+        // request claimed until its billing outcome can be reconciled.
+        return fail("Credit reservation outcome is uncertain; this request is held for reconciliation", 503, cors);
+      }
+      debitOutcomeKnown = true;
+      if (!isMatchingCreditDebit(existingDebit, chatCreditCost)) {
+        await markChatRequestFailed(db, userId, requestId, "credit_reservation_failed");
+        return fail("Could not reserve credits", 500, cors);
+      }
+      debitCompleted = true;
+    } else {
+      debitOutcomeKnown = true;
+      if (debited !== true) {
+        await markChatRequestFailed(db, userId, requestId, "insufficient_credits");
+        return fail("Insufficient credits", 402, cors);
+      }
+      debitCompleted = true;
     }
-    if (debited !== true) return fail("Insufficient credits", 402, cors);
-    debitCompleted = true;
+
+    // Persist the confirmed debit before contacting the provider. If this write
+    // cannot be confirmed, do not submit a billable provider request.
+    const { data: debitEvidenceSaved, error: debitEvidenceError } = await db.rpc(
+      "armex_record_chat_provider_evidence",
+      {
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_provider_outcome: "not_started",
+        p_debit_outcome: "debited",
+        p_provider_http_status: null,
+        p_provider_response_payload: null,
+        p_diagnostic_code: null,
+      },
+    );
+    if (debitEvidenceError || debitEvidenceSaved !== true) {
+      debitCompleted = false;
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "Credit reservation is confirmed but its recovery record could not be saved; the provider was not called",
+      }, 202, cors);
+    }
 
     const providerMessages = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -617,6 +1868,9 @@ const handle = async (request: Request): Promise<Response> => {
       { role: "user", content: message },
     ];
 
+    // From this point onward, a thrown fetch/timeout is ambiguous: OpenRouter
+    // may have accepted and billed the request before the connection failed.
+    providerRequestStarted = true;
     const providerResponse = await fetch(OPENROUTER_URL + "/chat/completions", {
       method: "POST",
       signal: controller.signal,
@@ -636,30 +1890,83 @@ const handle = async (request: Request): Promise<Response> => {
 
     if (!providerResponse.ok) {
       const providerError = await providerResponse.text();
+      const providerIsDefinitiveRejection =
+        providerResponse.status >= 400 &&
+        providerResponse.status < 500 &&
+        providerResponse.status !== 408;
+      const { data: rejectionEvidenceSaved, error: rejectionEvidenceError } = await db.rpc(
+        "armex_record_chat_provider_evidence",
+        {
+          p_user_id: userId,
+          p_request_id: requestId,
+          p_provider_outcome: providerIsDefinitiveRejection ? "rejected" : "unknown",
+          p_debit_outcome: "debited",
+          p_provider_http_status: providerResponse.status,
+          p_provider_response_payload: null,
+          p_diagnostic_code: "openrouter_http_" + providerResponse.status,
+        },
+      );
+      if (rejectionEvidenceError || rejectionEvidenceSaved !== true) {
+        debitCompleted = false;
+        return json({
+          success: true, pending: true, request_id: requestId,
+          message: "The provider response was received but its evidence could not be saved; billing remains held",
+        }, 202, cors);
+      }
       console.error("OpenRouter request failed", {
         requestId,
         status: providerResponse.status,
         body: providerError.slice(0, 500),
       });
-      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "provider_error");
+      const action = chatRequestFailureAction(true, providerResponse.status);
+      if (action === "refund_and_fail") {
+        const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "provider_error");
+        debitCompleted = false;
+        if (refunded) await markChatRequestFailed(db, userId, requestId, "provider_rejected_" + providerResponse.status);
+        return fail(
+          refunded ? "AI provider rejected the request; the charged credit was returned" : "AI provider rejected the request but the credit refund could not be confirmed",
+          refunded ? 502 : 500,
+          cors,
+        );
+      }
       debitCompleted = false;
-      return fail(
-        refunded ? "AI provider request failed; the charged credit was returned" : "AI provider failed and the credit refund could not be confirmed",
-        refunded ? 502 : 500,
-        cors,
-      );
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "The provider returned an ambiguous server response; billing and request status are held for reconciliation",
+      }, 202, cors);
     }
 
     const result = await providerResponse.json();
+    // Store the complete validated HTTP response before any message/usage
+    // writes, so a later local failure can recover without calling OpenRouter.
+    const { data: responseEvidenceSaved, error: responseEvidenceError } = await db.rpc(
+      "armex_record_chat_provider_evidence",
+      {
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_provider_outcome: "accepted",
+        p_debit_outcome: "debited",
+        p_provider_http_status: providerResponse.status,
+        p_provider_response_payload: result,
+        p_diagnostic_code: null,
+      },
+    );
+    if (responseEvidenceError || responseEvidenceSaved !== true) {
+      debitCompleted = false;
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "The provider response was received but could not be durably recorded; no provider retry will be made",
+      }, 202, cors);
+    }
     const answer = result.choices?.[0]?.message?.content;
     if (typeof answer !== "string" || !answer.trim()) {
-      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "invalid_provider_response");
+      // A successful provider HTTP response means the model may already have
+      // incurred cost. Do not refund on malformed/empty response payloads.
       debitCompleted = false;
-      return fail(
-        refunded ? "AI returned an invalid response; the charged credit was returned" : "AI response was invalid and the credit refund could not be confirmed",
-        refunded ? 502 : 500,
-        cors,
-      );
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "The provider response could not be validated; the request is held for reconciliation",
+      }, 202, cors);
     }
 
     const usage = result.usage ?? {};
@@ -676,135 +1983,85 @@ const handle = async (request: Request): Promise<Response> => {
       ? calculatedCost
       : null;
 
-    if (!conversation) {
-      const title = message.replace(/\s+/g, " ").slice(0, 80) || "گفتگوی جدید";
-      const { data: newConversation, error: conversationError } = await db
-        .from("armex_conversations")
-        .insert({ user_id: userId, title, model })
-        .select("id")
-        .single();
-      if (conversationError || !newConversation) {
-        const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "conversation_persistence_failed");
-        debitCompleted = false;
-        return fail(
-          refunded ? "Could not create the conversation; the charged credit was returned" : "Conversation creation failed and the credit refund could not be confirmed",
-          500,
-          cors,
-        );
-      }
-      conversation = newConversation as { id: string };
-      createdConversation = true;
-    }
-
-    const messageRows = [
+    const { data: persistedResponse, error: persistenceError } = await db.rpc(
+      "armex_persist_chat_response_atomic",
       {
-        conversation_id: conversation.id,
-        user_id: userId,
-        role: "user",
-        content: message,
-        model,
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_lease_token: null,
+        p_answer: answer,
+        p_model: result.model || model,
+        p_input_tokens: inputTokens,
+        p_output_tokens: outputTokens,
+        p_total_tokens: totalTokens,
+        p_actual_cost_usd: actualUsd,
+        p_finish_reason: result.choices?.[0]?.finish_reason ?? null,
       },
-      {
-        conversation_id: conversation.id,
-        user_id: userId,
-        role: "assistant",
-        content: answer,
-        model: result.model || model,
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
-      },
-    ];
-    const { data: savedMessages, error: messageError } = await db
-      .from("armex_messages")
-      .insert(messageRows)
-      .select("id");
-    if (messageError || !savedMessages) {
-      console.error("Message persistence failed", { requestId, code: messageError?.code });
-      if (createdConversation) {
-        await db.from("armex_conversations")
-          .delete()
-          .eq("id", conversation.id)
-          .eq("user_id", userId);
-      }
-      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "message_persistence_failed");
+    );
+    if (persistenceError || !persistedResponse ||
+        typeof persistedResponse !== "object" || Array.isArray(persistedResponse)) {
+      console.error("Atomic chat response persistence failed", {
+        requestId,
+        code: persistenceError?.code,
+      });
+      // The provider response and debit are already durable. Keep this request
+      // pending so a reconciler can retry local persistence without a provider call.
       debitCompleted = false;
-      return fail(
-        refunded ? "Could not save the conversation; the charged credit was returned" : "Conversation save failed and the credit refund could not be confirmed",
-        500,
-        cors,
-      );
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: "The AI response is safely recorded; local response persistence needs reconciliation",
+      }, 202, cors);
     }
-
-    const { error: usageError } = await db.from("armex_usage").insert({
-      user_id: userId,
-      conversation_id: conversation.id,
-      model: result.model || model,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      total_tokens: totalTokens,
-      actual_cost_usd: actualUsd,
-      credits_charged: chatCreditCost,
-      request_id: requestId,
-    });
-    if (usageError) {
-      console.error("Usage persistence failed", { requestId, code: usageError.code });
-      const messageIds = savedMessages.map((row: { id: string }) => row.id);
-      await db.from("armex_messages")
-        .delete()
-        .eq("user_id", userId)
-        .in("id", messageIds);
-      if (createdConversation) {
-        await db.from("armex_conversations")
-          .delete()
-          .eq("id", conversation.id)
-          .eq("user_id", userId);
-      }
-      const refunded = await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "usage_persistence_failed");
-      debitCompleted = false;
-      if (usageError.code === "23505" && refunded) {
-        return fail("This request_id has already completed; the duplicate attempt was refunded", 409, cors);
-      }
-      return fail(
-        refunded ? "Could not record usage; the charged credit was returned" : "Usage recording failed and the credit refund could not be confirmed",
-        500,
-        cors,
-      );
-    }
-
-    await db.from("armex_conversations")
-      .update({ model: result.model || model, updated_at: new Date().toISOString() })
-      .eq("id", conversation.id)
-      .eq("user_id", userId);
 
     debitCompleted = false;
-    return json({
-      success: true,
-      request_id: requestId,
-      conversation_id: conversation.id,
-      model: result.model || model,
-      answer,
-      usage: {
-        input_tokens: inputTokens,
-        output_tokens: outputTokens,
-        total_tokens: totalTokens,
-        actual_cost_usd: actualUsd,
-        credits_charged: chatCreditCost,
-      },
-      finish_reason: result.choices?.[0]?.finish_reason ?? null,
-    }, 200, cors);
+    return json(persistedResponse as Json, 200, cors);
   } catch (error) {
+    if (providerRequestStarted) {
+      // The provider may have accepted/billed the request. Preserve an
+      // ambiguous outcome; never convert a transport error into a refund.
+      try {
+        await db.rpc("armex_record_chat_provider_evidence", {
+          p_user_id: userId,
+          p_request_id: requestId,
+          p_provider_outcome: "unknown",
+          p_debit_outcome: debitOutcomeKnown && debitCompleted ? "debited" : "unknown",
+          p_provider_http_status: null,
+          p_provider_response_payload: null,
+          p_diagnostic_code: error instanceof Error && error.name === "AbortError"
+            ? "provider_timeout"
+            : "provider_transport_error",
+        });
+      } catch {
+        // Evidence write failure is itself a manual-review condition.
+      }
+    }
     console.error("armex-api request failed", {
       requestId,
       error: error instanceof Error ? error.message : "unknown",
     });
-    const refunded = debitCompleted
-      ? await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "server_error")
-      : true;
     const timedOut = error instanceof Error && error.name === "AbortError";
+    const debitOutcomeUncertain = debitAttempted && !debitOutcomeKnown;
+    const providerOutcome = chatRequestFailureAction(providerRequestStarted);
+    if (providerOutcome === "keep_pending" || debitOutcomeUncertain) {
+      // Never refund or release a request if the provider may have accepted it,
+      // or if the debit RPC may have committed despite a transport failure.
+      debitCompleted = false;
+      return json({
+        success: true, pending: true, request_id: requestId,
+        message: timedOut
+          ? "The AI request timed out with an uncertain provider outcome; billing reconciliation is required"
+          : "The request outcome is uncertain and has been held for reconciliation",
+      }, 202, cors);
+    }
+    const refunded = debitCompleted
+      ? await refundCredits(db, userId, chatCreditCost, requestId, attemptId, "pre_provider_error")
+      : true;
+    if (refunded) await markChatRequestFailed(db, userId, requestId, timedOut ? "pre_provider_timeout" : "pre_provider_error");
+    debitCompleted = false;
     return fail(
       timedOut
-        ? (refunded ? "AI request timed out; the charged credit was returned" : "AI request timed out and the credit refund could not be confirmed")
-        : (refunded ? "Internal server error" : "Internal server error; the credit refund could not be confirmed"),
+        ? (refunded ? "AI request timed out before provider submission; the charged credit was returned" : "AI request timed out and the credit refund could not be confirmed")
+        : (refunded ? "Internal server error before provider submission" : "Internal server error; the credit refund could not be confirmed"),
       timedOut ? 504 : 500,
       cors,
     );
