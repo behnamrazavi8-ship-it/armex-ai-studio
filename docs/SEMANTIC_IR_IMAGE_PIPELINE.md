@@ -6,46 +6,61 @@ This document describes the Staging-only integration path. It does not authorize
 
 1. A signed-in user enters an image request in Image Studio.
 2. The browser calls the authenticated Staging `prompt-understanding` Edge Function.
-3. The function returns a validated, provider-neutral Semantic Prompt IR. A deterministic renderer turns the original request plus extracted IR fields into the prompt sent to the image provider. The renderer does not invent missing scene details.
-4. If the IR contains an ambiguity marked `blocks_execution: true`, the UI stops and asks for correction. No image job is enqueued.
-5. Otherwise, the UI shows the original request and the rendered prompt. The user must explicitly approve it.
+3. The function returns a validated, provider-neutral Semantic Prompt IR. A deterministic renderer combines the original request with extracted IR fields without inventing missing scene details.
+4. If the IR contains an ambiguity marked `blocks_execution: true`, the UI stops. No image job is enqueued.
+5. Otherwise, the original request and rendered prompt are shown for explicit user approval.
 6. Only after approval does the browser call Staging `armex-api` with `action: generate_image`.
-7. The existing durable image queue reserves 20 image credits, the Worker claims the job, Cloudflare Workers AI runs FLUX.1 Schnell, and the output is uploaded to the private `lokal-ai-images` bucket.
+7. The queue reserves 20 image credits. The Worker claims the job, Cloudflare Workers AI runs FLUX.1 Schnell, and the output is uploaded to the private `lokal-ai-images` bucket.
 8. The authenticated status endpoint returns a short-lived signed URL for the completed image.
 
 ## Billing boundary
 
-- Prompt analysis does not debit the user's wallet. It does consume the Prompt Intelligence quota and incurs the configured model-provider API cost.
-- The image job is not created until the user approves the rendered prompt.
-- The existing image-generation API reserves 20 credits when the image job is enqueued. Existing retry/refund idempotency remains the authority for failed jobs.
+- Prompt analysis does not debit wallet credits. It consumes Prompt Intelligence quota and incurs provider API cost.
+- No image job exists until the user approves the rendered prompt.
+- The queue atomically reserves 20 credits with the job record. Retry and terminal failure refunds use stable idempotency keys.
 - Never describe analysis as free: it is wallet-credit-free, not provider-cost-free.
 
 ## Separation of concerns
 
-- `prompt-intelligence/staging-test.html` remains an analysis-only laboratory. It must continue to state that it does not generate images or debit image credits.
+- `prompt-intelligence/staging-test.html` remains an analysis-only laboratory.
 - Image generation is integrated into the authenticated Image Studio in `index.html`.
-- Semantic IR remains provider-neutral. The deterministic renderer is the adapter between the IR and the current FLUX prompt input.
-- The first renderer preserves the original input language; it does not yet add a separate Persian-to-English translation pass. Validate actual image quality before deciding whether a dedicated rendering/translation stage is needed.
-- The raw user request is retained in the rendered prompt so explicit constraints are not lost when an individual IR field is incomplete.
-- The request UUID is reused in in-memory page state after uncertain enqueue/poll results. A full page reload currently loses that pending state; durable reload recovery is a pre-production hardening item.
+- Semantic IR remains provider-neutral; the deterministic renderer adapts it to the current FLUX prompt input.
+- The renderer preserves the original input language. A separate Persian-to-English translation stage has not yet been added.
+- The raw user request is retained so explicit constraints are not lost when an IR field is incomplete.
+- Request UUID retry state is currently in memory. A full page reload loses that pending state; durable reload recovery is a pre-production hardening item.
 
-## Staging rollout gates
+## Completed Staging work
 
-Before an end-to-end image can be generated from this branch:
+- `lokal_async_image_worker` migration applied to Staging only.
+- `lokal_image_jobs_user_index` migration applied to Staging only.
+- `armex_image_jobs` exists with RLS enabled and no client grants.
+- All five queue RPCs exist. Execute privilege is granted only to `service_role`; `public`, `anon`, and `authenticated` have no execute permission.
+- Staging `armex-api` version 7 is ACTIVE. It enqueues image jobs and exposes the authenticated job-status route; synchronous Cloudflare image execution has been removed from this Edge Function.
+- Staging `prompt-understanding` version 7 remains ACTIVE with JWT verification enabled.
 
-1. Review the integration branch and run the IR and renderer contract tests.
-2. Confirm the Staging `prompt-understanding` function is active with JWT verification.
-3. Confirm the Staging `armex-api` contains the image enqueue/status routes.
-4. Apply and verify the image-job migration on Staging only; do not run it against Production.
-5. Configure the Worker with Staging-only Supabase credentials and the required Cloudflare Workers AI runtime secrets. Secrets belong only in server-side runtime settings.
-6. Start one Worker process with one active job and verify enqueue → debit once → claim → FLUX output → private upload → completion → signed URL, plus terminal failure/refund and duplicate-request behavior.
+## Remaining Worker rollout
 
-The existing worker deployment notes contain an older Medium sizing reference. Reconcile those notes with the latest approved operational target before creating or starting any paid Worker service. The Nano test service must remain stopped and untouched.
+The approved first smoke-test target is Weblines **Micro** (0.5 vCPU, 1 GB RAM, 5 GB disk), one process, one active job. This is a constrained smoke test, not a production sizing claim. Inference runs remotely on Cloudflare Workers AI; monitor memory/CPU and stop if limits are approached.
 
-## Explicitly not performed
+Create a Weblines **Worker** (not Custom App), from the public Git repository `behnamrazavi8-ship-it/armex-ai-studio`, branch `feat/staging-semantic-ir-image-pipeline`, using the root Dockerfile and Micro pack. It should have no public address. The local health listener on port 8080 is for diagnostics only.
 
-- No Supabase migration was applied.
-- No Edge Function was deployed or changed.
-- No Worker service was created, started, or reconfigured.
-- No Production resource was modified.
-- No pull request was merged; PR #35 remains open and draft.
+Configure only Staging credentials in Weblines runtime Environment. Required variable names:
+
+- `SUPABASE_URL`
+- `SUPABASE_SECRET_KEY`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+
+Optional: `PORT=8080`, `WORKER_POLL_MS=2500`. Never place values in Git, browser code, build arguments, logs, or chat. The Dockerfile Node heap cap is 640 MiB for the 1 GB Micro test.
+
+After the Worker is healthy and its Staging-only secrets are configured, run one controlled end-to-end image request and verify enqueue → debit once → claim → FLUX output → private upload → complete → signed URL, plus retry, duplicate-request, and terminal failure/refund behavior.
+
+Weblines documents Micro as 0.5 vCPU / 1 GB / 5 GB and recommends Medium+ for heavy Workers. The Micro configuration is approved only for this bounded smoke test; increase resources only after measuring real usage. The Nano test service must remain stopped and untouched.
+
+## Not performed
+
+- No Production resource or schema was modified.
+- No Worker service has yet been created or started.
+- No runtime secret values have been configured.
+- No end-to-end image has yet been generated.
+- PR #35 remains open and draft; nothing has been merged.
