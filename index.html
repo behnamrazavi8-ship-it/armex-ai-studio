@@ -91,15 +91,15 @@
 <section class="page" id="page-image"><div class="welcome"><div class="eyebrow">LOKAL AI IMAGE ENGINE</div><h1>استودیوی تصویر</h1><p class="muted-copy">ایده‌ات را بنویس و تصویر واقعی بساز؛ خروجی‌ها در گالری خصوصی حساب تو ذخیره می‌شوند.</p></div>
 <div class="panel image-studio-panel"><h3>ساخت تصویر جدید</h3><label class="field-label" for="imagePrompt">توضیح تصویر</label><textarea class="textarea" id="imagePrompt" maxlength="2048" placeholder="مثلاً: یک خودروی اسپرت مشکی در خیابان خیس توکیو، نورهای نئونی آبی، عکاسی سینمایی و واقع‌گرایانه..."></textarea>
 <div class="compiler-review" id="persianCompilerReview" hidden aria-live="polite">
- <h4>بازبینی پرامپت فارسی</h4><p id="compilerReviewStatus">پرامپت فارسی پیش از ارسال بررسی می‌شود.</p>
+ <h4>بازبینی تحلیل معنایی</h4><p id="compilerReviewStatus">تحلیل معنایی پیش از تولید تصویر بررسی می‌شود.</p>
  <p><strong>متن اصلی:</strong></p><p id="compilerOriginalText"></p>
- <p><strong>پرامپت انگلیسی کامپایل‌شده:</strong></p><p class="compiled-prompt" id="compilerCompiledText"></p>
+ <p><strong>پرامپت آماده تولید بر اساس Semantic Prompt IR:</strong></p><p class="compiled-prompt" id="compilerCompiledText"></p>
  <p class="unresolved" id="compilerUnresolved"></p>
- <div class="workspace-actions"><button class="btn" id="approveCompiledPrompt" type="button" hidden>تأیید پرامپت و ادامه · ۲۰ اعتبار</button><button class="btn btn-ghost" id="cancelCompiledPrompt" type="button">لغو بازبینی</button></div>
- <p>تا زمانی که متن کامپایل‌شده را تأیید نکنی، هیچ Job تولید تصویر یا کسر اعتباری انجام نمی‌شود.</p>
+ <div class="workspace-actions"><button class="btn" id="approveCompiledPrompt" type="button" hidden>تأیید تحلیل و ساخت تصویر · ۲۰ اعتبار</button><button class="btn btn-ghost" id="cancelCompiledPrompt" type="button">لغو بازبینی</button></div>
+ <p>ابتدا تحلیل معنایی انجام می‌شود؛ این مرحله از کیف پول اعتبار کم نمی‌کند، اما سهمیه و هزینه API دارد. فقط پس از تأیید تو، Job تصویر ثبت و ۲۰ اعتبار رزرو می‌شود.</p>
 </div>
 <div class="image-studio-controls"><div class="notice">مدل FLUX.1 Schnell در حال حاضر با ابعاد پیش‌فرض خودش تصویر می‌سازد؛ تنظیم دستی نسبت و رزولوشن در این اتصال فعال نیست.</div></div>
-<div class="image-cost-note">مدل: FLUX.1 Schnell · موتور Cloudflare Workers AI · هزینه هر تصویر: ۲۰ اعتبار · سهمیه رایگان روزانه محدود است</div><div class="workspace-actions"><button class="btn" id="generateImage" type="button">ساخت تصویر · ۲۰ اعتبار</button><button class="btn btn-ghost" id="usePromptInImage" type="button">استفاده از پرامپت Prompt Lab</button></div>
+<div class="image-cost-note">مدل: FLUX.1 Schnell · موتور Cloudflare Workers AI · هزینه هر تصویر: ۲۰ اعتبار · سهمیه رایگان روزانه محدود است</div><p class="muted-copy">پیش از هر تولید، Prompt Intelligence معنا و قیود پرامپت را تحلیل می‌کند؛ تولید فقط پس از تأیید تو آغاز می‌شود.</p><div class="workspace-actions"><button class="btn" id="generateImage" type="button">ساخت تصویر · ۲۰ اعتبار</button><button class="btn btn-ghost" id="usePromptInImage" type="button">استفاده از پرامپت Prompt Lab</button></div>
 <div class="image-status" id="imageStatus" role="status" aria-live="polite"></div><div class="image-preview" id="imagePreview" hidden><img id="generatedImage" alt="تصویر ساخته‌شده در LOKAL AI"><div class="image-preview-actions"><span class="muted-copy" id="imageMeta"></span><button class="btn btn-ghost btn-small" id="downloadGeneratedImage" type="button">دانلود تصویر</button></div><div class="download-progress" id="imageDownloadProgress" role="status" aria-live="polite" hidden><div class="download-progress-head"><span id="imageDownloadLabel">آماده‌سازی دانلود...</span><span id="imageDownloadPercent">۰٪</span></div><div class="download-progress-track"><div class="download-progress-fill" id="imageDownloadBar"></div></div></div></div></div>
 <div class="panel"><h3>گالری تصاویر من</h3><p class="muted-copy">تصاویر فقط برای حساب خودت قابل دسترسی هستند.</p><div id="imageGallery" class="image-gallery"><div class="empty">هنوز تصویری نساخته‌ای.</div></div></div></section>
 <section class="page" id="page-video"><div class="welcome"><h1>استودیوی ویدئو و صدا</h1></div><div class="empty">این بخش هنوز فعال نیست و هیچ خروجی نمایشی به‌عنوان تولید واقعی ارائه نمی‌کند.</div></section><section class="page" id="page-core"><div class="welcome"><div class="eyebrow">LOKAL AI CORE</div><h1>هسته مرکزی هوش مصنوعی</h1><p>درگاه یکپارچه برای اتصال امن به مدل‌های متنی و خلاقانه، مدیریت درخواست‌ها و کنترل هزینه هر عملیات.</p></div><div class="panel"><h3>معماری هسته LOKAL AI</h3><p class="muted-copy">در این ساختار، درخواست‌ها از رابط کاربری به API امن سرور می‌روند؛ کلیدهای سرویس در مرورگر قرار نمی‌گیرند و اجرای عملیات نیازمند حساب از مسیر احراز هویت و کنترل اعتبار عبور می‌کند.</p><div class="workspace-actions"><button class="btn btn-ghost" type="button" data-page="prompt">بررسی Prompt Lab</button><button class="btn btn-ghost" type="button" data-page="image">مشاهده Image Studio</button></div></div></section><section class="page" id="page-assistant"><div class="welcome"><div class="eyebrow">LOKAL AI ASSISTANT</div><h1>دستیار هوشمند</h1><p>فضای گفتگو برای پرسیدن، نوشتن، ایده‌پردازی و ادامه‌دادن کارها در یک مکالمه.</p></div><div class="panel"><h3>پیش‌نمایش دستیار هوشمند</h3><p class="muted-copy">این قابلیت در حال توسعه است. تاریخچه گفتگو و حافظه اختصاصی هنوز فعال نشده‌اند؛ در این نسخه هیچ پاسخ ساختگی یا نمایشی به‌عنوان پاسخ واقعی هوش مصنوعی ارائه نمی‌شود.</p><div class="workspace-actions"><button class="btn btn-ghost" id="assistant-preview-login" type="button" disabled>به‌زودی فعال می‌شود</button></div></div></section>
@@ -190,9 +190,10 @@
 })();
 </script>
 <script src="./lokal-config.js"></script>
-<script src="./prompt-compiler/prompt-compiler.js"></script>
+
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+ import { renderImagePromptFromIR } from "./prompt-intelligence/render-image-prompt.mjs";
 const config=window.LOKAL_CONFIG||{},message=document.getElementById("auth-message"),formCard=document.getElementById("auth-form-card"),sessionCard=document.getElementById("auth-session-card"),publicSite=document.getElementById("public-site"),workspace=document.getElementById("workspace-app"),emailInput=document.getElementById("auth-email"),passwordInput=document.getElementById("auth-password");
 let landingView=false;let activeSession=null;let routeInitialized=false;let previewMode=false;let backHomeConsumed=false;let ignoreNextPopstate=false;let authReturnToPreview=false;let authReturnPage='home';
 const setMessage=(text,isError=false)=>{if(!message)return;message.textContent=text;message.style.borderColor=isError?"#8a3545":"#31574e";message.style.background=isError?"#28131a":"#10251f";message.style.color=isError?"#ffc0ca":"#c8ead8"};
@@ -256,8 +257,8 @@ else{
   if(!compilerReview)return;
   pendingCompilerResult=prepared;compilerReview.hidden=false;
   compilerReviewStatus.textContent=prepared.mode==="review"
-   ?"کامپایل موفق بود. متن اصلی و نسخه انگلیسی را بررسی کن؛ ارسال فقط پس از تأیید تو انجام می‌شود."
-   :"این پرامپت با واژگان محدود نسخه فعلی قابل ترجمه مطمئن نیست؛ برای جلوگیری از تغییر معنی، ارسال مسدود شد.";
+   ?"تحلیل معنایی موفق بود. متن اصلی و پرامپت استخراج‌شده از IR را بررسی کن؛ تولید فقط پس از تأیید تو انجام می‌شود."
+   :"تحلیل نشان داد ابهام مهمی مانع اجرای مطمئن تصویر است؛ تا رفع ابهام هیچ Job یا کسر اعتباری انجام نمی‌شود.";
   compilerOriginalText.textContent=prepared.original;
   compilerCompiledText.textContent=prepared.compiled||"—";
   compilerUnresolved.textContent=prepared.result?.unresolved?.length
@@ -353,30 +354,50 @@ else{
   if(!pendingCompilerResult||pendingCompilerResult.mode!=="review"||pendingCompilerResult.original!==current){
    approvedCompiledPrompt=null;closeCompilerReview();setImageStatus("متن پرامپت تغییر کرده است؛ دوباره آن را بررسی کن.",true);return;
   }
-  approvedCompiledPrompt={original:current,compiled:pendingCompilerResult.compiled,version:pendingCompilerResult.result.version};
-  closeCompilerReview();setImageStatus("پرامپت کامپایل‌شده تأیید شد؛ درخواست تولید تصویر ثبت می‌شود.");imageButton?.click();
+  approvedCompiledPrompt={original:current,compiled:pendingCompilerResult.compiled,version:pendingCompilerResult.result.version,ir:pendingCompilerResult.ir};
+  closeCompilerReview();setImageStatus("تحلیل معنایی تأیید شد؛ درخواست تولید تصویر ثبت می‌شود.");imageButton?.click();
  });
  imageButton?.addEventListener("click",async()=>{
   const originalPrompt=document.getElementById("imagePrompt")?.value?.trim()||"";
   if(!originalPrompt){setImageStatus("ابتدا توضیح تصویر را وارد کن.",true);document.getElementById("imagePrompt")?.focus();return}
-  let prompt=originalPrompt;
-  if(/[\u0600-\u06FF]/u.test(originalPrompt)){
-   if(approvedCompiledPrompt?.original===originalPrompt){
-    prompt=approvedCompiledPrompt.compiled;approvedCompiledPrompt=null;closeCompilerReview();
-   }else{
-    approvedCompiledPrompt=null;
-    if(!window.LokalPromptCompiler?.prepareImagePrompt){setImageStatus("کامپایلر فارسی بارگذاری نشده است؛ برای جلوگیری از ارسال متن خام، درخواست مسدود شد.",true);return}
-    const prepared=window.LokalPromptCompiler.prepareImagePrompt(originalPrompt);
+  let prompt="";
+  if(approvedCompiledPrompt?.original===originalPrompt){
+   prompt=approvedCompiledPrompt.compiled;approvedCompiledPrompt=null;closeCompilerReview();
+  }else{
+   approvedCompiledPrompt=null;
+   const {data:{session}}=await supabase.auth.getSession();
+   if(!session){requestAuth();return}
+   imageButton.disabled=true;setImageStatus("در حال تحلیل معنایی پرامپت؛ هنوز هیچ اعتباری از کیف پول کسر نمی‌شود...");
+   try{
+    const {data,error}=await supabase.functions.invoke("prompt-understanding",{
+     body:{prompt:originalPrompt,media_type:"image"}
+    });
+    if(error)throw error;
+    if(data?.success!==true||!data?.ir)throw new Error(data?.error||"پاسخ تحلیل معنایی معتبر نیست.");
+    const ir=data.ir;
+    if(ir.media_type!=="image")throw new Error("نوع رسانه تحلیل‌شده تصویر نیست.");
+    const blocking=Array.isArray(ir.ambiguities)?ir.ambiguities.filter(item=>item?.blocks_execution===true):[];
+    if(blocking.length){
+     const prepared={mode:"blocked",original:originalPrompt,compiled:"",result:{version:ir.version,unresolved:blocking.map(item=>item.question+" — "+item.reason)},ir,usage:data.usage};
+     showCompilerReview(prepared);setImageStatus("ابهام مهمی در پرامپت وجود دارد؛ قبل از تولید باید آن را اصلاح کنی.",true);return;
+    }
+    const compiled=renderImagePromptFromIR(ir,originalPrompt);
+    const prepared={mode:"review",original:originalPrompt,compiled,result:{version:ir.version,unresolved:[]},ir,usage:data.usage};
     showCompilerReview(prepared);
-    if(prepared.mode==="blocked")setImageStatus("پرامپت فارسی هنوز قابل کامپایل مطمئن نیست؛ هیچ اعتباری مصرف نشد.",true);
-    else setImageStatus("پرامپت فارسی آماده بازبینی است؛ برای ادامه نسخه انگلیسی را تأیید کن.");
-    return;
-   }
-  }else{approvedCompiledPrompt=null;closeCompilerReview()}
-  if(prompt.length>2048){setImageStatus("پرامپت نهایی بیش از ۲۰۴۸ کاراکتر است؛ درخواست ارسال نشد.",true);return}
+    const usage=data.usage||{};
+    const cost=typeof usage.provider_cost_usd==="number"?" · هزینه تحلیل API: $"+usage.provider_cost_usd.toFixed(6):"";
+    setImageStatus("تحلیل معنایی آماده است. پرامپت نهایی را بررسی و سپس تأیید کن؛ هنوز Job تصویر ثبت نشده است"+cost+".");
+   }catch(error){
+    const raw=String(error?.message||"");
+    const friendly=/rate limit|429/i.test(raw)?"سهمیه تحلیل موقتاً تمام شده است؛ کمی بعد دوباره تلاش کن.":/IMAGE_PROMPT_TOO_LONG/.test(raw)?"پرامپت استخراج‌شده بیش از محدودیت مدل تصویر است؛ متن را کوتاه‌تر کن.":/IMAGE_IR_BLOCKED/.test(raw)?"ابهام معنایی مانع تولید تصویر است؛ ابتدا آن را اصلاح کن.":raw||"تحلیل معنایی ناموفق بود؛ هیچ Job تصویر ثبت نشد.";
+    setImageStatus(friendly,true);
+   }finally{imageButton.disabled=false}
+   return;
+  }
+  if(!prompt||prompt.length>2048){setImageStatus("پرامپت نهایی بیش از ۲۰۴۸ کاراکتر است؛ درخواست ارسال نشد.",true);return}
   const {data:{session}}=await supabase.auth.getSession();
   if(!session){requestAuth();return}
-  imageButton.disabled=true;setImageStatus("در حال رزرو اعتبار و ساخت تصویر؛ ممکن است تا یک دقیقه زمان ببرد...");
+  imageButton.disabled=true;setImageStatus("در حال رزرو ۲۰ اعتبار و ثبت Job تولید تصویر...");
   try{
    const queued=await callArmexApi(session,"",{
     action:"generate_image",request_id:crypto.randomUUID(),prompt,
