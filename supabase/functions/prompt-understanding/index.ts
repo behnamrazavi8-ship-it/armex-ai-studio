@@ -58,10 +58,10 @@ const reply = (body: Record<string, unknown>, status: number, cors: HeadersInit)
 
 const verifyProductionUser = async (request: Request): Promise<string | null> => {
   const authorization = request.headers.get("Authorization") ?? "";
-  const match = authorization.match(/^Bearer\\s+(.+)$/i);
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
   if (!match) return null;
 
-  const productionUrl = Deno.env.get("PRODUCTION_SUPABASE_URL")?.trim().replace(/\\/$/, "") ?? "";
+  const productionUrl = Deno.env.get("PRODUCTION_SUPABASE_URL")?.trim().replace(/\/$/, "") ?? "";
   const productionAnonKey = Deno.env.get("PRODUCTION_SUPABASE_ANON_KEY")?.trim() ?? "";
   if (!productionUrl || !productionAnonKey) throw new Error("PRODUCTION_AUTH_BRIDGE_NOT_CONFIGURED");
 
@@ -82,7 +82,7 @@ const stagingRestRequest = async (
   method: "POST",
   body: Record<string, unknown>,
 ): Promise<{ ok: boolean; data: unknown; status: number }> => {
-  const stagingUrl = Deno.env.get("SUPABASE_URL")?.trim().replace(/\\/$/, "") ?? "";
+  const stagingUrl = Deno.env.get("SUPABASE_URL")?.trim().replace(/\/$/, "") ?? "";
   const stagingKey = (
     Deno.env.get("SUPABASE_SECRET_KEY") ??
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
