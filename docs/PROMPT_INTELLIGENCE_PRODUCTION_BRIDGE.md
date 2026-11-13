@@ -3,8 +3,13 @@
 ## Purpose
 Keep account identity and image billing in Production while running semantic prompt analysis, quota enforcement, and provider usage accounting in Staging.
 
+## Browser project configuration
+- `LOKAL_CONFIG.supabaseUrl` and `supabaseAnonKey` point to Production. The primary Supabase client, sign-in/session, wallet, `armex-api`, image queue, and image history therefore remain on Production.
+- `LOKAL_CONFIG.promptIntelligenceUrl` and `promptIntelligenceAnonKey` point to Staging and are used only for the `prompt-understanding` analysis request.
+- Both browser keys are public publishable/anon keys; no service-role or secret key is exposed.
+
 ## Request flow
-1. The signed-in browser sends the Production access token to the Staging `prompt-understanding` Edge Function.
+1. The browser signs the user in through Production and sends that Production access token to the Staging `prompt-understanding` Edge Function, using Staging's public API key for the gateway request.
 2. The Staging function verifies that token against the Production Auth endpoint `/auth/v1/user` using the Production anon key.
 3. Only the verified Production user ID is used for Staging quota and usage rows.
 4. The browser renders the Semantic Prompt IR into a reviewable prompt and requires explicit user approval.
@@ -22,6 +27,7 @@ The Staging `prompt-understanding` function must have platform JWT verification 
 
 ## Safety boundaries
 - Never put a Staging secret/service key in browser code.
+- Never initialize the app's primary Supabase client with Staging credentials. Staging credentials are reserved for the dedicated Prompt Intelligence request only.
 - Never send the Production access token to a Staging Supabase client as though it were a Staging session.
 - Never move image enqueue, wallet debit, image status, or storage signing to Staging.
 - Never change the existing Production Worker environment.
