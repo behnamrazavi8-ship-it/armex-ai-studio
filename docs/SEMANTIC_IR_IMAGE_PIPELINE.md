@@ -51,7 +51,7 @@ Configure only Staging credentials in Weblines runtime Environment. Required var
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
-Optional: `PORT=8080`, `WORKER_POLL_MS=2500`. Never place values in Git, browser code, build arguments, logs, or chat. The Dockerfile Node heap cap is 640 MiB for the 1 GB Micro test.
+Optional: `PORT=8080`, `WORKER_POLL_MS=2500`. Never place values in Git, browser code, build arguments, logs, or chat. The Worker sends new `sb_secret_` keys only in the `apikey` header; it adds `Authorization: Bearer` only for the legacy JWT `service_role` key. The Dockerfile Node heap cap is 640 MiB for the 1 GB Micro test.
 
 After the Worker is healthy and its Staging-only secrets are configured, run one controlled end-to-end image request and verify enqueue → debit once → claim → FLUX output → private upload → complete → signed URL, plus retry, duplicate-request, and terminal failure/refund behavior.
 
