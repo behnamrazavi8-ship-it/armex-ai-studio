@@ -1,6 +1,7 @@
-const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 import { validateSemanticPromptIR } from "./validate-ir.mjs";
 import semanticPromptIrSchema from "./semantic-prompt-ir.schema.json" with { type: "json" };
+
+const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
 const MAX_PROMPT_CHARS = 8000;
