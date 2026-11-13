@@ -251,7 +251,7 @@ else{
  const compilerCompiledText=document.getElementById("compilerCompiledText");
  const compilerUnresolved=document.getElementById("compilerUnresolved");
  const approveCompiledPromptButton=document.getElementById("approveCompiledPrompt");
- let pendingCompilerResult=null,approvedCompiledPrompt=null;
+ let pendingCompilerResult=null,approvedCompiledPrompt=null,pendingImageRequestId=null,pendingImagePrompt=null,pendingImageOriginal=null;
  const closeCompilerReview=()=>{if(compilerReview)compilerReview.hidden=true;pendingCompilerResult=null};
  const showCompilerReview=prepared=>{
   if(!compilerReview)return;
@@ -360,9 +360,10 @@ else{
  imageButton?.addEventListener("click",async()=>{
   const originalPrompt=document.getElementById("imagePrompt")?.value?.trim()||"";
   if(!originalPrompt){setImageStatus("ابتدا توضیح تصویر را وارد کن.",true);document.getElementById("imagePrompt")?.focus();return}
+  if(pendingImageRequestId&&pendingImageOriginal!==originalPrompt){setImageStatus("درخواست قبلی هنوز تعیین تکلیف نشده است؛ همان متن قبلی را وارد کن تا وضعیتش بررسی شود.",true);return}
   let prompt="";
   if(approvedCompiledPrompt?.original===originalPrompt){
-   prompt=approvedCompiledPrompt.compiled;approvedCompiledPrompt=null;closeCompilerReview();
+   prompt=approvedCompiledPrompt.compiled;closeCompilerReview();
   }else{
    approvedCompiledPrompt=null;
    const {data:{session}}=await supabase.auth.getSession();
@@ -395,12 +396,14 @@ else{
    return;
   }
   if(!prompt||prompt.length>2048){setImageStatus("پرامپت نهایی بیش از ۲۰۴۸ کاراکتر است؛ درخواست ارسال نشد.",true);return}
+  if(!pendingImageRequestId){pendingImageRequestId=crypto.randomUUID();pendingImagePrompt=prompt;pendingImageOriginal=originalPrompt}
+  if(pendingImagePrompt!==prompt){setImageStatus("درخواست قبلی با پرامپت دیگری در انتظار تعیین تکلیف است؛ برای جلوگیری از کسر دوباره اعتبار ابتدا همان درخواست را پیگیری کن.",true);return}
   const {data:{session}}=await supabase.auth.getSession();
   if(!session){requestAuth();return}
   imageButton.disabled=true;setImageStatus("در حال رزرو ۲۰ اعتبار و ثبت Job تولید تصویر...");
   try{
    const queued=await callArmexApi(session,"",{
-    action:"generate_image",request_id:crypto.randomUUID(),prompt,
+    action:"generate_image",request_id:pendingImageRequestId,prompt:pendingImagePrompt,
     aspect_ratio:"1:1",resolution:"1K"
    });
    if(queued.success!==true||!queued.job?.id)throw new Error("پاسخ ثبت درخواست تصویر معتبر نیست.");
@@ -413,12 +416,13 @@ else{
     const job=status.job;
     if(status.success!==true||!job)throw new Error("وضعیت درخواست تصویر معتبر نیست.");
     if(job.status==="completed"){completedJob=job;break}
-    if(job.status==="failed")throw new Error(job.error_code||"IMAGE_GENERATION_FAILED");
+    if(job.status==="failed"){pendingImageRequestId=null;pendingImagePrompt=null;pendingImageOriginal=null;throw new Error("IMAGE_JOB_FAILED:"+String(job.error_code||"worker_error"))}
     if(!["pending","processing","queued"].includes(job.status))throw new Error("وضعیت ناشناخته درخواست تصویر: "+String(job.status));
    }
    if(!completedJob)throw new Error("زمان انتظار ساخت تصویر تمام شد؛ گالری را تازه‌سازی کن تا وضعیت نهایی بررسی شود.");
    if(!completedJob.image_url)throw new Error("تصویر ساخته شده اما پیوند امن نمایش آن آماده نیست؛ گالری را تازه‌سازی کن.");
    const imageResult={image_url:completedJob.image_url,model:completedJob.model||queued.model,credits_charged:completedJob.credits_charged||queued.credits_charged||20};
+   pendingImageRequestId=null;pendingImagePrompt=null;pendingImageOriginal=null;approvedCompiledPrompt=null;
    const preview=document.getElementById("generatedImage"),link=document.getElementById("downloadGeneratedImage");
    preview.src=imageResult.image_url;link.dataset.url=imageResult.image_url;setDownloadProgress(false,"",0,false);imagePreview.hidden=false;
    document.getElementById("imageMeta").textContent=String(imageResult.model||"FLUX.1 Schnell")+" · "+Number(imageResult.credits_charged).toLocaleString("fa-IR")+" اعتبار مصرف شد";
@@ -426,7 +430,8 @@ else{
    await Promise.all([loadWalletBalance(session),loadImageGallery(session)]);
   }catch(error){
    const raw=String(error?.message||"");
-   const friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول برای ساخت تصویر کافی نیست.":/not configured/i.test(raw)?"اتصال موتور تصویر هنوز در سرور تنظیم نشده است.":/Image provider failed/i.test(raw)?"موتور تصویر Cloudflare موقتاً در دسترس نیست یا سهمیه رایگان امروز تمام شده؛ اعتبار رزروشده بازگردانده شده است.":/timed out/i.test(raw)?"زمان ساخت تصویر تمام شد؛ در صورت کسر اعتبار، بازگشت آن در کیف پول ثبت می‌شود.":/already processing/i.test(raw)?"این درخواست در حال انجام است؛ کمی بعد گالری را تازه‌سازی کن.":raw||"ساخت تصویر ناموفق بود.";
+   const friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول برای ساخت تصویر کافی نیست.":/IMAGE_JOB_FAILED/.test(raw)?"تولید تصویر ناموفق شد؛ وضعیت Job نهایی شده و اعتبار طبق سیاست بازپرداخت Worker بررسی می‌شود.":/not configured/i.test(raw)?"اتصال موتور تصویر هنوز در سرور تنظیم نشده است.":/Image provider failed/i.test(raw)?"موتور تصویر Cloudflare موقتاً در دسترس نیست یا سهمیه رایگان امروز تمام شده؛ اعتبار رزروشده بازگردانده شده است.":/timed out/i.test(raw)?"زمان ساخت تصویر تمام شد؛ در صورت کسر اعتبار، بازگشت آن در کیف پول ثبت می‌شود.":/already processing/i.test(raw)?"این درخواست در حال انجام است؛ کمی بعد گالری را تازه‌سازی کن.":raw||"ساخت تصویر ناموفق بود.";
+   if(/Insufficient credits/i.test(raw)){pendingImageRequestId=null;pendingImagePrompt=null;pendingImageOriginal=null}
    setImageStatus(friendly,true);await loadWalletBalance(session);
   }finally{imageButton.disabled=false}
  });
