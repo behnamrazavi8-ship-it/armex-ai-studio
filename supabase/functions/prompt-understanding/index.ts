@@ -142,13 +142,32 @@ Deno.serve(async (request: Request) => {
         temperature: 0,
         max_tokens: 3500,
         response_format: { type: "json_schema", json_schema: { name: "lokal_ai_semantic_prompt_ir_v1", strict: true, schema: semanticPromptIrSchema } },
+        provider: { require_parameters: true },
         usage: { include: true },
       }),
     });
 
     if (!response.ok) {
       const providerStatus = response.status;
-      console.error("Prompt provider returned an error", { requestId, status: providerStatus, model });
+      const providerBody = await response.text();
+      let providerCode: string | null = null;
+      let providerMessage = providerBody.slice(0, 1200);
+      try {
+        const parsedError = JSON.parse(providerBody);
+        providerCode = typeof parsedError?.error?.code === "string" ? parsedError.error.code : null;
+        providerMessage = typeof parsedError?.error?.message === "string"
+          ? parsedError.error.message.slice(0, 1200)
+          : providerMessage;
+      } catch {
+        // Keep only the bounded response text for diagnostics.
+      }
+      console.error("Prompt provider returned an error", {
+        requestId,
+        status: providerStatus,
+        code: providerCode,
+        message: providerMessage,
+        model,
+      });
       outcome = "provider_error";
       return reply({ success: false, error: "Prompt understanding provider is temporarily unavailable", request_id: requestId }, 502, cors);
     }
