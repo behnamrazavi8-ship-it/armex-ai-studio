@@ -24,7 +24,9 @@
   ],
   "properties": {
     "version": {
-      "const": "1.0"
+      "enum": [
+        "1.0"
+      ]
     },
     "input_language": {
       "type": "string"
@@ -43,7 +45,6 @@
     },
     "subjects": {
       "type": "array",
-      "maxItems": 40,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -63,7 +64,6 @@
           },
           "attributes": {
             "type": "array",
-            "maxItems": 40,
             "items": {
               "type": "string"
             }
@@ -76,7 +76,6 @@
           },
           "relations": {
             "type": "array",
-            "maxItems": 30,
             "items": {
               "type": "string"
             }
@@ -86,7 +85,6 @@
     },
     "actions": {
       "type": "array",
-      "maxItems": 40,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -158,7 +156,6 @@
         },
         "details": {
           "type": "array",
-          "maxItems": 40,
           "items": {
             "type": "string"
           }
@@ -196,7 +193,6 @@
         },
         "subject_hierarchy": {
           "type": "array",
-          "maxItems": 20,
           "items": {
             "type": "string"
           }
@@ -211,7 +207,6 @@
     },
     "style": {
       "type": "array",
-      "maxItems": 30,
       "items": {
         "type": "string"
       }
@@ -261,35 +256,30 @@
     },
     "lighting": {
       "type": "array",
-      "maxItems": 20,
       "items": {
         "type": "string"
       }
     },
     "color_palette": {
       "type": "array",
-      "maxItems": 30,
       "items": {
         "type": "string"
       }
     },
     "materials": {
       "type": "array",
-      "maxItems": 30,
       "items": {
         "type": "string"
       }
     },
     "mood": {
       "type": "array",
-      "maxItems": 20,
       "items": {
         "type": "string"
       }
     },
     "text_elements": {
       "type": "array",
-      "maxItems": 30,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -336,28 +326,24 @@
       "properties": {
         "must_include": {
           "type": "array",
-          "maxItems": 50,
           "items": {
             "type": "string"
           }
         },
         "must_avoid": {
           "type": "array",
-          "maxItems": 50,
           "items": {
             "type": "string"
           }
         },
         "negative_constraints": {
           "type": "array",
-          "maxItems": 50,
           "items": {
             "type": "string"
           }
         },
         "preserve_exactly": {
           "type": "array",
-          "maxItems": 50,
           "items": {
             "type": "string"
           }
@@ -392,17 +378,13 @@
           "type": [
             "number",
             "null"
-          ],
-          "minimum": 0,
-          "maximum": 3600
+          ]
         },
         "frame_rate": {
           "type": [
             "number",
             "null"
-          ],
-          "minimum": 1,
-          "maximum": 240
+          ]
         },
         "format": {
           "type": [
@@ -412,7 +394,6 @@
         },
         "other_parameters": {
           "type": "array",
-          "maxItems": 30,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -434,7 +415,6 @@
     },
     "ambiguities": {
       "type": "array",
-      "maxItems": 20,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -458,7 +438,6 @@
     },
     "assumptions": {
       "type": "array",
-      "maxItems": 30,
       "items": {
         "type": "object",
         "additionalProperties": false,
