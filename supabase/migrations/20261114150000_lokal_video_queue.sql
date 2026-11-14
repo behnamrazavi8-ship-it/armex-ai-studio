@@ -311,7 +311,7 @@ begin
   end if;
 
   update public.lokal_video_jobs
-    set status = 'completed', locked_by = null, lease_expires_at = null,
+    set status = 'completed',
         last_error_code = null, updated_at = now()
     where job_id = p_job_id and status = 'processing' and locked_by = p_worker_id;
   get diagnostics v_updated = row_count;
@@ -379,7 +379,7 @@ begin
   end if;
 
   update public.lokal_video_jobs
-    set status = 'failed', locked_by = null, lease_expires_at = null,
+    set status = 'failed',
         last_error_code = left(coalesce(p_error_code, 'video_worker_error'), 80),
         updated_at = now()
     where job_id = p_job_id;
@@ -425,7 +425,17 @@ begin
         where j.job_id = p_job_id and j.status in ('completed', 'failed')
       );
   get diagnostics v_updated = row_count;
-  return v_updated = 1;
+  if v_updated <> 1 then return false; end if;
+
+  update public.lokal_video_jobs
+    set locked_by = null, lease_expires_at = null, updated_at = now()
+    where job_id = p_job_id and status in ('completed', 'failed')
+      and locked_by = p_worker_id;
+  get diagnostics v_updated = row_count;
+  if v_updated <> 1 then
+    raise exception 'Terminal Video job lease could not be released' using errcode = '40001';
+  end if;
+  return true;
 end;
 $function$;
 
