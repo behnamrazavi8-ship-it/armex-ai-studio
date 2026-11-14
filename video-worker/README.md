@@ -61,3 +61,6 @@ This worker is provider-neutral. Ferdowsi/OpenStack VM lifecycle operations belo
 - Do not run more than one generation at a time on a 24 GB GPU.
 - Do not mark a job complete based only on worker status; verify private Storage independently.
 - No GPU instance is created, no image is pushed, and no service is deployed by this repository change.
+
+
+GPU-free validation is run by `.github/workflows/video-worker-tests.yml` on updates to this branch and on pull requests.
