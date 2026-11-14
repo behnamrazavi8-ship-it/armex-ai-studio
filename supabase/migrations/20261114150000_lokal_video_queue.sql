@@ -115,13 +115,6 @@ begin
     raise exception 'Invalid video job parameters' using errcode = '22023';
   end if;
 
-  if exists (
-    select 1 from public.lokal_video_worker_lease
-    where singleton_id = 1 and state = 'reconciliation_required'
-  ) then
-    return jsonb_build_object('success', false, 'code', 'video_worker_reconciliation_required');
-  end if;
-
   insert into public.armex_wallets(user_id)
   values (p_user_id)
   on conflict (user_id) do nothing;
@@ -137,6 +130,13 @@ begin
       'success', true, 'duplicate', true,
       'job_id', v_prior.id, 'status', v_prior.status
     );
+  end if;
+
+  if exists (
+    select 1 from public.lokal_video_worker_lease
+    where singleton_id = 1 and state = 'reconciliation_required'
+  ) then
+    return jsonb_build_object('success', false, 'code', 'video_worker_reconciliation_required');
   end if;
 
   if exists (
