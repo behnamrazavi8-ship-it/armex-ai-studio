@@ -140,9 +140,11 @@ class VideoJobRunner:
         )
         heartbeat.start()
         vm_acquired = False
+        lifecycle_attempted = False
         submission_attempted = False
         try:
             upload = self.queue.create_signed_upload(job)
+            lifecycle_attempted = True
             vm_id = self.lifecycle.acquire(job_id, create_payload)
             vm_acquired = True
             vm_info = self.lifecycle.provider.get_vm(vm_id)
@@ -252,16 +254,28 @@ class VideoJobRunner:
             raise VideoJobRunnerError("video_job_timeout")
 
         except Exception as error:
-            if not submission_attempted:
+            if not submission_attempted and not lifecycle_attempted:
                 try:
                     self._release_terminal_failure(
                         job_id,
-                        vm_acquired=vm_acquired,
-                        error_code="video_start_failed",
+                        vm_acquired=False,
+                        error_code="video_upload_capability_failed",
+                        heartbeat=heartbeat,
+                    )
+                except Exception:
+                    self._mark_uncertain(job_id, "video_queue_reconciliation_required", heartbeat)
+            elif not submission_attempted and vm_acquired:
+                try:
+                    self._release_terminal_failure(
+                        job_id,
+                        vm_acquired=True,
+                        error_code="video_worker_start_failed",
                         heartbeat=heartbeat,
                     )
                 except Exception:
                     self._mark_uncertain(job_id, "video_start_reconciliation_required", heartbeat)
+            elif not submission_attempted:
+                self._mark_uncertain(job_id, "gpu_provisioning_reconciliation_required", heartbeat)
             else:
                 self._mark_uncertain(
                     job_id,
