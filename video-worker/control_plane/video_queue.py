@@ -217,6 +217,12 @@ class SupabaseVideoQueue:
             raise VideoQueueError("supabase_invalid_failure_result")
         return result
 
+    def release_worker_lease(self, job_id: str, worker_id: str) -> bool:
+        """Release the database GPU lease only after provider shutdown is verified."""
+        return self._rpc("lokal_release_video_worker_lease", {
+            "p_job_id": job_id, "p_worker_id": worker_id,
+        }) is True
+
     def get_status(self, user_id: str, request_id: str) -> dict[str, Any] | None:
         result = self._rpc("lokal_get_video_job_status", {
             "p_user_id": user_id, "p_request_id": request_id,
