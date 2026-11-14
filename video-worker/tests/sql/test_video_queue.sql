@@ -108,6 +108,16 @@ begin
   end if;
 
 
+  -- Insufficient balance must not create a billable job.
+  v_result := public.lokal_enqueue_video_generation(
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    '77777777-7777-4777-8777-777777777777',
+    'no credits prompt', '{"size":"1280*704"}'::jsonb, 25
+  );
+  if v_result->>'success' <> 'false' or v_result->>'code' <> 'insufficient_credits' then
+    raise exception 'insufficient-credit enqueue was not rejected: %', v_result;
+  end if;
+
   -- An uncertain failure is never refunded or automatically replayed.
   v_result := public.lokal_enqueue_video_generation(
     v_user, v_request_uncertain, 'uncertain prompt', '{"size":"1280*704"}'::jsonb, 25
