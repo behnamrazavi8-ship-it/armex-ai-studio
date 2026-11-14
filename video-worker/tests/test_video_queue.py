@@ -85,12 +85,11 @@ class VideoQueueTests(unittest.TestCase):
             self.queue.create_signed_upload(self.job)
 
     @patch("control_plane.video_queue.urllib.request.urlopen")
-    def test_completion_requires_independent_storage_verification(self, urlopen):
-        with self.assertRaisesRegex(VideoQueueError, "video_output_verification_failed"):
+    def test_completion_rejects_invalid_output_size_before_rpc(self, urlopen):
+        with self.assertRaisesRegex(VideoQueueError, "video_output_metadata_invalid"):
             self.queue.complete_verified(
                 job_id="job-1", worker_id="worker-1",
-                storage_path="user/job.mp4", output_bytes=1024,
-                verify_output=lambda _path: False,
+                storage_path="user/job.mp4", output_bytes=MAX_VIDEO_BYTES + 1,
             )
         urlopen.assert_not_called()
 
@@ -100,11 +99,11 @@ class VideoQueueTests(unittest.TestCase):
         result = self.queue.complete_verified(
             job_id="job-1", worker_id="worker-1",
             storage_path="user/request.mp4", output_bytes=1024,
-            verify_output=lambda _path: True,
         )
         self.assertTrue(result)
         payload = json.loads(urlopen.call_args.args[0].data.decode())
-        self.assertIs(payload["p_output_verified"], True)
+        self.assertEqual(payload["p_output_bytes"], 1024)
+        self.assertNotIn("p_output_verified", payload)
 
     @patch("control_plane.video_queue.urllib.request.urlopen")
     def test_database_gpu_lease_released_only_by_explicit_rpc(self, urlopen):
