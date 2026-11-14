@@ -27,7 +27,7 @@ The provider's exact response schema has intentionally not been guessed. Until t
 
 The SQLite lease is safe for one controller process on one durable disk. It is not a distributed lock. Do not run multiple control-plane replicas against independent disks. Before multi-replica deployment, replace this lease store with an atomic shared database lock/lease (for example a Supabase RPC with row locking and an expiry/heartbeat).
 
-A crash after the provider accepts VM creation but before its ID is persisted can leave an orphan VM. The durable lease remains blocked for manual reconciliation; configure deterministic VM names and add provider-side lookup by name before enabling unattended provisioning.
+A crash while the lease is in `provisioning` with no persisted VM ID is treated as ambiguous. The controller now changes that lease to `reconciliation_required` and refuses to issue another create request, preventing an automatic duplicate billable VM. An orphan may still exist and must be located manually; configure deterministic VM names and provider-side lookup by name before enabling unattended provisioning.
 
 ## Tests
 
