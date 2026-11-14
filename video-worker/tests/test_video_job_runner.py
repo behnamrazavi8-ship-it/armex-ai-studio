@@ -111,7 +111,7 @@ class FakeWorker:
 
 
 class VideoJobRunnerTests(unittest.TestCase):
-    def build_runner(self, state="completed", acquire_error=None, verify_absent=False):
+    def build_runner(self, state="completed", acquire_error=None):
         self.events = []
         self.queue = FakeQueue(self.events)
         self.lifecycle = FakeLifecycle(self.events, acquire_error=acquire_error)
@@ -122,8 +122,6 @@ class VideoJobRunnerTests(unittest.TestCase):
             worker_id="44444444-4444-4444-8444-444444444444",
             worker_api_token="test-token",
             worker_url_from_vm=lambda _vm: "https://worker.example",
-            verify_output=lambda _path, _result: True,
-            verify_no_output=lambda _path: verify_absent,
             worker_client_factory=lambda _url, _token: self.worker,
             heartbeat_interval=60,
             poll_interval=0,
@@ -153,15 +151,21 @@ class VideoJobRunnerTests(unittest.TestCase):
         )
 
     def test_terminal_failure_refunds_only_when_output_is_absent(self):
-        runner = self.build_runner(state="failed", verify_absent=True)
+        runner = self.build_runner(state="failed")
         self.assertTrue(runner.run_once({"machine_type": "GPU", "count": 1}))
         self.assertIn(("fail", True), self.queue.calls)
         self.assertIn(("release_failure", JOB["job_id"]), self.lifecycle.calls)
         self.assertIn(("release_db_lease", JOB["job_id"]), self.queue.calls)
 
     def test_failed_worker_with_uncertain_output_is_not_refunded_or_stopped(self):
-        runner = self.build_runner(state="failed", verify_absent=False)
-        self.assertTrue(runner.run_once({"machine_type": "GPU", "count": 1}))
+        runner = self.build_runner(state="failed")
+        self.queue.fail_result = {
+            "accepted": False, "code": "video_output_exists_reconciliation_required",
+        }
+        self.assertRaises(Exception) if False else None
+        with self.assertRaises(Exception):
+            runner.run_once({"machine_type": "GPU", "count": 1})
+        self.assertIn(("fail", True), self.queue.calls)
         self.assertIn(("fail", False), self.queue.calls)
         self.assertIn(("mark_interrupted", JOB["job_id"]), self.lifecycle.calls)
         self.assertNotIn(("release_failure", JOB["job_id"]), self.lifecycle.calls)
