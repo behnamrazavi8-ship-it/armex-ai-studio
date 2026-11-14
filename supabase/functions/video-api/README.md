@@ -36,4 +36,4 @@ The function calls service-role-only RPCs. It signs a one-hour download URL only
 
 ## Deployment boundary
 
-The Edge Function and database migration are committed to the feature branch only. Neither has been deployed/applied to the live Supabase project. Configure the actual credit price and review the missing historical image-queue migration before production migration application.
+The Edge Function and database migration are committed to the feature branch only. The Edge Function has not been deployed and the migration has not been applied to the live Supabase project. Configure the actual credit price and reconcile the missing historical image-queue migration before production migration application.
