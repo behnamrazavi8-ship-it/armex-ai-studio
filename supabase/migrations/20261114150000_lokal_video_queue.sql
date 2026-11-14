@@ -40,7 +40,11 @@ create table if not exists public.lokal_video_jobs (
   lease_expires_at timestamptz,
   last_error_code text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint lokal_video_jobs_processing_lease_check check (
+    (status = 'processing' and locked_by is not null and lease_expires_at is not null)
+    or status <> 'processing'
+  )
 );
 
 create index if not exists lokal_video_jobs_queue_idx
@@ -57,7 +61,7 @@ create table if not exists public.lokal_video_worker_lease (
   constraint lokal_video_worker_lease_state_check check (
     (state = 'idle' and worker_id is null and job_id is null and lease_expires_at is null)
     or
-    (state in ('active', 'reconciliation_required') and worker_id is not null and job_id is not null)
+    (state in ('active', 'reconciliation_required') and worker_id is not null and job_id is not null and lease_expires_at is not null)
   )
 );
 
@@ -109,6 +113,13 @@ begin
      or p_settings is null or jsonb_typeof(p_settings) <> 'object'
      or p_credits is null or p_credits < 1 or p_credits > 100000 then
     raise exception 'Invalid video job parameters' using errcode = '22023';
+  end if;
+
+  if exists (
+    select 1 from public.lokal_video_worker_lease
+    where singleton_id = 1 and state = 'reconciliation_required'
+  ) then
+    return jsonb_build_object('success', false, 'code', 'video_worker_reconciliation_required');
   end if;
 
   insert into public.armex_wallets(user_id)
