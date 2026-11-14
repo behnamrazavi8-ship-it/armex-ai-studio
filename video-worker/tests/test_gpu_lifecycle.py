@@ -73,6 +73,22 @@ class GpuLifecycleTests(unittest.TestCase):
         self.assertIsNone(self.controller.snapshot()["active_job_id"])
         self.assertEqual(self.controller.snapshot()["state"], "stopped")
 
+    def test_confirmed_terminal_failure_stops_and_releases_vm(self):
+        self.controller.acquire("job-1", {"machine_type": "GPU", "count": 1})
+        self.controller.release_after_terminal_failure(
+            "job-1", terminal_failure_confirmed=True
+        )
+        self.assertIn(("stop", "vm-123"), self.provider.calls)
+        self.assertIsNone(self.controller.snapshot()["active_job_id"])
+        self.assertEqual(self.controller.snapshot()["state"], "stopped")
+
+    def test_unconfirmed_terminal_failure_cannot_release_vm(self):
+        self.controller.acquire("job-1", {"machine_type": "GPU", "count": 1})
+        with self.assertRaisesRegex(LifecycleError, "gpu_release_requires_terminal_failure"):
+            self.controller.release_after_terminal_failure(
+                "job-1", terminal_failure_confirmed=False
+            )
+
     def test_interrupted_lease_blocks_new_jobs(self):
         self.controller.acquire("job-1", {"machine_type": "GPU", "count": 1})
         self.controller.mark_interrupted("job-1")
