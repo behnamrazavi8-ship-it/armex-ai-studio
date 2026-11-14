@@ -243,4 +243,4 @@ def handler(job: dict[str, Any]) -> dict[str, Any]:
         "file_size_bytes": metadata["file_size_bytes"],
     }
 
-\n
+
