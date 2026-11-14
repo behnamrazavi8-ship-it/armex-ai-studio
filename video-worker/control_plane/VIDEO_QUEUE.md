@@ -40,9 +40,11 @@ from the request body as an authorization decision.
 secret store. The service-role key must never be passed to the GPU VM, browser,
 or committed to Git.
 
-The `create_signed_upload` issues a short-lived Storage upload URL with the service-role key, then passes only the public anon key and signed URL to the GPU worker. The service-role key never leaves the control plane.
+The `create_signed_upload` method issues a short-lived Storage upload URL with the service-role key, then passes only the public anon key and signed URL to the GPU worker. The service-role key never leaves the control plane.
 
 The `complete_verified` method requires a caller-supplied Storage verification callback. That callback must independently confirm object existence, expected path, MIME type, and non-zero size using trusted Storage credentials.
+
+`VideoJobRunner` joins queue claiming, signed upload creation, GPU VM acquire/start, worker health and job polling, queue heartbeats, output verification, provider-confirmed shutdown, and final database lease release. Provider response-to-VM mapping and Storage object verification remain injected callbacks; they must be implemented from the real provider response and Storage API before unattended operation.
 
 ## Deployment boundary
 
