@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from typing import Any
@@ -28,6 +28,7 @@ class FerdowsiPaths:
     start: str
     stop: str
     delete: str
+    list: str = ""
 
     @classmethod
     def from_env(cls) -> "FerdowsiPaths":
@@ -37,6 +38,7 @@ class FerdowsiPaths:
             "start": "FERDOWSI_START_VM_PATH",
             "stop": "FERDOWSI_STOP_VM_PATH",
             "delete": "FERDOWSI_DELETE_VM_PATH",
+            "list": "FERDOWSI_LIST_VMS_PATH",
         }
         values = {field: os.getenv(env, "").strip() for field, env in names.items()}
         missing = [env for field, env in names.items() if not values[field]]
@@ -46,12 +48,18 @@ class FerdowsiPaths:
             )
         return cls(**values)
 
+    @staticmethod
+    def _required_path(path: str, operation: str) -> str:
+        if not isinstance(path, str) or not path.strip():
+            raise FerdowsiConfigurationError(f"Ferdowsi {operation} path is required")
+        return path
+
 
 class FerdowsiClient:
-    """Small, provider-specific lifecycle adapter. Never logs credentials or payloads.
+    """Authenticated Ferdowsi VM API adapter.
 
-    API paths are configuration, not guessed constants: set them from the
-    Ferdowsi OpenAPI operation definitions before enabling VM lifecycle calls.
+    Endpoint templates remain explicit configuration and must be copied from
+    Ferdowsi's OpenAPI operations. The adapter never guesses provider routes.
     """
 
     def __init__(
@@ -62,12 +70,17 @@ class FerdowsiClient:
         region: str | None = None,
         paths: FerdowsiPaths | None = None,
         timeout: float = 20.0,
+        delete_flag: bool | None = None,
     ) -> None:
         self.base_url = (base_url or os.getenv("FERDOWSI_API_BASE_URL", "")).rstrip("/") + "/"
         self.api_key = api_key or os.getenv("FERDOWSI_API_KEY", "")
         self.region = region or os.getenv("FERDOWSI_REGION", "")
         self.paths = paths or FerdowsiPaths.from_env()
         self.timeout = timeout
+        raw_delete_flag = os.getenv("FERDOWSI_DELETE_VM_FLAG")
+        self.delete_flag = delete_flag if delete_flag is not None else (
+            raw_delete_flag.lower() == "true" if raw_delete_flag is not None else None
+        )
         if not self.base_url.startswith("https://"):
             raise FerdowsiConfigurationError("FERDOWSI_API_BASE_URL must use HTTPS")
         if not self.api_key.strip():
@@ -75,18 +88,25 @@ class FerdowsiClient:
         if not self.region.strip():
             raise FerdowsiConfigurationError("FERDOWSI_REGION is required")
 
-    def _url(self, template: str, server_id: str | None = None) -> str:
-        path = template.format(region=self.region, server_id=server_id or "")
-        if path.startswith("/") is False:
+    def _url(self, template: str, server_id: str | None = None, *, query: dict[str, str] | None = None) -> str:
+        path = template.format(
+            region=urllib.parse.quote(self.region, safe=""),
+            server_id=urllib.parse.quote(server_id or "", safe=""),
+            id=urllib.parse.quote(server_id or "", safe=""),
+        )
+        if not path.startswith("/"):
             path = "/" + path
-        return urljoin(self.base_url, path.lstrip("/"))
+        url = urljoin(self.base_url, path.lstrip("/"))
+        if query:
+            url += ("&" if "?" in url else "?") + urllib.parse.urlencode(query)
+        return url
 
     def _request(
         self,
         method: str,
         path: str,
         payload: dict[str, Any] | None = None,
-    ) -> dict[str, Any] | None:
+    ) -> Any:
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
         request = urllib.request.Request(
             path,
@@ -102,7 +122,6 @@ class FerdowsiClient:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw = response.read()
         except urllib.error.HTTPError as error:
-            # Do not expose provider response bodies: they may echo request data.
             code = "provider_auth_failed" if error.code in (401, 403) else "provider_request_failed"
             raise FerdowsiAPIError(error.code, code) from None
         except (urllib.error.URLError, TimeoutError):
@@ -113,6 +132,18 @@ class FerdowsiClient:
             value = json.loads(raw)
         except (UnicodeDecodeError, json.JSONDecodeError):
             raise FerdowsiAPIError(502, "provider_invalid_json") from None
+        if not isinstance(value, (dict, list)):
+            raise FerdowsiAPIError(502, "provider_invalid_response")
+        return value
+
+    @staticmethod
+    def _single_vm(value: Any, *, operation: str) -> dict[str, Any]:
+        # Ferdowsi's published Get-by-ID schema is an Array. Normalize only a
+        # single-element array; never silently choose one of multiple VMs.
+        if isinstance(value, list):
+            if len(value) != 1:
+                raise FerdowsiAPIError(502, "provider_unexpected_vm_count")
+            value = value[0]
         if not isinstance(value, dict):
             raise FerdowsiAPIError(502, "provider_invalid_response")
         return value
@@ -138,25 +169,53 @@ class FerdowsiClient:
 
     def create_gpu_vm(self, payload: dict[str, Any]) -> dict[str, Any]:
         self.validate_gpu_create_payload(payload)
-        body = dict(payload)
-        return self._request("POST", self._url(self.paths.create), body) or {}
+        response = self._request("POST", self._url(self.paths.create), dict(payload))
+        return self._single_vm(response, operation="create")
+
+    def list_vms(self, *, machine_type: str = "GPU") -> list[dict[str, Any]]:
+        if not self.paths.list:
+            raise FerdowsiConfigurationError("FERDOWSI_LIST_VMS_PATH is required")
+        if machine_type not in {"ALL", "DROPLET", "HPC", "GPU", "PaaS"}:
+            raise ValueError("Unsupported Ferdowsi machine_type filter")
+        response = self._request(
+            "GET",
+            self._url(self.paths.list, query={"machine_type": machine_type}),
+        )
+        if isinstance(response, dict):
+            # Some APIs wrap collections; preserve explicit known collection keys only.
+            response = response.get("results", response.get("items"))
+        if not isinstance(response, list) or any(not isinstance(item, dict) for item in response):
+            raise FerdowsiAPIError(502, "provider_invalid_vm_list")
+        return response
 
     def get_vm(self, server_id: str) -> dict[str, Any]:
         if not server_id:
             raise ValueError("server_id is required")
-        return self._request("GET", self._url(self.paths.detail, server_id)) or {}
+        response = self._request("GET", self._url(self.paths.detail, server_id))
+        return self._single_vm(response, operation="get")
 
-    def start_vm(self, server_id: str) -> dict[str, Any] | None:
+    def start_vm(self, server_id: str) -> Any:
         if not server_id:
             raise ValueError("server_id is required")
-        return self._request("PATCH", self._url(self.paths.start, server_id))
+        return self._request(
+            "PATCH", self._url(self.paths.start, server_id), {"attached": True}
+        )
 
-    def stop_vm(self, server_id: str) -> dict[str, Any] | None:
+    def stop_vm(self, server_id: str) -> Any:
         if not server_id:
             raise ValueError("server_id is required")
-        return self._request("PATCH", self._url(self.paths.stop, server_id))
+        return self._request(
+            "PATCH", self._url(self.paths.stop, server_id), {"attached": True}
+        )
 
-    def delete_vm(self, server_id: str) -> dict[str, Any] | None:
+    def delete_vm(self, server_id: str) -> Any:
         if not server_id:
             raise ValueError("server_id is required")
-        return self._request("DELETE", self._url(self.paths.delete, server_id))
+        if self.delete_flag is None:
+            raise FerdowsiConfigurationError(
+                "FERDOWSI_DELETE_VM_FLAG must be explicitly configured before VM deletion"
+            )
+        return self._request(
+            "DELETE",
+            self._url(self.paths.delete, server_id, query={"flag": str(self.delete_flag).lower()}),
+        )
