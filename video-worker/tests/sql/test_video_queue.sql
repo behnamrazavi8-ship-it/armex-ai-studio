@@ -70,11 +70,30 @@ begin
     raise exception 'active job heartbeat failed';
   end if;
 
-  -- Completion requires the deterministic object path and verified output.
+  -- A caller cannot mark a job complete before the Storage object exists.
+  begin
+    perform public.lokal_complete_video_job(
+      v_job, v_worker,
+      v_user::text || '/' || v_request_success::text || '.mp4',
+      2048
+    );
+    raise exception 'completion accepted without a Storage object';
+  exception when check_violation then
+    null;
+  end;
+
+  insert into storage.objects(bucket_id, name, metadata)
+  values (
+    'lokal-ai-videos',
+    v_user::text || '/' || v_request_success::text || '.mp4',
+    jsonb_build_object('size', 2048, 'mimetype', 'video/mp4')
+  );
+
+  -- Completion succeeds only after the exact private MP4 metadata is present.
   if public.lokal_complete_video_job(
     v_job, v_worker,
     v_user::text || '/' || v_request_success::text || '.mp4',
-    2048, true
+    2048
   ) is distinct from true then
     raise exception 'verified completion failed';
   end if;
@@ -126,6 +145,19 @@ begin
   v_claim := public.lokal_claim_video_job(v_worker);
   if (v_claim->>'job_id')::uuid <> v_job then
     raise exception 'uncertain job was not claimed';
+  end if;
+  -- Even if the worker reports a terminal failure, an existing object
+  -- prevents an automatic refund until an operator reconciles it.
+  insert into storage.objects(bucket_id, name, metadata)
+  values (
+    'lokal-ai-videos',
+    '11111111-1111-4111-8111-111111111111/44444444-4444-4444-8444-444444444444.mp4',
+    jsonb_build_object('size', 2048, 'mimetype', 'video/mp4')
+  );
+  v_result := public.lokal_fail_video_job(v_job, v_worker, 'network_outcome_unknown', true);
+  if v_result->>'accepted' <> 'false'
+     or v_result->>'code' <> 'video_output_exists_reconciliation_required' then
+    raise exception 'failure refunded despite an existing Storage object: %', v_result;
   end if;
   v_result := public.lokal_fail_video_job(v_job, v_worker, 'network_outcome_unknown', false);
   if v_result->>'status' <> 'reconciliation_required' or v_result->>'refunded' <> 'false' then
