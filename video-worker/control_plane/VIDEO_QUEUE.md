@@ -40,16 +40,14 @@ from the request body as an authorization decision.
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_LEGACY_ANON_KEY` in the trusted control-plane secret store. The legacy anon JWT is sent with the signed upload URL; do not substitute a modern publishable key for the worker's Bearer header. The service-role key must never be passed to the GPU VM, browser,
 or committed to Git.
 
-The `create_signed_upload` method issues a short-lived Storage upload URL with the service-role key, then passes only the public anon key and signed URL to the GPU worker. The service-role key never leaves the control plane.
+The `create_signed_upload` method issues a short-lived Storage upload URL with the service-role key, then passes only the legacy anon JWT and signed URL to the GPU worker. The service-role key never leaves the control plane.
 
-The `complete_verified` method requires a caller-supplied Storage verification callback. That callback must independently confirm object existence, expected path, MIME type, and non-zero size using trusted Storage credentials.
+The `complete_verified` method calls a privileged SQL RPC that checks the actual `storage.objects` row, deterministic path, MP4 MIME type, exact byte count, and non-deleted state. The worker's self-reported success is not sufficient.
 
-`VideoJobRunner` joins queue claiming, signed upload creation, GPU VM acquire/start, worker health and job polling, queue heartbeats, output verification, provider-confirmed shutdown, and final database lease release. Provider response-to-VM mapping and Storage object verification remain injected callbacks; they must be implemented from the real provider response and Storage API before unattended operation. The runner intentionally has no automatic start loop until those provider-specific callbacks are configured.
+`VideoJobRunner` joins queue claiming, signed upload creation, GPU VM acquire/start, worker health and job polling, queue heartbeats, database-verified output completion, provider-confirmed shutdown, and final database lease release. Provider response-to-VM mapping and worker URL discovery remain injected callbacks; they must be implemented from the real Ferdowsi response before unattended operation. The runner intentionally has no automatic start loop until those provider-specific callbacks are configured.
 
 ## Deployment boundary
 
 This is a feature-branch implementation only. The migration is tested against a disposable PostgreSQL service in CI but has not been applied
 to the live Supabase project, the Edge Function has not been deployed, and no
-Ferdowsi VM has been created. Before production use, add the authenticated Video
-API endpoint, configure the private video bucket and limits, wire the queue poller
-to the GPU lifecycle controller, and verify the exact Ferdowsi VM response mapping.
+Ferdowsi VM has been created. Before production use, apply the reviewed database migration, deploy the authenticated Video API endpoint with a real credit price, configure provider response mappings and worker boot/network access, then enable the queue polling service.
