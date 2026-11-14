@@ -6,7 +6,7 @@ import re
 import urllib.error
 import urllib.request
 from typing import Any, Callable
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 MAX_VIDEO_BYTES = 50 * 1024 * 1024
 VIDEO_BUCKET = "lokal-ai-videos"
@@ -155,7 +155,7 @@ class SupabaseVideoQueue:
         if (
             parsed.scheme != "https"
             or parsed.hostname != urlparse(self.supabase_url).hostname
-            or parsed.path != expected_path
+            or unquote(parsed.path) != expected_path
             or not parsed.query
         ):
             raise VideoQueueError("supabase_signed_upload_url_invalid")
