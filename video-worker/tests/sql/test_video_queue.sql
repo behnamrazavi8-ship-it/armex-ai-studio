@@ -22,6 +22,18 @@ declare
   v_job uuid;
   v_balance bigint;
 begin
+  if has_function_privilege('anon', 'public.lokal_claim_video_job(uuid)', 'EXECUTE')
+     or has_function_privilege('authenticated',
+       'public.lokal_enqueue_video_generation(uuid, uuid, text, jsonb, bigint)', 'EXECUTE') then
+    raise exception 'privileged Video RPC is executable by a public client role';
+  end if;
+  if not has_function_privilege('service_role', 'public.lokal_claim_video_job(uuid)', 'EXECUTE') then
+    raise exception 'service_role cannot claim Video jobs';
+  end if;
+  if has_table_privilege('authenticated', 'public.lokal_video_jobs', 'SELECT') then
+    raise exception 'authenticated role can read internal Video queue rows';
+  end if;
+
   -- Enqueue is atomic with debit and idempotent on (user, request_id).
   v_result := public.lokal_enqueue_video_generation(
     v_user, v_request_success, 'test video prompt', '{"size":"1280*704"}'::jsonb, 25
@@ -95,6 +107,7 @@ begin
     raise exception 'terminal failure refund balance mismatch; balance=%', v_balance;
   end if;
 
+
   -- An uncertain failure is never refunded or automatically replayed.
   v_result := public.lokal_enqueue_video_generation(
     v_user, v_request_uncertain, 'uncertain prompt', '{"size":"1280*704"}'::jsonb, 25
@@ -110,6 +123,15 @@ begin
   end if;
   if public.lokal_claim_video_job(v_second_worker) is not null then
     raise exception 'queue allowed a new job while reconciliation was required';
+  end if;
+  v_result := public.lokal_enqueue_video_generation(
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    '88888888-8888-4888-8888-888888888888',
+    'reconciliation pause prompt', '{"size":"1280*704"}'::jsonb, 25
+  );
+  if v_result->>'success' <> 'false'
+     or v_result->>'code' <> 'video_worker_reconciliation_required' then
+    raise exception 'enqueue was not paused during GPU reconciliation: %', v_result;
   end if;
   select balance into v_balance from public.armex_wallets where user_id = v_user;
   if v_balance <> 950 then
