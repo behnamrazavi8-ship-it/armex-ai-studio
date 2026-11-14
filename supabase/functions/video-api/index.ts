@@ -101,8 +101,11 @@ const handle = async (request: Request): Promise<Response> => {
     }
     const result = data as Record<string, unknown>;
     if (result.success !== true) {
-      return fail(result.code === "insufficient_credits" ? "Insufficient credits" : "Video request could not be accepted",
-        result.code === "insufficient_credits" ? 402 : 409, cors);
+      if (result.code === "insufficient_credits") return fail("Insufficient credits", 402, cors);
+      if (result.code === "video_worker_reconciliation_required") {
+        return fail("Video service is temporarily paused for safe GPU reconciliation", 503, cors);
+      }
+      return fail("Video request could not be accepted", 409, cors);
     }
     return json({
       success: true,
