@@ -41,7 +41,7 @@ class SupabaseVideoQueue:
     ) -> None:
         self.supabase_url = (supabase_url or os.getenv("SUPABASE_URL", "")).rstrip("/")
         self.service_role_key = service_role_key or os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-        self.anon_key = anon_key or os.getenv("SUPABASE_ANON_KEY", "")
+        self.anon_key = anon_key or os.getenv("SUPABASE_LEGACY_ANON_KEY", "")
         self.timeout = timeout
         if not self.supabase_url.startswith("https://"):
             raise VideoQueueConfigurationError("SUPABASE_URL must use HTTPS")
@@ -119,7 +119,7 @@ class SupabaseVideoQueue:
     def create_signed_upload(self, job: dict[str, Any]) -> dict[str, Any]:
         """Create a short-lived upload capability without exposing service credentials."""
         if not self.anon_key.strip():
-            raise VideoQueueConfigurationError("SUPABASE_ANON_KEY is required for worker uploads")
+            raise VideoQueueConfigurationError("SUPABASE_LEGACY_ANON_KEY is required for worker uploads")
         user_id = job.get("user_id")
         request_id = job.get("request_id")
         if not isinstance(user_id, str) or not UUID_RE.fullmatch(user_id):
@@ -160,7 +160,7 @@ class SupabaseVideoQueue:
         ):
             raise VideoQueueError("supabase_signed_upload_url_invalid")
 
-        # The GPU VM receives only a publishable/legacy anon key plus the
+        # The GPU VM receives only a legacy anon key plus the
         # time-limited signed URL. The service-role key stays on the control plane.
         return {
             "path": path,
