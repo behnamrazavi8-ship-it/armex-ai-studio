@@ -17,6 +17,7 @@ class VideoQueueMigrationContractTests(unittest.TestCase):
         self.assertIn("attempt_count between 0 and 1", self.sql.lower())
         self.assertIn("max_attempts = 1", self.sql.lower())
         self.assertIn("'worker_lease_expired'", self.sql)
+        self.assertIn("'video_worker_reconciliation_required'", self.sql)
 
     def test_private_video_bucket_is_bounded_to_worker_contract(self):
         self.assertIn("'lokal-ai-videos', 'lokal-ai-videos', false, 52428800", self.sql)
@@ -34,6 +35,7 @@ class VideoQueueMigrationContractTests(unittest.TestCase):
             "lokal_heartbeat_video_job",
             "lokal_complete_video_job",
             "lokal_fail_video_job",
+            "lokal_release_video_worker_lease",
             "lokal_get_video_job_status",
         ):
             self.assertIn(f"revoke all on function public.{function}", self.sql.lower())
