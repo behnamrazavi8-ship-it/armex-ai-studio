@@ -5,7 +5,7 @@ import os
 import re
 import urllib.error
 import urllib.request
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import unquote, urlparse
 
 MAX_VIDEO_BYTES = 50 * 1024 * 1024
