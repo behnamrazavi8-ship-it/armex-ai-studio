@@ -47,9 +47,9 @@ class _Heartbeat:
 class VideoJobRunner:
     """One-job coordinator joining Supabase queue, GPU lifecycle and worker API.
 
-    Provider response mapping, worker URL discovery, and Storage verification are
-    injected. This avoids guessing provider schemas or treating an uploaded file
-    as valid merely because the worker reports success.
+    Provider response mapping and worker URL discovery are injected. Storage
+    object existence, MIME type, and exact byte count are checked by the database
+    completion RPC, not trusted from the worker's success response.
     """
 
     def __init__(
