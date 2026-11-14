@@ -12,6 +12,8 @@ on:
   pull_request:
     paths:
       - "video-worker/**"
+      - "supabase/migrations/**"
+      - "supabase/functions/video-api/**"
       - ".github/workflows/video-worker-tests.yml"
 
 permissions:
