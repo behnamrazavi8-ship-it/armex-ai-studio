@@ -6,8 +6,8 @@ create table if not exists public.lokal_video_generations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   request_id uuid not null,
-  prompt text not null check (char_length(btrim(prompt)) between 1 and 2048),
-  model text not null check (model = 'Wan2.2-TI2V-5B'),
+  prompt text not null check (char_length(btrim(prompt)) between 1 and 6000),
+  model text not null check (model = 'wan2.2-ti2v-5b'),
   settings jsonb not null default '{}'::jsonb check (jsonb_typeof(settings) = 'object'),
   status text not null default 'pending'
     check (status in ('pending', 'processing', 'completed', 'failed', 'interrupted')),
@@ -21,7 +21,7 @@ create table if not exists public.lokal_video_generations (
   constraint lokal_video_generations_user_request_key unique (user_id, request_id),
   constraint lokal_video_generations_output_check check (
     (status <> 'completed') or
-    (storage_path is not null and mime_type = 'video/mp4' and output_bytes > 0)
+    (storage_path is not null and mime_type = 'video/mp4' and output_bytes between 1 and 52428800)
   )
 );
 
@@ -65,6 +65,13 @@ insert into public.lokal_video_worker_lease(singleton_id, state)
 values (1, 'idle')
 on conflict (singleton_id) do nothing;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('lokal-ai-videos', 'lokal-ai-videos', false, 52428800, array['video/mp4']::text[])
+on conflict (id) do update set
+  public = false,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 alter table public.lokal_video_generations enable row level security;
 alter table public.lokal_video_jobs enable row level security;
 alter table public.lokal_video_worker_lease enable row level security;
@@ -94,11 +101,11 @@ declare
   v_prior public.lokal_video_generations%rowtype;
   v_debited boolean;
   v_job_id uuid;
-  v_model constant text := 'Wan2.2-TI2V-5B';
+  v_model constant text := 'wan2.2-ti2v-5b';
 begin
   if p_user_id is null or p_request_id is null
      or nullif(btrim(p_prompt), '') is null
-     or char_length(p_prompt) > 2048
+     or char_length(p_prompt) > 6000
      or p_settings is null or jsonb_typeof(p_settings) <> 'object'
      or p_credits is null or p_credits < 1 or p_credits > 100000 then
     raise exception 'Invalid video job parameters' using errcode = '22023';
@@ -282,7 +289,7 @@ declare
   v_updated integer;
 begin
   if p_output_verified is distinct from true
-     or p_output_bytes is null or p_output_bytes < 1
+     or p_output_bytes is null or p_output_bytes not between 1 and 52428800
      or p_storage_path is null then
     raise exception 'Verified video output is required' using errcode = '22023';
   end if;
