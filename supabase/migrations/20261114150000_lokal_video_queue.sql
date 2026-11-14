@@ -58,7 +58,7 @@ create table if not exists public.lokal_video_worker_lease (
     check (state in ('idle', 'active', 'reconciliation_required')),
   lease_expires_at timestamptz,
   updated_at timestamptz not null default now(),
-  constraint lokal_video_worker_lease_state_check check (
+  constraint lokal_video_worker_lease_invariant_check check (
     (state = 'idle' and worker_id is null and job_id is null and lease_expires_at is null)
     or
     (state in ('active', 'reconciliation_required') and worker_id is not null and job_id is not null and lease_expires_at is not null)
