@@ -83,11 +83,26 @@ class GpuLifecycleController:
                     raise LifecycleError("gpu_busy")
                 if row["state"] == "reconciliation_required":
                     raise LifecycleError("gpu_reconciliation_required")
-                db.execute(
-                    "update gpu_lifecycle set active_job_id=?, state='provisioning', "
-                    "updated_at=unixepoch() where singleton=1",
-                    (job_id,),
-                )
+                # A process may crash after the provider accepts VM creation but
+                # before its returned ID is persisted. A persisted provisioning
+                # lease without a VM ID is therefore ambiguous: never create
+                # another billable VM automatically on restart.
+                if row["state"] == "provisioning" and not row["vm_id"]:
+                    db.execute(
+                        "update gpu_lifecycle set state='reconciliation_required', "
+                        "updated_at=unixepoch() where singleton=1"
+                    )
+                    uncertain_create = True
+                else:
+                    uncertain_create = False
+                    db.execute(
+                        "update gpu_lifecycle set active_job_id=?, state='provisioning', "
+                        "updated_at=unixepoch() where singleton=1",
+                        (job_id,),
+                    )
+
+            if uncertain_create:
+                raise LifecycleError("gpu_provisioning_outcome_requires_reconciliation")
 
             vm_id = row["vm_id"]
             try:
