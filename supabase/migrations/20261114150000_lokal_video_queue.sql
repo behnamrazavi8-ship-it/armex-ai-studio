@@ -287,8 +287,7 @@ create or replace function public.lokal_complete_video_job(
   p_job_id uuid,
   p_worker_id uuid,
   p_storage_path text,
-  p_output_bytes bigint,
-  p_output_verified boolean
+  p_output_bytes bigint
 ) returns boolean
 language plpgsql
 security definer
@@ -299,10 +298,9 @@ declare
   v_request_id uuid;
   v_updated integer;
 begin
-  if p_output_verified is distinct from true
-     or p_output_bytes is null or p_output_bytes not between 1 and 52428800
+  if p_output_bytes is null or p_output_bytes not between 1 and 52428800
      or p_storage_path is null then
-    raise exception 'Verified video output is required' using errcode = '22023';
+    raise exception 'Video output metadata is invalid' using errcode = '22023';
   end if;
 
   select g.user_id, g.request_id into v_user_id, v_request_id
@@ -319,6 +317,18 @@ begin
 
   if p_storage_path <> v_user_id::text || '/' || v_request_id::text || '.mp4' then
     raise exception 'Video output path is not the assigned object path' using errcode = '22023';
+  end if;
+
+  if not exists (
+    select 1 from storage.objects o
+    where o.bucket_id = 'lokal-ai-videos'
+      and o.name = p_storage_path
+      and o.archived_at is null
+      and o.is_delete_marker = false
+      and o.metadata->>'mimetype' = 'video/mp4'
+      and (o.metadata->>'size')::bigint = p_output_bytes
+  ) then
+    raise exception 'Video Storage object verification failed' using errcode = '23514';
   end if;
 
   update public.lokal_video_jobs
@@ -358,7 +368,7 @@ declare
   v_job record;
   v_updated integer;
 begin
-  select j.job_id, j.user_id, g.credits_charged
+  select j.job_id, j.user_id, g.request_id, g.credits_charged
     into v_job
   from public.lokal_video_jobs j
   join public.lokal_video_generations g on g.id = j.job_id
@@ -387,6 +397,18 @@ begin
       set state = 'reconciliation_required', updated_at = now()
       where singleton_id = 1;
     return jsonb_build_object('accepted', true, 'status', 'reconciliation_required', 'refunded', false);
+  end if;
+
+  if exists (
+    select 1 from storage.objects o
+    where o.bucket_id = 'lokal-ai-videos'
+      and o.name = v_job.user_id::text || '/' || v_job.request_id::text || '.mp4'
+      and o.archived_at is null
+      and o.is_delete_marker = false
+  ) then
+    return jsonb_build_object(
+      'accepted', false, 'code', 'video_output_exists_reconciliation_required'
+    );
   end if;
 
   update public.lokal_video_jobs
@@ -472,7 +494,7 @@ $function$;
 revoke all on function public.lokal_enqueue_video_generation(uuid, uuid, text, jsonb, bigint) from public, anon, authenticated;
 revoke all on function public.lokal_claim_video_job(uuid) from public, anon, authenticated;
 revoke all on function public.lokal_heartbeat_video_job(uuid, uuid) from public, anon, authenticated;
-revoke all on function public.lokal_complete_video_job(uuid, uuid, text, bigint, boolean) from public, anon, authenticated;
+revoke all on function public.lokal_complete_video_job(uuid, uuid, text, bigint) from public, anon, authenticated;
 revoke all on function public.lokal_fail_video_job(uuid, uuid, text, boolean) from public, anon, authenticated;
 revoke all on function public.lokal_release_video_worker_lease(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.lokal_get_video_job_status(uuid, uuid) from public, anon, authenticated;
@@ -480,7 +502,7 @@ revoke all on function public.lokal_get_video_job_status(uuid, uuid) from public
 grant execute on function public.lokal_enqueue_video_generation(uuid, uuid, text, jsonb, bigint) to service_role;
 grant execute on function public.lokal_claim_video_job(uuid) to service_role;
 grant execute on function public.lokal_heartbeat_video_job(uuid, uuid) to service_role;
-grant execute on function public.lokal_complete_video_job(uuid, uuid, text, bigint, boolean) to service_role;
+grant execute on function public.lokal_complete_video_job(uuid, uuid, text, bigint) to service_role;
 grant execute on function public.lokal_fail_video_job(uuid, uuid, text, boolean) to service_role;
 grant execute on function public.lokal_release_video_worker_lease(uuid, uuid) to service_role;
 grant execute on function public.lokal_get_video_job_status(uuid, uuid) to service_role;
