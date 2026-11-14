@@ -32,11 +32,13 @@ class GpuLifecycleController:
         *,
         vm_id_from_create: Callable[[dict[str, Any]], str],
         is_running: Callable[[dict[str, Any]], bool],
+        is_stopped: Callable[[dict[str, Any]], bool],
     ) -> None:
         self.provider = provider
         self.db_path = Path(db_path)
         self.vm_id_from_create = vm_id_from_create
         self.is_running = is_running
+        self.is_stopped = is_stopped
         self._lock = threading.Lock()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as db:
@@ -142,6 +144,9 @@ class GpuLifecycleController:
                 raise LifecycleError("gpu_vm_id_missing")
             try:
                 self.provider.stop_vm(vm_id)
+                stopped_status = self.provider.get_vm(vm_id)
+                if not self.is_stopped(stopped_status):
+                    raise LifecycleError("provider_vm_stop_not_confirmed")
             except Exception:
                 with self._connect() as db:
                     db.execute(
