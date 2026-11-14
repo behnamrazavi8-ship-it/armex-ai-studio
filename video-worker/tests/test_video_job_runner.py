@@ -19,8 +19,9 @@ JOB = {
 
 
 class FakeQueue:
-    def __init__(self):
+    def __init__(self, events):
         self.calls = []
+        self.events = events
         self.fail_result = {"accepted": True, "status": "failed", "refunded": True}
         self.claim_result = JOB
 
@@ -48,6 +49,7 @@ class FakeQueue:
 
     def release_worker_lease(self, job_id, worker_id):
         self.calls.append(("release_db_lease", job_id))
+        self.events.append("database_lease_released")
         return True
 
 
@@ -57,9 +59,10 @@ class FakeProvider:
 
 
 class FakeLifecycle:
-    def __init__(self, acquire_error=None):
+    def __init__(self, events, acquire_error=None):
         self.provider = FakeProvider()
         self.calls = []
+        self.events = events
         self.acquire_error = acquire_error
 
     def acquire(self, job_id, create_payload):
@@ -70,9 +73,11 @@ class FakeLifecycle:
 
     def release_after_verified_output(self, job_id, **kwargs):
         self.calls.append(("release_success", job_id))
+        self.events.append("provider_vm_stopped")
 
     def release_after_terminal_failure(self, job_id, **kwargs):
         self.calls.append(("release_failure", job_id))
+        self.events.append("provider_vm_stopped")
 
     def mark_interrupted(self, job_id):
         self.calls.append(("mark_interrupted", job_id))
@@ -106,8 +111,9 @@ class FakeWorker:
 
 class VideoJobRunnerTests(unittest.TestCase):
     def build_runner(self, state="completed", acquire_error=None, verify_absent=False):
-        self.queue = FakeQueue()
-        self.lifecycle = FakeLifecycle(acquire_error=acquire_error)
+        self.events = []
+        self.queue = FakeQueue(self.events)
+        self.lifecycle = FakeLifecycle(self.events, acquire_error=acquire_error)
         self.worker = FakeWorker(state=state)
         runner = VideoJobRunner(
             self.queue,
@@ -133,8 +139,8 @@ class VideoJobRunnerTests(unittest.TestCase):
         self.assertIn(("release_success", JOB["job_id"]), self.lifecycle.calls)
         self.assertIn(("release_db_lease", JOB["job_id"]), self.queue.calls)
         self.assertLess(
-            next(i for i, call in enumerate(self.lifecycle.calls) if call[0] == "release_success"),
-            next(i for i, call in enumerate(self.queue.calls) if call[0] == "release_db_lease"),
+            self.events.index("provider_vm_stopped"),
+            self.events.index("database_lease_released"),
         )
 
     def test_terminal_failure_refunds_only_when_output_is_absent(self):
