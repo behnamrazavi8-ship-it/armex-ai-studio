@@ -4,7 +4,7 @@ import threading
 import time
 from typing import Any, Callable
 
-from control_plane.video_queue import MAX_VIDEO_BYTES, SupabaseVideoQueue
+from control_plane.video_queue import MAX_VIDEO_BYTES, UUID_RE, SupabaseVideoQueue
 from control_plane.gpu_lifecycle import GpuLifecycleController
 from control_plane.video_worker_client import VideoWorkerClient
 
@@ -68,8 +68,8 @@ class VideoJobRunner:
         worker_ready_timeout: int = 300,
         job_timeout: int = 1200,
     ) -> None:
-        if not worker_id:
-            raise ValueError("worker_id is required")
+        if not isinstance(worker_id, str) or not UUID_RE.fullmatch(worker_id):
+            raise ValueError("worker_id must be a UUID")
         self.queue = queue
         self.lifecycle = lifecycle
         self.worker_id = worker_id
@@ -143,6 +143,14 @@ class VideoJobRunner:
         lifecycle_attempted = False
         submission_attempted = False
         try:
+            size = settings.get("size")
+            if job.get("model") != "wan2.2-ti2v-5b" or size not in ("1280*704", "704*1280"):
+                self._release_terminal_failure(
+                    job_id, vm_acquired=False, error_code="invalid_video_request",
+                    heartbeat=heartbeat,
+                )
+                return True
+
             upload = self.queue.create_signed_upload(job)
             lifecycle_attempted = True
             vm_id = self.lifecycle.acquire(job_id, create_payload)
@@ -154,14 +162,6 @@ class VideoJobRunner:
                 self.worker_ready_timeout,
                 should_abort=heartbeat.lost,
             )
-
-            size = settings.get("size")
-            if size not in ("1280*704", "704*1280"):
-                self._release_terminal_failure(
-                    job_id, vm_acquired=True, error_code="invalid_video_size",
-                    heartbeat=heartbeat,
-                )
-                return True
 
             worker_input = {
                 "task": "text_to_video",
