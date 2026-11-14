@@ -36,8 +36,7 @@ from the request body as an authorization decision.
 ## Control-plane client
 
 `video_queue.py` is a server-only Supabase RPC client. Configure
-`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the trusted control-plane
-secret store. The service-role key must never be passed to the GPU VM, browser,
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_LEGACY_ANON_KEY` in the trusted control-plane secret store. The legacy anon JWT is sent with the signed upload URL; do not substitute a modern publishable key for the worker's Bearer header. The service-role key must never be passed to the GPU VM, browser,
 or committed to Git.
 
 The `create_signed_upload` method issues a short-lived Storage upload URL with the service-role key, then passes only the public anon key and signed URL to the GPU worker. The service-role key never leaves the control plane.
