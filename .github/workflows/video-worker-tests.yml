@@ -6,6 +6,7 @@ on:
       - feat/video-worker-ferdowsi-standalone
     paths:
       - "video-worker/**"
+      - "supabase/migrations/**"
       - ".github/workflows/video-worker-tests.yml"
   pull_request:
     paths:
