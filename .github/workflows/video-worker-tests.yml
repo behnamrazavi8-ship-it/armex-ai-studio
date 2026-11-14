@@ -23,7 +23,27 @@ jobs:
   worker-tests:
     name: Validate standalone worker without GPU
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: video_queue_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d video_queue_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: video_queue_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,7 +66,7 @@ jobs:
           CREATE TABLE auth.users (id uuid PRIMARY KEY);
           CREATE FUNCTION auth.uid() RETURNS uuid
             LANGUAGE sql STABLE
-            AS $ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $;
+            AS $auth$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $auth$;
           GRANT USAGE ON SCHEMA auth TO authenticated;
           GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
           CREATE TABLE storage.buckets (
@@ -73,7 +93,7 @@ jobs:
             p_user_id uuid, p_amount bigint, p_idempotency_key text,
             p_description text DEFAULT NULL, p_metadata jsonb DEFAULT '{}'::jsonb
           ) RETURNS boolean
-          LANGUAGE plpgsql AS $
+          LANGUAGE plpgsql AS $debit$
           DECLARE v_balance bigint;
           BEGIN
             INSERT INTO public.armex_wallets(user_id) VALUES (p_user_id)
@@ -93,12 +113,12 @@ jobs:
               coalesce(p_metadata, '{}'::jsonb));
             RETURN true;
           END;
-          $;
+          $debit$;
           CREATE FUNCTION public.armex_grant_credits(
             p_user_id uuid, p_amount bigint, p_type text, p_idempotency_key text,
             p_description text DEFAULT NULL, p_metadata jsonb DEFAULT '{}'::jsonb
           ) RETURNS boolean
-          LANGUAGE plpgsql AS $
+          LANGUAGE plpgsql AS $grant$
           BEGIN
             IF EXISTS (SELECT 1 FROM public.armex_credit_transactions
               WHERE user_id = p_user_id AND idempotency_key = p_idempotency_key) THEN
@@ -112,7 +132,7 @@ jobs:
               coalesce(p_metadata, '{}'::jsonb));
             RETURN true;
           END;
-          $;
+          $grant$;
           SQL
       - name: Apply Video queue migration to disposable PostgreSQL
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261114150000_lokal_video_queue.sql
