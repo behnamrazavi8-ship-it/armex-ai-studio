@@ -46,6 +46,35 @@ The `complete_verified` method calls a privileged SQL RPC that checks the actual
 
 `VideoJobRunner` joins queue claiming, signed upload creation, GPU VM acquire/start, worker health and job polling, queue heartbeats, database-verified output completion, provider-confirmed shutdown, and final database lease release. Provider response-to-VM mapping and worker URL discovery remain injected callbacks; they must be implemented from the real Ferdowsi response before unattended operation. The runner intentionally has no automatic start loop until those provider-specific callbacks are configured.
 
+
+## Runtime configuration still required
+
+Before a queue poller can be enabled, configure these values in the trusted
+control-plane or GPU VM secret/config stores:
+
+- Ferdowsi control plane: `FERDOWSI_API_BASE_URL`, `FERDOWSI_API_KEY`,
+  `FERDOWSI_REGION`, and all five `FERDOWSI_*_VM_PATH` values. Paths and
+  response-field mappings must come from the actual Ferdowsi OpenAPI responses;
+  they are deliberately not guessed in this repository.
+- GPU worker: `WORKER_API_TOKEN`, `WAN_MODEL_REVISION` (immutable 40-character
+  Hugging Face commit SHA), `WAN_REPO_DIR`, and `WAN_CHECKPOINT_DIR`.
+  The current default checkpoint directory is `/runpod-volume/models/...`,
+  which is RunPod-specific; override it to a mounted persistent volume path on
+  Ferdowsi so model weights survive VM stop/start.
+- Worker state: mount a persistent path for `WORKER_DB_PATH`; the standalone
+  server marks jobs interrupted after restart and never replays them automatically.
+- Network: the standalone server listens on HTTP port 8080. Put it behind an
+  authenticated HTTPS reverse proxy or a private TLS network because the
+  control-plane client refuses plain HTTP. Do not expose the worker API token
+  over an unencrypted public connection.
+- GPU: the handler checks CUDA and requires at least 24 GB VRAM. The VM boot
+  payload must install/start Docker with GPU access and launch the worker image.
+- Billing: set `VIDEO_CREDIT_COST` on the Edge Function only after the
+  per-generation cost is approved. There is intentionally no default credit price.
+
+No VM create payload, model revision, provider response mapper, public worker URL,
+or billing price has been filled with guessed values.
+
 ## Deployment boundary
 
 This is a feature-branch implementation only. The migration is tested against a disposable PostgreSQL service in CI but has not been applied
