@@ -24,7 +24,7 @@ declare
 begin
   -- Enqueue is atomic with debit and idempotent on (user, request_id).
   v_result := public.lokal_enqueue_video_generation(
-    v_user, v_request_success, 'test video prompt', '{"size":"1280*704}'::jsonb, 25
+    v_user, v_request_success, 'test video prompt', '{"size":"1280*704"}'::jsonb, 25
   );
   if v_result->>'success' <> 'true' or v_result->>'duplicate' <> 'false' then
     raise exception 'first enqueue did not succeed: %', v_result;
@@ -32,7 +32,7 @@ begin
   v_job := (v_result->>'job_id')::uuid;
 
   v_result := public.lokal_enqueue_video_generation(
-    v_user, v_request_success, 'test video prompt', '{"size":"1280*704}'::jsonb, 25
+    v_user, v_request_success, 'test video prompt', '{"size":"1280*704"}'::jsonb, 25
   );
   if v_result->>'duplicate' <> 'true' or (v_result->>'job_id')::uuid <> v_job then
     raise exception 'duplicate enqueue was not idempotent: %', v_result;
@@ -76,7 +76,7 @@ begin
   -- A confirmed terminal failure refunds exactly once; provider shutdown
   -- confirmation is still required before releasing the singleton lease.
   v_result := public.lokal_enqueue_video_generation(
-    v_user, v_request_fail, 'known failing prompt', '{"size":"704*1280}'::jsonb, 25
+    v_user, v_request_fail, 'known failing prompt', '{"size":"704*1280"}'::jsonb, 25
   );
   v_job := (v_result->>'job_id')::uuid;
   v_claim := public.lokal_claim_video_job(v_worker);
@@ -97,7 +97,7 @@ begin
 
   -- An uncertain failure is never refunded or automatically replayed.
   v_result := public.lokal_enqueue_video_generation(
-    v_user, v_request_uncertain, 'uncertain prompt', '{"size":"1280*704}'::jsonb, 25
+    v_user, v_request_uncertain, 'uncertain prompt', '{"size":"1280*704"}'::jsonb, 25
   );
   v_job := (v_result->>'job_id')::uuid;
   v_claim := public.lokal_claim_video_job(v_worker);
@@ -120,7 +120,7 @@ begin
   v_result := public.lokal_enqueue_video_generation(
     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     '77777777-7777-4777-8777-777777777777',
-    'no credits prompt', '{"size":"1280*704}'::jsonb, 25
+    'no credits prompt', '{"size":"1280*704"}'::jsonb, 25
   );
   if v_result->>'success' <> 'false' or v_result->>'code' <> 'insufficient_credits' then
     raise exception 'insufficient-credit enqueue was not rejected: %', v_result;
