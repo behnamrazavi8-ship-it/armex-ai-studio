@@ -42,7 +42,6 @@ class GpuLifecycleTests(unittest.TestCase):
             vm_id_from_create=lambda response: response["resource"]["id"],
             is_running=lambda response: response.get("status") == "ACTIVE",
             is_stopped=lambda response: response.get("status") == "STOPPED",
-            is_stopped=lambda response: response.get("status") == "STOPPED",
         )
 
     def tearDown(self):
@@ -89,6 +88,7 @@ class GpuLifecycleTests(unittest.TestCase):
             broken, Path(self.temp.name) / "broken.sqlite3",
             vm_id_from_create=lambda response: response["resource"]["id"],
             is_running=lambda response: response.get("status") == "ACTIVE",
+            is_stopped=lambda response: response.get("status") == "STOPPED",
         )
         with self.assertRaises(TimeoutError):
             controller.acquire("job-1", {"machine_type": "GPU", "count": 1})
