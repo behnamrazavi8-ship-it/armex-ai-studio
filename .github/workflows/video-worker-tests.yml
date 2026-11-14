@@ -1,0 +1,31 @@
+name: Standalone Video Worker Tests
+
+on:
+  push:
+    branches:
+      - feat/video-worker-ferdowsi-standalone
+    paths:
+      - "video-worker/**"
+      - ".github/workflows/video-worker-tests.yml"
+  pull_request:
+    paths:
+      - "video-worker/**"
+      - ".github/workflows/video-worker-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  worker-tests:
+    name: Validate standalone worker without GPU
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile worker source
+        run: python -m compileall -q video-worker
+      - name: Run contract tests
+        run: python -m unittest discover -s video-worker/tests -v
