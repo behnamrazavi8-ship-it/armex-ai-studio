@@ -53,9 +53,12 @@ Before a queue poller can be enabled, configure these values in the trusted
 control-plane or GPU VM secret/config stores:
 
 - Ferdowsi control plane: `FERDOWSI_API_BASE_URL`, `FERDOWSI_API_KEY`,
-  `FERDOWSI_REGION`, and all five `FERDOWSI_*_VM_PATH` values. Paths and
-  response-field mappings must come from the actual Ferdowsi OpenAPI responses;
-  they are deliberately not guessed in this repository.
+  `FERDOWSI_REGION`, and all six path values including
+  `FERDOWSI_LIST_VMS_PATH`. The adapter implements List (GPU filter), single-item
+  array normalization for Get, documented `attached=true` bodies for Start/Stop,
+  and an explicit required Delete `flag`. Exact operation paths, authentication
+  header, VM ID/status response mapping, and List ownership semantics remain
+  unverified; unattended provisioning must remain disabled.
 - GPU worker: `WORKER_API_TOKEN`, `WAN_MODEL_REVISION` (immutable 40-character
   Hugging Face commit SHA), `WAN_REPO_DIR`, and `WAN_CHECKPOINT_DIR`.
   The current default checkpoint directory is `/runpod-volume/models/...`,
