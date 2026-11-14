@@ -14,6 +14,7 @@ JOB = {
     "user_id": "11111111-1111-4111-8111-111111111111",
     "request_id": "22222222-2222-4222-8222-222222222222",
     "prompt": "A cinematic mountain landscape",
+    "model": "wan2.2-ti2v-5b",
     "settings": {"size": "1280*704"},
 }
 
@@ -130,6 +131,14 @@ class VideoJobRunnerTests(unittest.TestCase):
             job_timeout=2,
         )
         return runner
+
+    def test_invalid_model_or_size_is_rejected_before_gpu_acquire(self):
+        runner = self.build_runner()
+        self.queue.claim_result = {**JOB, "settings": {"size": "4K"}}
+        self.assertTrue(runner.run_once({"machine_type": "GPU", "count": 1}))
+        self.assertNotIn(("acquire", JOB["job_id"]), self.lifecycle.calls)
+        self.assertIn(("fail", True), self.queue.calls)
+        self.assertIn(("release_db_lease", JOB["job_id"]), self.queue.calls)
 
     def test_success_verifies_output_stops_gpu_then_releases_db_lease(self):
         runner = self.build_runner()
