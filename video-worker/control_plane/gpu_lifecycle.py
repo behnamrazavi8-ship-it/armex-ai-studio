@@ -161,6 +161,41 @@ class GpuLifecycleController:
                     (job_id,),
                 )
 
+    def release_after_terminal_failure(
+        self, job_id: str, *, terminal_failure_confirmed: bool
+    ) -> None:
+        """Stop and release after a confirmed terminal failure (no output expected)."""
+        if not terminal_failure_confirmed:
+            raise LifecycleError("gpu_release_requires_terminal_failure")
+        with self._lock:
+            with self._connect() as db:
+                row = db.execute(
+                    "select vm_id, active_job_id from gpu_lifecycle where singleton=1"
+                ).fetchone()
+            if row["active_job_id"] != job_id:
+                raise LifecycleError("gpu_lease_not_owned")
+            vm_id = row["vm_id"]
+            if not vm_id:
+                raise LifecycleError("gpu_vm_id_missing")
+            try:
+                self.provider.stop_vm(vm_id)
+                stopped_status = self.provider.get_vm(vm_id)
+                if not self.is_stopped(stopped_status):
+                    raise LifecycleError("provider_vm_stop_not_confirmed")
+            except Exception:
+                with self._connect() as db:
+                    db.execute(
+                        "update gpu_lifecycle set state='reconciliation_required', "
+                        "updated_at=unixepoch() where singleton=1"
+                    )
+                raise
+            with self._connect() as db:
+                db.execute(
+                    "update gpu_lifecycle set active_job_id=NULL, state='stopped', "
+                    "updated_at=unixepoch() where singleton=1 and active_job_id=?",
+                    (job_id,),
+                )
+
     def mark_interrupted(self, job_id: str) -> None:
         """Freeze an uncertain job for operator reconciliation; never auto-replay."""
         with self._lock, self._connect() as db:
