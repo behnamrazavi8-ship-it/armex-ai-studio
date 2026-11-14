@@ -23,6 +23,8 @@ from the request body as an authorization decision.
 - Exactly one global worker lease can be active.
 - The queue does not automatically retry a video job. Wan2.2 inference is expensive
   and a timed-out worker may still be running.
+- New paid submissions are paused while the singleton lease is in
+  `reconciliation_required`; existing duplicate request IDs still resolve idempotently.
 - Expired or uncertain leases transition to `reconciliation_required`; new jobs are
   blocked until an operator verifies the VM/job state.
 - Heartbeats extend both the job lease and singleton GPU lease.
@@ -43,11 +45,11 @@ The `create_signed_upload` method issues a short-lived Storage upload URL with t
 
 The `complete_verified` method requires a caller-supplied Storage verification callback. That callback must independently confirm object existence, expected path, MIME type, and non-zero size using trusted Storage credentials.
 
-`VideoJobRunner` joins queue claiming, signed upload creation, GPU VM acquire/start, worker health and job polling, queue heartbeats, output verification, provider-confirmed shutdown, and final database lease release. Provider response-to-VM mapping and Storage object verification remain injected callbacks; they must be implemented from the real provider response and Storage API before unattended operation.
+`VideoJobRunner` joins queue claiming, signed upload creation, GPU VM acquire/start, worker health and job polling, queue heartbeats, output verification, provider-confirmed shutdown, and final database lease release. Provider response-to-VM mapping and Storage object verification remain injected callbacks; they must be implemented from the real provider response and Storage API before unattended operation. The runner intentionally has no automatic start loop until those provider-specific callbacks are configured.
 
 ## Deployment boundary
 
-This is a feature-branch implementation only. The migration has not been applied
+This is a feature-branch implementation only. The migration is tested against a disposable PostgreSQL service in CI but has not been applied
 to the live Supabase project, the Edge Function has not been deployed, and no
 Ferdowsi VM has been created. Before production use, add the authenticated Video
 API endpoint, configure the private video bucket and limits, wire the queue poller
