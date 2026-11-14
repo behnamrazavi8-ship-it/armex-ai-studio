@@ -28,9 +28,8 @@ from the request body as an authorization decision.
 - Expired or uncertain leases transition to `reconciliation_required`; new jobs are
   blocked until an operator verifies the VM/job state.
 - Heartbeats extend both the job lease and singleton GPU lease.
-- Completion requires independent verification of the private Storage object before
-  calling the completion RPC. The deterministic path is
-  `<user_id>/<request_id>.mp4`.
+- Completion is verified inside the privileged SQL RPC against `storage.objects`: private bucket ID, deterministic object path, MP4 MIME metadata, exact byte count, and non-archived/non-deleted state. The deterministic path is `<user_id>/<request_id>.mp4`.
+- A terminal failure cannot trigger a refund if that object already exists; the job moves to reconciliation instead.
 - A failure is refundable only when the caller confirms the worker is terminal.
   Uncertain failures are marked interrupted and are not refunded automatically.
 - The migration creates the private `lokal-ai-videos` bucket with a 50 MiB limit and MP4-only content. It does not provision GPU resources.
