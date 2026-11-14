@@ -76,6 +76,15 @@ jobs:
             file_size_limit bigint,
             allowed_mime_types text[]
           );
+          CREATE TABLE storage.objects (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            bucket_id text,
+            name text,
+            metadata jsonb,
+            archived_at timestamptz,
+            is_delete_marker boolean NOT NULL DEFAULT false,
+            is_versioned boolean NOT NULL DEFAULT false
+          );
           CREATE TABLE public.armex_wallets (
             user_id uuid PRIMARY KEY,
             balance bigint NOT NULL DEFAULT 0 CHECK (balance >= 0)
