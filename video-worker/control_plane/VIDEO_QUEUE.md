@@ -31,7 +31,7 @@ from the request body as an authorization decision.
   `<user_id>/<request_id>.mp4`.
 - A failure is refundable only when the caller confirms the worker is terminal.
   Uncertain failures are marked interrupted and are not refunded automatically.
-- The migration does not create a Storage bucket or provision GPU resources.
+- The migration creates the private `lokal-ai-videos` bucket with a 50 MiB limit and MP4-only content. It does not provision GPU resources.
 
 ## Control-plane client
 
@@ -40,9 +40,9 @@ from the request body as an authorization decision.
 secret store. The service-role key must never be passed to the GPU VM, browser,
 or committed to Git.
 
-The `complete_verified` method requires a caller-supplied Storage verification
-callback. That callback must independently confirm object existence, expected
-path, MIME type, and non-zero size using trusted Storage credentials.
+The `create_signed_upload` issues a short-lived Storage upload URL with the service-role key, then passes only the public anon key and signed URL to the GPU worker. The service-role key never leaves the control plane.
+
+The `complete_verified` method requires a caller-supplied Storage verification callback. That callback must independently confirm object existence, expected path, MIME type, and non-zero size using trusted Storage credentials.
 
 ## Deployment boundary
 
