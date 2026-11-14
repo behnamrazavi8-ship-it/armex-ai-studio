@@ -107,6 +107,13 @@ class VideoQueueTests(unittest.TestCase):
         self.assertIs(payload["p_output_verified"], True)
 
     @patch("control_plane.video_queue.urllib.request.urlopen")
+    def test_database_gpu_lease_released_only_by_explicit_rpc(self, urlopen):
+        urlopen.return_value = FakeResponse(True)
+        self.assertTrue(self.queue.release_worker_lease("job-1", "worker-1"))
+        request = urlopen.call_args.args[0]
+        self.assertTrue(request.full_url.endswith("/rest/v1/rpc/lokal_release_video_worker_lease"))
+
+    @patch("control_plane.video_queue.urllib.request.urlopen")
     def test_failure_requires_explicit_terminal_confirmation(self, urlopen):
         urlopen.return_value = FakeResponse({
             "accepted": True, "status": "reconciliation_required", "refunded": False,
