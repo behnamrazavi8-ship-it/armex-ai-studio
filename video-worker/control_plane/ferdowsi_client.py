@@ -78,9 +78,16 @@ class FerdowsiClient:
         self.paths = paths or FerdowsiPaths.from_env()
         self.timeout = timeout
         raw_delete_flag = os.getenv("FERDOWSI_DELETE_VM_FLAG")
-        self.delete_flag = delete_flag if delete_flag is not None else (
-            raw_delete_flag.lower() == "true" if raw_delete_flag is not None else None
-        )
+        if delete_flag is not None:
+            self.delete_flag = delete_flag
+        elif raw_delete_flag is None or not raw_delete_flag.strip():
+            self.delete_flag = None
+        elif raw_delete_flag.strip().lower() in {"true", "false"}:
+            self.delete_flag = raw_delete_flag.strip().lower() == "true"
+        else:
+            raise FerdowsiConfigurationError(
+                "FERDOWSI_DELETE_VM_FLAG must be exactly true or false"
+            )
         if not self.base_url.startswith("https://"):
             raise FerdowsiConfigurationError("FERDOWSI_API_BASE_URL must use HTTPS")
         if not self.api_key.strip():
