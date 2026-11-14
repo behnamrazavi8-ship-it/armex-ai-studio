@@ -162,7 +162,6 @@ class VideoJobRunnerTests(unittest.TestCase):
         self.queue.fail_result = {
             "accepted": False, "code": "video_output_exists_reconciliation_required",
         }
-        self.assertRaises(Exception) if False else None
         with self.assertRaises(Exception):
             runner.run_once({"machine_type": "GPU", "count": 1})
         self.assertIn(("fail", True), self.queue.calls)
