@@ -254,7 +254,7 @@ declare
 begin
   update public.lokal_video_jobs
     set lease_expires_at = now() + interval '180 seconds', updated_at = now()
-    where job_id = p_job_id and status = 'processing'
+    where job_id = p_job_id and status in ('processing', 'completed', 'failed')
       and locked_by = p_worker_id and lease_expires_at > now();
   get diagnostics v_updated = row_count;
   if v_updated <> 1 then return false; end if;
@@ -327,10 +327,8 @@ begin
     raise exception 'Video generation row could not be completed' using errcode = '40001';
   end if;
 
-  update public.lokal_video_worker_lease
-    set worker_id = null, job_id = null, state = 'idle',
-        lease_expires_at = null, updated_at = now()
-    where singleton_id = 1 and job_id = p_job_id and worker_id = p_worker_id;
+  -- Keep the singleton GPU lease until the control plane has stopped the VM
+  -- and independently confirmed provider state.
   return true;
 end;
 $function$;
@@ -398,12 +396,36 @@ begin
     jsonb_build_object('job_id', v_job.job_id, 'reason', coalesce(p_error_code, 'video_worker_error'))
   );
 
-  update public.lokal_video_worker_lease
+  -- Keep the singleton GPU lease until the control plane has stopped the VM
+  -- and independently confirmed provider state.
+  return jsonb_build_object('accepted', true, 'status', 'failed', 'refunded', true);
+end;
+$function$;
+
+create or replace function public.lokal_release_video_worker_lease(
+  p_job_id uuid, p_worker_id uuid
+) returns boolean
+language plpgsql
+security definer
+set search_path = pg_catalog, public, pg_temp
+as $function$
+declare
+  v_updated integer;
+begin
+  update public.lokal_video_worker_lease l
     set worker_id = null, job_id = null, state = 'idle',
         lease_expires_at = null, updated_at = now()
-    where singleton_id = 1 and job_id = p_job_id and worker_id = p_worker_id;
-
-  return jsonb_build_object('accepted', true, 'status', 'failed', 'refunded', true);
+    where l.singleton_id = 1
+      and l.state = 'active'
+      and l.job_id = p_job_id
+      and l.worker_id = p_worker_id
+      and l.lease_expires_at > now()
+      and exists (
+        select 1 from public.lokal_video_jobs j
+        where j.job_id = p_job_id and j.status in ('completed', 'failed')
+      );
+  get diagnostics v_updated = row_count;
+  return v_updated = 1;
 end;
 $function$;
 
@@ -431,6 +453,7 @@ revoke all on function public.lokal_claim_video_job(uuid) from public, anon, aut
 revoke all on function public.lokal_heartbeat_video_job(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.lokal_complete_video_job(uuid, uuid, text, bigint, boolean) from public, anon, authenticated;
 revoke all on function public.lokal_fail_video_job(uuid, uuid, text, boolean) from public, anon, authenticated;
+revoke all on function public.lokal_release_video_worker_lease(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.lokal_get_video_job_status(uuid, uuid) from public, anon, authenticated;
 
 grant execute on function public.lokal_enqueue_video_generation(uuid, uuid, text, jsonb, bigint) to service_role;
@@ -438,4 +461,5 @@ grant execute on function public.lokal_claim_video_job(uuid) to service_role;
 grant execute on function public.lokal_heartbeat_video_job(uuid, uuid) to service_role;
 grant execute on function public.lokal_complete_video_job(uuid, uuid, text, bigint, boolean) to service_role;
 grant execute on function public.lokal_fail_video_job(uuid, uuid, text, boolean) to service_role;
+grant execute on function public.lokal_release_video_worker_lease(uuid, uuid) to service_role;
 grant execute on function public.lokal_get_video_job_status(uuid, uuid) to service_role;
