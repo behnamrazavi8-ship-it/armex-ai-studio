@@ -61,9 +61,10 @@ control-plane or GPU VM secret/config stores:
   unverified; unattended provisioning must remain disabled.
 - GPU worker: `WORKER_API_TOKEN`, `WAN_MODEL_REVISION` (immutable 40-character
   Hugging Face commit SHA), `WAN_REPO_DIR`, and `WAN_CHECKPOINT_DIR`.
-  The current default checkpoint directory is `/runpod-volume/models/...`,
-  which is RunPod-specific; override it to a mounted persistent volume path on
-  Ferdowsi so model weights survive VM stop/start.
+  The standalone worker and Docker image default `WAN_CHECKPOINT_DIR` to
+  `/var/lib/lokal-video/models/Wan2.2-TI2V-5B`. Mount a persistent Ferdowsi
+  volume at `/var/lib/lokal-video` so model weights, Hugging Face cache, and
+  `WORKER_DB_PATH` survive container replacement and VM stop/start.
 - Worker state: mount a persistent path for `WORKER_DB_PATH`; the standalone
   server marks jobs interrupted after restart and never replays them automatically.
 - Network: the standalone server listens on HTTP port 8080. Put it behind an
