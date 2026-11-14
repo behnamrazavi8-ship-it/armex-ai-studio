@@ -183,20 +183,16 @@ class SupabaseVideoQueue:
         worker_id: str,
         storage_path: str,
         output_bytes: int,
-        verify_output: Callable[[str], bool],
     ) -> bool:
-        if (
-            not storage_path
-            or not 1 <= output_bytes <= MAX_VIDEO_BYTES
-            or not verify_output(storage_path)
-        ):
-            raise VideoQueueError("video_output_verification_failed")
+        if not storage_path or not 1 <= output_bytes <= MAX_VIDEO_BYTES:
+            raise VideoQueueError("video_output_metadata_invalid")
+        # The SQL RPC independently checks storage.objects bucket, path,
+        # MIME metadata, and exact byte count before marking the job complete.
         return self._rpc("lokal_complete_video_job", {
             "p_job_id": job_id,
             "p_worker_id": worker_id,
             "p_storage_path": storage_path,
             "p_output_bytes": output_bytes,
-            "p_output_verified": True,
         }) is True
 
     def fail(
