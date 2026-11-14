@@ -95,6 +95,34 @@ class GpuLifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(LifecycleError, "gpu_busy"):
             self.controller.acquire("job-2", {})
 
+    def test_restart_during_vm_create_blocks_duplicate_billable_vm(self):
+        db_path = Path(self.temp.name) / "crashed-create.sqlite3"
+        controller = GpuLifecycleController(
+            self.provider,
+            db_path,
+            vm_id_from_create=lambda response: response["resource"]["id"],
+            is_running=lambda response: response.get("status") == "ACTIVE",
+            is_stopped=lambda response: response.get("status") == "STOPPED",
+        )
+        with controller._connect() as db:
+            db.execute(
+                "update gpu_lifecycle set active_job_id=?, state='provisioning', vm_id=NULL "
+                "where singleton=1",
+                ("job-after-restart",),
+            )
+
+        with self.assertRaisesRegex(
+            LifecycleError, "gpu_provisioning_outcome_requires_reconciliation"
+        ):
+            controller.acquire(
+                "job-after-restart", {"machine_type": "GPU", "count": 1}
+            )
+
+        self.assertEqual(self.provider.created, 0)
+        snapshot = controller.snapshot()
+        self.assertEqual(snapshot["state"], "reconciliation_required")
+        self.assertEqual(snapshot["active_job_id"], "job-after-restart")
+
     def test_provider_uncertainty_keeps_lease_for_reconciliation(self):
         class BrokenProvider(FakeProvider):
             def start_vm(self, server_id):
