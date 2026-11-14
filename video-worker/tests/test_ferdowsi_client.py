@@ -1,6 +1,10 @@
+import sys
 import unittest
+from pathlib import Path
 
-from video_worker.control_plane.ferdowsi_client import (
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from control_plane.ferdowsi_client import (
     FerdowsiClient,
     FerdowsiConfigurationError,
     FerdowsiPaths,
