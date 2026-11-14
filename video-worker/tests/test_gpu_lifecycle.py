@@ -41,6 +41,8 @@ class GpuLifecycleTests(unittest.TestCase):
             Path(self.temp.name) / "lifecycle.sqlite3",
             vm_id_from_create=lambda response: response["resource"]["id"],
             is_running=lambda response: response.get("status") == "ACTIVE",
+            is_stopped=lambda response: response.get("status") == "STOPPED",
+            is_stopped=lambda response: response.get("status") == "STOPPED",
         )
 
     def tearDown(self):
