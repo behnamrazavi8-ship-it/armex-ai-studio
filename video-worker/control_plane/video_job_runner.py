@@ -60,8 +60,6 @@ class VideoJobRunner:
         worker_id: str,
         worker_api_token: str,
         worker_url_from_vm: Callable[[dict[str, Any]], str],
-        verify_output: Callable[[str, dict[str, Any]], bool],
-        verify_no_output: Callable[[str], bool],
         worker_client_factory: Callable[[str, str], VideoWorkerClient] = VideoWorkerClient,
         heartbeat_interval: int = 45,
         poll_interval: int = 10,
@@ -75,8 +73,6 @@ class VideoJobRunner:
         self.worker_id = worker_id
         self.worker_api_token = worker_api_token
         self.worker_url_from_vm = worker_url_from_vm
-        self.verify_output = verify_output
-        self.verify_no_output = verify_no_output
         self.worker_client_factory = worker_client_factory
         self.heartbeat_interval = heartbeat_interval
         self.poll_interval = poll_interval
@@ -194,14 +190,12 @@ class VideoJobRunner:
                         or not isinstance(output_bytes, int)
                         or not 1 <= output_bytes <= MAX_VIDEO_BYTES
                     ):
-                        if self.verify_no_output(expected_path):
-                            self._release_terminal_failure(
-                                job_id, vm_acquired=True,
-                                error_code="invalid_video_output",
-                                heartbeat=heartbeat,
-                            )
-                            return True
-                        raise VideoJobRunnerError("video_output_requires_reconciliation")
+                        self._release_terminal_failure(
+                            job_id, vm_acquired=True,
+                            error_code="invalid_video_output",
+                            heartbeat=heartbeat,
+                        )
+                        return True
 
                     try:
                         completed = self.queue.complete_verified(
@@ -209,18 +203,10 @@ class VideoJobRunner:
                             worker_id=self.worker_id,
                             storage_path=expected_path,
                             output_bytes=output_bytes,
-                            verify_output=lambda path: self.verify_output(path, result),
                         )
                     except Exception:
                         completed = False
                     if not completed:
-                        if self.verify_no_output(expected_path):
-                            self._release_terminal_failure(
-                                job_id, vm_acquired=True,
-                                error_code="video_output_verification_failed",
-                                heartbeat=heartbeat,
-                            )
-                            return True
                         raise VideoJobRunnerError("video_output_requires_reconciliation")
 
                     self.lifecycle.release_after_verified_output(
@@ -232,15 +218,11 @@ class VideoJobRunner:
                     return True
 
                 if state == "failed":
-                    expected_path = f"{user_id}/{request_id}.mp4"
-                    if self.verify_no_output(expected_path):
-                        self._release_terminal_failure(
-                            job_id, vm_acquired=True,
-                            error_code="video_worker_failed",
-                            heartbeat=heartbeat,
-                        )
-                    else:
-                        self._mark_uncertain(job_id, "video_failure_output_uncertain", heartbeat)
+                    self._release_terminal_failure(
+                        job_id, vm_acquired=True,
+                        error_code="video_worker_failed",
+                        heartbeat=heartbeat,
+                    )
                     return True
 
                 if state == "interrupted":
