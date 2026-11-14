@@ -23,10 +23,14 @@ class VideoQueueMigrationContractTests(unittest.TestCase):
         self.assertIn("'lokal-ai-videos', 'lokal-ai-videos', false, 52428800", self.sql)
         self.assertIn("array['video/mp4']::text[]", self.sql)
 
-    def test_completion_requires_verified_deterministic_output(self):
-        self.assertIn("p_output_verified is distinct from true", self.sql.lower())
+    def test_completion_verifies_private_storage_metadata_in_sql(self):
+        self.assertIn("from storage.objects o", self.sql.lower())
+        self.assertIn("o.bucket_id = 'lokal-ai-videos'", self.sql)
+        self.assertIn("o.metadata->>'mimetype' = 'video/mp4'", self.sql)
+        self.assertIn("(o.metadata->>'size')::bigint = p_output_bytes", self.sql)
         self.assertIn("v_user_id::text || '/' || v_request_id::text || '.mp4'", self.sql)
         self.assertIn("output_bytes between 1 and 52428800", self.sql.lower())
+        self.assertIn("video_output_exists_reconciliation_required", self.sql)
 
     def test_privileged_rpcs_are_not_publicly_executable(self):
         for function in (
