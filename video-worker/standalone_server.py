@@ -7,6 +7,7 @@ import os
 import re
 import sqlite3
 import threading
+from contextlib import contextmanager
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,8 +33,21 @@ def connect_db() -> sqlite3.Connection:
     return db
 
 
+@contextmanager
+def db_session():
+    db = connect_db()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
 def initialize_db() -> None:
-    with connect_db() as db:
+    with db_session() as db:
         db.execute("""
             create table if not exists jobs (
                 request_id text primary key,
@@ -56,7 +70,7 @@ def initialize_db() -> None:
 
 
 def read_job(request_id: str) -> dict[str, Any] | None:
-    with connect_db() as db:
+    with db_session() as db:
         row = db.execute(
             "select request_id,status,result_json,error_code,created_at,updated_at "
             "from jobs where request_id=?", (request_id,)
@@ -70,7 +84,7 @@ def read_job(request_id: str) -> dict[str, Any] | None:
 
 def save_status(request_id: str, status: str, result: dict[str, Any] | None = None,
                 error_code: str | None = None) -> None:
-    with connect_db() as db:
+    with db_session() as db:
         db.execute(
             "update jobs set status=?, result_json=?, error_code=?, updated_at=? "
             "where request_id=?",
@@ -87,7 +101,7 @@ def execute_job(request_id: str, payload: dict[str, Any]) -> None:
         save_status(request_id, "completed", result=result)
     except Exception:
         # Do not log exception strings: they may contain signed Storage URLs.
-        logging.exception("Video job failed (request_id=%s)", request_id)
+        logging.error("Video job failed (request_id=%s)", request_id)
         save_status(request_id, "failed", error_code="generation_failed")
     finally:
         with LOCK:
@@ -162,14 +176,17 @@ class ApiHandler(BaseHTTPRequestHandler):
         with LOCK:
             existing = read_job(request_id)
             if existing is not None:
-                self.send_json(200 if existing["status"] in ("completed", "failed") else 202,
-                               existing)
+                if existing["status"] == "interrupted":
+                    self.send_json(409, {"error": "job_interrupted", "request_id": request_id})
+                else:
+                    self.send_json(200 if existing["status"] in ("completed", "failed") else 202,
+                                   existing)
                 return
             if ACTIVE_JOB is not None:
                 self.send_json(409, {"error": "worker_busy"})
                 return
             now = int(time.time())
-            with connect_db() as db:
+            with db_session() as db:
                 db.execute(
                     "insert into jobs(request_id,status,created_at,updated_at) "
                     "values(?,?,?,?)", (request_id, "queued", now, now)
