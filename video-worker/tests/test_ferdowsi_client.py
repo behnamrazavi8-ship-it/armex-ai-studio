@@ -113,6 +113,16 @@ class FerdowsiClientTests(unittest.TestCase):
         with self.assertRaises(FerdowsiConfigurationError):
             self.client.delete_vm("vm-1")
 
+    def test_delete_flag_rejects_ambiguous_configuration(self):
+        with patch.dict("os.environ", {"FERDOWSI_DELETE_VM_FLAG": "yes"}):
+            with self.assertRaises(FerdowsiConfigurationError):
+                FerdowsiClient(
+                    base_url="https://api.example.test",
+                    api_key="test-key",
+                    region="region-1",
+                    paths=self.paths,
+                )
+
     def test_delete_sends_explicit_flag(self):
         client = FerdowsiClient(
             base_url="https://api.example.test",
