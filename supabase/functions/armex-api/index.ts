@@ -800,23 +800,6 @@ const handle = async (request: Request): Promise<Response> => {
     }
   }
 
-  let verifiedAttachment: Record<string, unknown> | null = null;
-  let imageSignedUrl: string | null = null;
-  if (attachmentId) {
-    const { data: attachment, error: attachmentError } = await db.from("armex_chat_attachments")
-      .select("id,conversation_id,storage_path,mime_type,original_filename,status")
-      .eq("id", attachmentId).eq("user_id", userId).eq("conversation_id", conversationId)
-      .eq("status", "ready").maybeSingle();
-    if (attachmentError || !attachment) return fail("Attachment not found or not ready", 404, cors);
-    verifiedAttachment = attachment as Record<string, unknown>;
-    if (String(attachment.mime_type).startsWith("image/")) {
-      const { data: signed, error: signingError } = await db.storage.from(CHAT_MEDIA_BUCKET)
-        .createSignedUrl(String(attachment.storage_path), 300);
-      if (signingError || !signed?.signedUrl) return fail("Could not prepare image for the AI model", 503, cors);
-      imageSignedUrl = signed.signedUrl;
-    }
-  }
-
   const promptChars = SYSTEM_PROMPT.length + context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
   const estimatedInputTokens = Math.max(1, Math.ceil(promptChars / 3));
   const controller = new AbortController();
