@@ -130,6 +130,14 @@ class VideoJobRunnerTests(unittest.TestCase):
         )
         return runner
 
+    def test_malformed_claimed_job_is_failed_and_lease_released_without_gpu(self):
+        runner = self.build_runner()
+        self.queue.claim_result = {**JOB, "prompt": ""}
+        self.assertTrue(runner.run_once({"machine_type": "GPU", "count": 1}))
+        self.assertNotIn(("acquire", JOB["job_id"]), self.lifecycle.calls)
+        self.assertIn(("fail", True), self.queue.calls)
+        self.assertIn(("release_db_lease", JOB["job_id"]), self.queue.calls)
+
     def test_invalid_model_or_size_is_rejected_before_gpu_acquire(self):
         runner = self.build_runner()
         self.queue.claim_result = {**JOB, "settings": {"size": "4K"}}
