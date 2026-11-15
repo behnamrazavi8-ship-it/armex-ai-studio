@@ -51,6 +51,8 @@ jobs:
           python-version: "3.11"
       - name: Compile worker source
         run: python -m compileall -q video-worker
+      - name: Validate Ferdowsi deployment shell scripts
+        run: bash -n video-worker/deploy/ferdowsi/bootstrap-docker.sh video-worker/deploy/ferdowsi/run-worker.sh
       - name: Run contract tests
         run: python -m unittest discover -s video-worker/tests -v
       - name: Install PostgreSQL client
