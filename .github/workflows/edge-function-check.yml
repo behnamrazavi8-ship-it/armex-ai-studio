@@ -24,6 +24,16 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Verify chat history API contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          api = Path("supabase/functions/armex-api/index.ts").read_text(encoding="utf-8")
+          for contract in ['action") === "conversations"', 'action") === "conversation"', 'eq("user_id", userId)', 'eq("conversation_id", conversationId)']:
+              if contract not in api:
+                  raise SystemExit("Missing chat API contract: " + contract)
+          PY
+
       - name: Type-check armex-api
         run: deno check supabase/functions/armex-api/index.ts
 
@@ -52,7 +62,7 @@ jobs:
               "auth-signin", "auth-signup", "auth-reset", "auth-signout",
               "generatePrompt", "generateAIPrompt", "promptResult",
               "creditCount", "walletStat", "page-home", "page-prompt",
-              "page-projects", "page-account"
+              "page-projects", "page-account", "page-chat", "chat-list", "chat-messages", "chat-input", "chat-send"
           ]
           missing = [item for item in required if item not in ids]
           if missing:
