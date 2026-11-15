@@ -35,7 +35,7 @@ jobs:
                   raise SystemExit("Missing chat API contract: " + contract)
           PY
 
-      - name: Verify private chat media security contract
+      # Guard the private upload, byte verification, owner scoping, and multimodal image path.\n      - name: Verify private chat media security contract
         run: |
           python - <<'PY'
           from pathlib import Path
