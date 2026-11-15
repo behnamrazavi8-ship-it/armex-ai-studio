@@ -660,6 +660,15 @@ const handle = async (request: Request): Promise<Response> => {
   if (body.action === "generate_image") {
     return await generateImage(db, userId, body, cors);
   }
+  if (body.action === "create_conversation") {
+    return await createChatConversation(db, userId, body, cors);
+  }
+  if (body.action === "create_media_upload") {
+    return await createChatMediaUpload(db, userId, body, cors);
+  }
+  if (body.action === "complete_media_upload") {
+    return await completeChatMediaUpload(db, userId, body, cors);
+  }
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
   if (!message || message.length > MAX_MESSAGE_CHARS) {
@@ -674,6 +683,9 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   const conversationId = body.conversation_id;
+  const attachmentId = body.attachment_id == null ? null : body.attachment_id;
+  if (attachmentId != null && !isUuid(attachmentId)) return fail("Invalid attachment_id", 400, cors);
+  if (attachmentId != null && !conversationId) return fail("An attachment requires an existing conversation", 400, cors);
   if (conversationId != null && !isUuid(conversationId)) {
     return fail("Invalid conversation_id", 400, cors);
   }
@@ -766,6 +778,23 @@ const handle = async (request: Request): Promise<Response> => {
       remainingContextChars -= content.length;
       return [{ role: item.role, content }];
     }).reverse();
+  }
+
+  let verifiedAttachment: Record<string, unknown> | null = null;
+  let imageSignedUrl: string | null = null;
+  if (attachmentId) {
+    const { data: attachment, error: attachmentError } = await db.from("armex_chat_attachments")
+      .select("id,conversation_id,storage_path,mime_type,original_filename,status")
+      .eq("id", attachmentId).eq("user_id", userId).eq("conversation_id", conversationId)
+      .eq("status", "ready").maybeSingle();
+    if (attachmentError || !attachment) return fail("Attachment not found or not ready", 404, cors);
+    verifiedAttachment = attachment as Record<string, unknown>;
+    if (String(attachment.mime_type).startsWith("image/")) {
+      const { data: signed, error: signingError } = await db.storage.from(CHAT_MEDIA_BUCKET)
+        .createSignedUrl(String(attachment.storage_path), 300);
+      if (signingError || !signed?.signedUrl) return fail("Could not prepare image for the AI model", 503, cors);
+      imageSignedUrl = signed.signedUrl;
+    }
   }
 
   let verifiedAttachment: Record<string, unknown> | null = null;
