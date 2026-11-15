@@ -6,6 +6,7 @@ on:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
+      - "supabase/migrations/**"
   push:
     branches: [main]
     paths:
@@ -24,6 +25,41 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Verify chat history API contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          api = Path("supabase/functions/armex-api/index.ts").read_text(encoding="utf-8")
+          for contract in ['action") === "conversations"', 'action") === "conversation"', 'eq("user_id", userId)', 'eq("conversation_id", conversationId)']:
+              if contract not in api:
+                  raise SystemExit("Missing chat API contract: " + contract)
+          PY
+
+      # Guard the private upload, byte verification, owner scoping, and multimodal image path.
+      - name: Verify private chat media security contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          api = Path("supabase/functions/armex-api/index.ts").read_text(encoding="utf-8")
+          migration = Path("supabase/migrations/20261115000000_lokal_chat_media.sql").read_text(encoding="utf-8")
+          html = Path("index.html").read_text(encoding="utf-8")
+          checks = {
+              "signed upload endpoint": "create_media_upload",
+              "upload finalization endpoint": "complete_media_upload",
+              "server-side media signature validation": "hasValidMediaSignature",
+              "owner-scoped attachment lookup": '.eq("user_id", userId)',
+              "private bucket": "public = false",
+              "attachment RLS enabled": "enable row level security",
+              "video size limit": "CHAT_MEDIA_MAX_VIDEO_BYTES",
+              "image attachment to multimodal model": "image_url: { url: imageSignedUrl }",
+              "signed browser upload": "uploadToSignedUrl",
+          }
+          sources = {"api": api, "migration": migration, "html": html}
+          for label, token in checks.items():
+              if not any(token in source for source in sources.values()):
+                  raise SystemExit("Missing media security contract: " + label)
+          PY
+
       - name: Type-check armex-api
         run: deno check supabase/functions/armex-api/index.ts
 
@@ -52,7 +88,7 @@ jobs:
               "auth-signin", "auth-signup", "auth-reset", "auth-signout",
               "generatePrompt", "generateAIPrompt", "promptResult",
               "creditCount", "walletStat", "page-home", "page-prompt",
-              "page-projects", "page-account"
+              "page-projects", "page-account", "page-chat", "chat-list", "chat-messages", "chat-input", "chat-send", "chat-media-input", "chat-file-note"
           ]
           missing = [item for item in required if item not in ids]
           if missing:
