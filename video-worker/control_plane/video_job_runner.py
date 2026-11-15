@@ -124,17 +124,40 @@ class VideoJobRunner:
         if job is None:
             return False
         job_id = str(job.get("job_id") or "")
+        if not UUID_RE.fullmatch(job_id):
+            # Without a trustworthy job UUID we cannot safely heartbeat, fail,
+            # or release the claimed database lease. Leave it for reconciliation.
+            raise VideoJobRunnerError("supabase_claimed_job_id_invalid_reconciliation_required")
+
         request_id = str(job.get("request_id") or "")
         user_id = str(job.get("user_id") or "")
         prompt = job.get("prompt")
         settings = job.get("settings")
-        if not job_id or not request_id or not user_id or not isinstance(prompt, str) or not isinstance(settings, dict):
-            raise VideoJobRunnerError("supabase_claimed_invalid_video_job")
 
         heartbeat = _Heartbeat(
             self.queue, job_id, self.worker_id, self.heartbeat_interval
         )
         heartbeat.start()
+        if (
+            not UUID_RE.fullmatch(request_id)
+            or not UUID_RE.fullmatch(user_id)
+            or not isinstance(prompt, str)
+            or not prompt.strip()
+            or not isinstance(settings, dict)
+        ):
+            try:
+                self._release_terminal_failure(
+                    job_id,
+                    vm_acquired=False,
+                    error_code="invalid_claimed_video_job",
+                    heartbeat=heartbeat,
+                )
+            except Exception:
+                self._mark_uncertain(
+                    job_id, "invalid_claimed_video_job_reconciliation_required", heartbeat
+                )
+                raise
+            return True
         vm_acquired = False
         lifecycle_attempted = False
         submission_attempted = False
