@@ -351,7 +351,7 @@ const createChatConversation = async (
   db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
 ): Promise<Response> => {
   const title = typeof body.title === "string"
-    ? body.title.replace(/\\s+/g, " ").trim().slice(0, 80)
+    ? body.title.replace(/\s+/g, " ").trim().slice(0, 80)
     : "";
   const { data, error } = await db.from("armex_conversations")
     .insert({ user_id: userId, title: title || "گفتگوی جدید", model: DEFAULT_MODEL })
@@ -382,7 +382,7 @@ const createChatMediaUpload = async (
   if (conversationError || !conversation) return fail("Conversation not found", 404, cors);
 
   const safeFilename = filename.replace(/[\\/]/g, "_")
-    .replace(/[^\\p{L}\\p{N}._ -]/gu, "_").trim().slice(0, 180) || ("upload." + mediaType.extension);
+    .replace(/[^\p{L}\p{N}._ -]/gu, "_").trim().slice(0, 180) || ("upload." + mediaType.extension);
   const attachmentId = crypto.randomUUID();
   const storagePath = userId + "/" + attachmentId + "." + mediaType.extension;
   const { error: insertError } = await db.from("armex_chat_attachments").insert({
@@ -768,7 +768,24 @@ const handle = async (request: Request): Promise<Response> => {
     }).reverse();
   }
 
-  let verifiedAttachment: Record<string, unknown> | null = null;\n  let imageSignedUrl: string | null = null;\n  if (attachmentId) {\n    const { data: attachment, error: attachmentError } = await db.from("armex_chat_attachments")\n      .select("id,conversation_id,storage_path,mime_type,original_filename,status")\n      .eq("id", attachmentId).eq("user_id", userId).eq("conversation_id", conversationId)\n      .eq("status", "ready").maybeSingle();\n    if (attachmentError || !attachment) return fail("Attachment not found or not ready", 404, cors);\n    verifiedAttachment = attachment as Record<string, unknown>;\n    if (String(attachment.mime_type).startsWith("image/")) {\n      const { data: signed, error: signingError } = await db.storage.from(CHAT_MEDIA_BUCKET)\n        .createSignedUrl(String(attachment.storage_path), 300);\n      if (signingError || !signed?.signedUrl) return fail("Could not prepare image for the AI model", 503, cors);\n      imageSignedUrl = signed.signedUrl;\n    }\n  }\n\n  const promptChars = SYSTEM_PROMPT.length + context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
+  let verifiedAttachment: Record<string, unknown> | null = null;
+  let imageSignedUrl: string | null = null;
+  if (attachmentId) {
+    const { data: attachment, error: attachmentError } = await db.from("armex_chat_attachments")
+      .select("id,conversation_id,storage_path,mime_type,original_filename,status")
+      .eq("id", attachmentId).eq("user_id", userId).eq("conversation_id", conversationId)
+      .eq("status", "ready").maybeSingle();
+    if (attachmentError || !attachment) return fail("Attachment not found or not ready", 404, cors);
+    verifiedAttachment = attachment as Record<string, unknown>;
+    if (String(attachment.mime_type).startsWith("image/")) {
+      const { data: signed, error: signingError } = await db.storage.from(CHAT_MEDIA_BUCKET)
+        .createSignedUrl(String(attachment.storage_path), 300);
+      if (signingError || !signed?.signedUrl) return fail("Could not prepare image for the AI model", 503, cors);
+      imageSignedUrl = signed.signedUrl;
+    }
+  }
+
+  const promptChars = SYSTEM_PROMPT.length + context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
   const estimatedInputTokens = Math.max(1, Math.ceil(promptChars / 3));
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -805,7 +822,11 @@ const handle = async (request: Request): Promise<Response> => {
     const providerMessages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...context,
-      { role: "user", content: imageSignedUrl\n        ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageSignedUrl } }]\n        : verifiedAttachment && String(verifiedAttachment.mime_type).startsWith("video/")\n        ? message + "\\n\\n[The user attached a video file named " + String(verifiedAttachment.original_filename) + ". The video is securely stored but video understanding/editing is not available in this release. Do not claim to have viewed or edited it.]"\n        : message },
+      { role: "user", content: imageSignedUrl
+        ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageSignedUrl } }]
+        : verifiedAttachment && String(verifiedAttachment.mime_type).startsWith("video/")
+        ? message + String.fromCharCode(10, 10) + "[The user attached a video file named " + String(verifiedAttachment.original_filename) + ". The video is securely stored but video understanding/editing is not available in this release. Do not claim to have viewed or edited it.]"
+        : message },
     ];
 
     const providerResponse = await fetch(OPENROUTER_URL + "/chat/completions", {
@@ -926,7 +947,12 @@ const handle = async (request: Request): Promise<Response> => {
       );
     }
 
-    if (verifiedAttachment) {\n      await db.from("armex_chat_attachments").update({ message_id: savedMessages[0]?.id ?? null })\n        .eq("id", attachmentId).eq("user_id", userId);\n    }\n\n    const { error: usageError } = await db.from("armex_usage").insert({
+    if (verifiedAttachment) {
+      await db.from("armex_chat_attachments").update({ message_id: savedMessages[0]?.id ?? null })
+        .eq("id", attachmentId).eq("user_id", userId);
+    }
+
+    const { error: usageError } = await db.from("armex_usage").insert({
       user_id: userId,
       conversation_id: conversation.id,
       model: result.model || model,
