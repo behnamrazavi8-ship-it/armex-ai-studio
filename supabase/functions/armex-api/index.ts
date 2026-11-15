@@ -635,7 +635,10 @@ const handle = async (request: Request): Promise<Response> => {
       .order("created_at", { ascending: false })
       .limit(100);
     if (messagesError) return fail("Could not load conversation messages", 500, cors);
-    return json({ success: true, conversation, messages: (rows ?? []).reverse() }, 200, cors);
+    let attachments: Json[] = [];
+    try { attachments = await listChatAttachments(db, userId, conversationId); }
+    catch { return fail("Could not load conversation attachments", 500, cors); }
+    return json({ success: true, conversation, messages: (rows ?? []).reverse(), attachments }, 200, cors);
   }
 
   if (request.method === "GET" && url.searchParams.get("action") === "images") {
