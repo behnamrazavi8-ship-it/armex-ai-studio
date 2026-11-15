@@ -20,12 +20,12 @@ RUN git clone https://github.com/Wan-Video/Wan2.2.git /opt/Wan2.2 \
     && git -C /opt/Wan2.2 checkout ${WAN_REPO_COMMIT}
 
 WORKDIR /opt/lokal-video-worker
-COPY requirements-constraints.txt ./requirements-constraints.txt
+COPY video-worker/requirements-constraints.txt ./requirements-constraints.txt
 RUN python -m pip install --no-cache-dir --no-build-isolation "flash-attn==2.7.4.post1" \
     && python -m pip install --no-cache-dir -c requirements-constraints.txt \
        -r /opt/Wan2.2/requirements.txt
 
-COPY handler.py standalone_server.py ./
+COPY video-worker/handler.py video-worker/standalone_server.py ./
 RUN mkdir -p /var/lib/lokal-video/models /var/lib/lokal-video/hf-cache \
     && useradd --create-home --uid 10001 --shell /usr/sbin/nologin worker \
     && chown -R worker:worker /opt/lokal-video-worker /var/lib/lokal-video
