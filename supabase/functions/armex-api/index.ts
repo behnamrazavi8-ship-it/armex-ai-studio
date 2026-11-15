@@ -493,7 +493,8 @@ const listChatAttachments = async (
   })).then((items) => items.filter(Boolean) as Json[]);
 };
 
-\nconst handle = async (request: Request): Promise<Response> => {
+
+const handle = async (request: Request): Promise<Response> => {
   const origin = request.headers.get("Origin");
   const cors = corsFor(origin);
 
