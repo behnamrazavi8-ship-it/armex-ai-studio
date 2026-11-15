@@ -447,6 +447,37 @@ const handle = async (request: Request): Promise<Response> => {
     }
   }
 
+  if (request.method === "GET" && url.searchParams.get("action") === "conversations") {
+    const { data, error } = await db.from("armex_conversations")
+      .select("id,title,model,created_at,updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(50);
+    if (error) return fail("Could not load conversations", 500, cors);
+    return json({ success: true, conversations: data ?? [] }, 200, cors);
+  }
+
+  if (request.method === "GET" && url.searchParams.get("action") === "conversation") {
+    const conversationId = url.searchParams.get("id") ?? "";
+    if (!isUuid(conversationId)) return fail("Invalid conversation id", 400, cors);
+    const { data: conversation, error: conversationError } = await db.from("armex_conversations")
+      .select("id,title,model,created_at,updated_at")
+      .eq("id", conversationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (conversationError) return fail("Could not load conversation", 500, cors);
+    if (!conversation) return fail("Conversation not found", 404, cors);
+    const { data: rows, error: messagesError } = await db.from("armex_messages")
+      .select("id,role,content,model,created_at")
+      .eq("conversation_id", conversationId)
+      .eq("user_id", userId)
+      .in("role", ["user", "assistant"])
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (messagesError) return fail("Could not load conversation messages", 500, cors);
+    return json({ success: true, conversation, messages: (rows ?? []).reverse() }, 200, cors);
+  }
+
   if (request.method === "GET" && url.searchParams.get("action") === "images") {
     return await listGeneratedImages(db, userId, cors);
   }
