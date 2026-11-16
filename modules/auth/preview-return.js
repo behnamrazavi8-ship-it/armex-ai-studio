@@ -28,7 +28,7 @@ export function resolveAuthReturnContext({
     hashPage,
     historyState?.lokalWorkspacePage
   ].find(value => typeof value === "string" && value.trim()) || "home";
-  return { preview, page };
+  return { preview, page: page === "assistant" ? "chat" : page };
 }
 
 export function buildAuthRedirectUrl({ origin, pathname, preview, page = "home" }) {
