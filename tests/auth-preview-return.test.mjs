@@ -36,3 +36,20 @@ test("ordinary production workspace login does not become preview", () => {
     historyState: { lokalRoute: "workspace", lokalWorkspacePage: "home" }
   }), { preview: false, page: "home" });
 });
+
+test("OAuth callback query marker restores preview after a fresh page bootstrap", () => {
+  assert.deepEqual(resolveAuthReturnContext({
+    hash: "#top",
+    queryReturn: "preview",
+    queryPage: "video"
+  }), { preview: true, page: "video" });
+});
+
+test("authenticated preview refresh remains in preview from the URL marker", () => {
+  assert.deepEqual(resolveAuthReturnContext({
+    hash: "#preview-chat",
+    historyState: { lokalRoute: "preview", lokalWorkspacePage: "chat" },
+    queryReturn: "preview",
+    queryPage: "chat"
+  }), { preview: true, page: "chat" });
+});
