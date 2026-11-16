@@ -7,7 +7,8 @@ export function resolveAuthReturnContext({
   storedPreview = false,
   activePage = "",
   storedPage = "",
-  queryPage = ""
+  queryPage = "",
+  queryReturn = ""
 } = {}) {
   const hashPage = hash.startsWith("#preview-") ? hash.slice("#preview-".length) : "";
   const preview = Boolean(
@@ -16,6 +17,7 @@ export function resolveAuthReturnContext({
     historyState?.lokalAuthReturnToPreview ||
     historyState?.lokalRoute === "preview" ||
     storedPreview ||
+    queryReturn === "preview" ||
     hashPage
   );
   const page = [
