@@ -827,6 +827,59 @@ body{background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05
 #workspace-app .app-tool .feature-icon{
  border-color:#347b9c!important;
 }
+
+/* LOKAL AI — compact dashboard welcome panel; mascot brought clearly forward */
+#workspace-app #page-home.dashboard-home{overflow:visible!important;padding-top:8px!important}
+#workspace-app #page-home.dashboard-home .dashboard-bot-wrap{
+ position:absolute!important;top:-22px!important;inset-inline-end:10px!important;
+ width:min(36%,270px)!important;height:190px!important;z-index:3!important;
+ opacity:1!important;overflow:visible!important;pointer-events:none!important;
+}
+#workspace-app #page-home.dashboard-home .bot-stage{
+ transform:scale(.86)!important;transform-origin:center center!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-bot-label{
+ color:#a9eaff!important;text-shadow:0 0 10px #20bfff80,0 0 22px #20bfff55!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-intro{
+ min-height:104px!important;height:auto!important;padding:16px 18px!important;
+ margin:0 0 16px!important;align-items:center!important;gap:12px!important;
+ border:1px solid #263d4a!important;border-radius:18px!important;
+ background:linear-gradient(110deg,#0b1117f2,#101b24e8)!important;
+ box-shadow:0 12px 34px #0007,inset 0 0 24px #20bfff08!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-intro>div{
+ max-width:62%!important;position:relative!important;z-index:4!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-intro h1{
+ font-size:clamp(20px,2.8vw,29px)!important;margin:5px 0 4px!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-intro p{font-size:11px!important}
+#workspace-app #page-home.dashboard-home .dashboard-intro>.btn{
+ position:relative!important;z-index:4!important;white-space:nowrap!important;
+ padding:10px 14px!important;font-size:11px!important;
+}
+@media(max-width:760px){
+ #workspace-app #page-home.dashboard-home .dashboard-bot-wrap{
+  top:-14px!important;inset-inline-end:0!important;width:38%!important;height:145px!important;
+ }
+ #workspace-app #page-home.dashboard-home .bot-stage{transform:scale(.67)!important}
+ #workspace-app #page-home.dashboard-home .dashboard-intro{
+  min-height:112px!important;padding:13px 12px!important;gap:8px!important;
+ }
+ #workspace-app #page-home.dashboard-home .dashboard-intro>div{max-width:64%!important}
+ #workspace-app #page-home.dashboard-home .dashboard-intro h1{font-size:19px!important}
+ #workspace-app #page-home.dashboard-home .dashboard-intro p{font-size:9px!important}
+ #workspace-app #page-home.dashboard-home .dashboard-intro>.btn{
+  padding:9px 10px!important;font-size:9px!important;max-width:42%!important;
+ }
+ #workspace-app #page-home.dashboard-home .dashboard-bot-label{font-size:7px!important}
+}
+@media(max-width:390px){
+ #workspace-app #page-home.dashboard-home .dashboard-intro{align-items:flex-start!important;flex-wrap:wrap!important}
+ #workspace-app #page-home.dashboard-home .dashboard-intro>.btn{margin-top:3px!important}
+}
+
 </style>
 </head>
 <body>
