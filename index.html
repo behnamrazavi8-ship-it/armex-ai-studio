@@ -314,6 +314,43 @@
  #workspace-app:has(.main.chat-page-active) .chat-fullscreen-head #chat-exit{min-height:34px!important;white-space:nowrap!important}
  #workspace-app:has(.main.chat-page-active) .chat-compose-box textarea{max-height:18dvh!important;min-height:48px!important}
 }
+
+/* Brighter emerald glass frames for dashboard tool icons */
+#workspace-app .app-tool .feature-icon{
+  position:relative;
+  isolation:isolate;
+  overflow:visible;
+  background:
+    radial-gradient(circle at 28% 18%,#caffef55 0,transparent 34%),
+    linear-gradient(145deg,#20f0b94d 0%,#0ab98d30 48%,#073d342e 100%);
+  border:1px solid #58ffd9;
+  box-shadow:
+    0 0 7px #35ffd18c,
+    0 0 18px #18e6b77a,
+    0 0 34px #0dd7a64d,
+    inset 0 1px 0 #d8fff3a8,
+    inset 0 0 16px #20edb94f;
+  transition:box-shadow .22s ease,border-color .22s ease,filter .22s ease,transform .22s ease;
+}
+#workspace-app .app-tool .feature-icon svg{
+  filter:
+    drop-shadow(0 0 3px #d4fff2)
+    drop-shadow(0 0 7px #45ffd4)
+    drop-shadow(0 0 13px #13dcae);
+}
+#workspace-app .app-tool:hover .feature-icon,
+#workspace-app .app-tool:focus-visible .feature-icon{
+  border-color:#b2ffeb;
+  box-shadow:
+    0 0 10px #8affdfb5,
+    0 0 25px #20f0bdad,
+    0 0 44px #0ed9a875,
+    inset 0 1px 0 #effffabf,
+    inset 0 0 20px #35f6c46b;
+  filter:brightness(1.16) saturate(1.2);
+  transform:translateY(-1px);
+}
+
 </style>
 </head>
 <body>
