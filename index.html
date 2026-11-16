@@ -445,6 +445,124 @@
  #workspace-app .btn{transition:none!important}
 }
 
+
+
+/* LOKAL AI visual correction: stronger emerald across public landing and workspace */
+:root{
+  --mint:#35f5bd;
+  --blue:#18c995;
+}
+body{
+  background:
+    radial-gradient(ellipse at 85% 0%,#08a87830,transparent 34%),
+    radial-gradient(ellipse at 5% 35%,#087c5d1c,transparent 36%),
+    var(--bg)!important;
+}
+#public-site .lokal-hero-logo{
+  border-color:#35eec0!important;
+  background:linear-gradient(145deg,#10372e 0%,#081c19 100%)!important;
+  box-shadow:0 12px 34px #0009,0 0 24px #12dba64a,inset 0 1px 0 #caffef35!important;
+}
+#public-site .lokal-hero-logo svg{
+  filter:none!important;
+}
+#public-site .lokal-hero-logo svg defs linearGradient stop:nth-child(1){stop-color:#a4ffe2!important}
+#public-site .lokal-hero-wordmark{
+  background:linear-gradient(100deg,#baffea 0%,#42f2bd 55%,#08b98c 100%)!important;
+  -webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;
+  text-shadow:0 0 24px #23e5b52b;
+}
+#public-site .gradient{
+  background:linear-gradient(90deg,#c6ffeb 0%,#48f2bc 52%,#08bf91 100%)!important;
+  -webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;
+}
+#public-site .visual-card,
+#public-site .hero-desktop-panel,
+#public-site .feature,
+#public-site #studios .tool,
+#public-site .mini-stat{
+  border-color:#267b62!important;
+  background:linear-gradient(145deg,#12382f 0%,#0b211d 58%,#071713 100%)!important;
+  box-shadow:0 12px 30px #0008,inset 0 1px 0 #caffef24!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+#public-site .orb{
+  background:radial-gradient(circle at 35% 28%,#d4fff1 0,#55f5c4 12%,#12b98c 42%,#075b49 72%,#061b16 78%)!important;
+  box-shadow:0 0 30px #20dca65c,0 0 60px #0c9f7540!important;
+}
+#public-site .brand-mark{
+  background:linear-gradient(145deg,#174b3c,#071a15)!important;
+  border-color:#4ff4c7!important;color:#baffea!important;
+  box-shadow:0 0 20px #18d6a55c,inset 0 0 12px #18d6a52b!important;
+}
+#public-site .btn:not(.btn-ghost){
+  background:linear-gradient(115deg,#aaffdf 0%,#43efbb 38%,#0db98b 100%)!important;
+  box-shadow:0 7px 22px #10d9a64a,inset 0 1px 0 #efffffc9!important;
+}
+#public-site .topbar{
+  border-bottom-color:#205b49!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+
+/* Mobile GPU stability: remove costly blur, filters, 3D transforms and looping motion */
+#workspace-app,
+#workspace-app *,
+#public-site .lokal-hero-logo,
+#public-site .visual-card,
+#public-site .feature,
+#public-site #studios .tool{
+  -webkit-backdrop-filter:none!important;
+}
+#workspace-app .stat,
+#workspace-app .panel,
+#workspace-app .account-card,
+#workspace-app .account-details>div,
+#workspace-app .app-tool,
+#workspace-app .dashboard-shortcut,
+#workspace-app .dashboard-tools-panel,
+#workspace-app .dashboard-info-card,
+#workspace-app .sidebar{
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+#workspace-app .dashboard-bot,
+#workspace-app .bot-stage,
+#workspace-app .bot-figure,
+#workspace-app .bot-head,
+#workspace-app .bot-eye,
+#workspace-app .bot-shadow,
+#workspace-app .bot-head-highlight,
+#workspace-app .bot-aura,
+#workspace-app .dashboard-bot-aura,
+#workspace-app .bot-eyes{
+  animation:none!important;
+  transition:none!important;
+  transform:none!important;
+  transform-style:flat!important;
+  perspective:none!important;
+  filter:none!important;
+  will-change:auto!important;
+}
+#workspace-app .dashboard-bot-wrap,
+#workspace-app .bot-stage{perspective:none!important}
+#workspace-app .app-tool,
+#workspace-app .app-tool .feature-icon,
+#workspace-app .btn,
+#workspace-app .dashboard-shortcut{
+  transition:none!important;
+  filter:none!important;
+}
+#workspace-app .app-tool:hover,
+#workspace-app .app-tool:focus-visible{
+  transform:none!important;
+  filter:none!important;
+  box-shadow:0 8px 22px #0008,inset 0 1px 0 #eaffff26,0 0 14px #18d6a52b!important;
+}
+#workspace-app .app-tool:after{display:none!important}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+
 </style>
 </head>
 <body>
