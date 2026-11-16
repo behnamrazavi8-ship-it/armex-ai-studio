@@ -107,6 +107,101 @@
 .dashboard-info-card{background:#0a141bdc;backdrop-filter:blur(12px)}.dashboard-info-card .btn{margin-top:16px}
 @media(max-width:760px){.dashboard-intro{align-items:flex-start;flex-direction:column;min-height:0;padding:24px 12px 28px}.dashboard-intro .btn{width:100%}.dashboard-overview{grid-template-columns:1fr}.dashboard-lower-grid{grid-template-columns:1fr}}
 @media(max-width:420px){.dashboard-home .stats{grid-template-columns:1fr 1fr}.dashboard-home .stat:last-child{grid-column:1/-1}.dashboard-shortcuts{grid-template-columns:1fr 1fr}.dashboard-section-head{align-items:flex-start;flex-direction:column}}
+
+/* Full-height Smart Chat workspace: no dashboard bleed-through */
+#workspace-app{height:100vh;height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+#workspace-app .app-top{flex:0 0 auto}
+#workspace-app .app-layout{flex:1 1 auto;min-height:0;overflow:hidden;box-sizing:border-box}
+#workspace-app .main{min-height:0;min-width:0;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box}
+#workspace-app .main.chat-page-active{display:flex;flex-direction:column;overflow:hidden;padding:0}
+#workspace-app .main.chat-page-active #page-home{display:none!important}
+#workspace-app .main.chat-page-active #page-chat.active{display:flex!important;flex:1 1 auto;flex-direction:column;width:100%;height:100%;min-height:0;overflow:hidden}
+#workspace-app .main.chat-page-active #page-chat .welcome{flex:0 0 auto;margin:0;padding:10px 14px 12px}
+#workspace-app .main.chat-page-active #page-chat .welcome h1{margin:5px 0;font-size:clamp(20px,2.5vw,27px)}
+#workspace-app .main.chat-page-active #page-chat .welcome p{font-size:11px}
+#workspace-app .main.chat-page-active #page-chat .chat-workspace{display:grid;grid-template-columns:230px minmax(0,1fr);grid-template-rows:minmax(0,1fr);flex:1 1 auto;width:100%;height:100%;min-height:0;overflow:hidden;gap:12px}
+#workspace-app .main.chat-page-active #page-chat .chat-history-panel{min-height:0;overflow:hidden}
+#workspace-app .main.chat-page-active #page-chat .chat-history-list{max-height:none;height:calc(100% - 48px);overflow:auto;overscroll-behavior:contain}
+#workspace-app .main.chat-page-active #page-chat .chat-conversation{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;overflow:hidden}
+#workspace-app .main.chat-page-active #page-chat .chat-conversation-head{flex:0 0 auto}
+#workspace-app .main.chat-page-active #page-chat .chat-transcript{display:flex;flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+#workspace-app .main.chat-page-active #page-chat .chat-compose-box{flex:0 0 auto}
+#workspace-app .main.chat-page-active #page-chat .chat-live-status{flex:0 0 auto}
+#workspace-app .main.chat-page-active #page-chat>.notice{display:none}
+#workspace-app .main.chat-page-active #page-chat .chat-message{max-width:min(88%,760px)}
+@media(max-width:760px){
+ #workspace-app .app-top{flex-basis:58px;padding-inline:10px}
+ #workspace-app .app-layout{display:flex;flex-direction:column;width:100%;margin:0;padding:8px 8px calc(66px + env(safe-area-inset-bottom));gap:0}
+ #workspace-app .sidebar{display:none}
+ #workspace-app .main{display:flex;flex:1 1 auto;width:100%;height:100%;min-height:0;overflow-y:auto}
+ #workspace-app .main.chat-page-active{overflow:hidden}
+ #workspace-app .main.chat-page-active #page-chat .welcome{padding:4px 8px 9px;margin:0}
+ #workspace-app .main.chat-page-active #page-chat .welcome .eyebrow{font-size:9px}
+ #workspace-app .main.chat-page-active #page-chat .welcome h1{font-size:20px;margin:3px 0}
+ #workspace-app .main.chat-page-active #page-chat .welcome p{font-size:10px;line-height:1.6}
+ #workspace-app .main.chat-page-active #page-chat .chat-workspace{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;height:100%;gap:7px}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-panel{flex:0 0 auto;display:block;max-height:43px;min-height:43px;margin:0;padding:6px 8px;overflow:hidden}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-panel #chat-new{width:auto!important;min-height:29px;padding:5px 12px;font-size:10px}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-list{display:none}
+ #workspace-app .main.chat-page-active #page-chat .chat-conversation{flex:1 1 auto;min-height:0;height:100%;margin:0;padding:9px;overflow:hidden}
+ #workspace-app .main.chat-page-active #page-chat .chat-conversation-head{padding-bottom:7px;gap:6px}
+ #workspace-app .main.chat-page-active #page-chat .chat-conversation-head .muted-copy{font-size:9px}
+ #workspace-app .main.chat-page-active #page-chat .chat-transcript{flex:1 1 auto;min-height:0;max-height:none;padding:10px 1px;gap:9px}
+ #workspace-app .main.chat-page-active #page-chat .chat-message{max-width:96%;padding:10px 12px;font-size:11px;line-height:1.85}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-box{padding:8px}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-box textarea{min-height:52px;max-height:96px;resize:none;font-size:11px}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-actions{gap:5px}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-actions .muted-copy{max-width:65%;font-size:9px;line-height:1.5}
+ #workspace-app .main.chat-page-active #page-chat #chat-send{padding:8px 12px;font-size:10px}
+ #workspace-app .main.chat-page-active #page-chat .chat-live-status{min-height:16px;font-size:9px;margin-top:3px}
+}
+@media(max-height:650px) and (max-width:760px){
+ #workspace-app .main.chat-page-active #page-chat .welcome{padding-block:1px 5px}
+ #workspace-app .main.chat-page-active #page-chat .welcome p{display:none}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-panel{max-height:35px;min-height:35px;padding:3px 7px}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-box textarea{min-height:42px;max-height:68px}
+}
+@media(prefers-reduced-motion:reduce){.bot-figure,.bot-head,.bot-arm{animation:none!important}}
+/* Lightweight CSS 3D mascot */
+.dashboard-bot-wrap{position:absolute;z-index:0;top:-8px;inset-inline-end:16px;width:min(40%,300px);height:255px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.bot-stage{position:relative;width:225px;height:210px;perspective:850px;perspective-origin:50% 42%;display:grid;place-items:center}
+.bot-shadow{position:absolute;bottom:3px;width:120px;height:19px;border-radius:50%;background:radial-gradient(ellipse,#25dfba55,transparent 70%);filter:blur(5px);animation:bot-shadow-pulse 4.6s ease-in-out infinite}
+.bot-figure{position:relative;width:150px;height:190px;transform-style:preserve-3d;animation:bot-hover-3d 5s ease-in-out infinite}
+.bot-head{position:absolute;z-index:4;left:25px;top:21px;width:100px;height:77px;border-radius:34px 34px 29px 29px;background:linear-gradient(135deg,#52717c 0%,#1b3947 26%,#0b1b28 70%,#07121c 100%);border:1px solid #5de7d0;box-shadow:inset 5px 5px 12px #ffffff25,inset -7px -8px 13px #0009,0 8px 18px #0008;transform:translateZ(15px) rotateY(-10deg);transform-style:preserve-3d;animation:bot-head-look 7s ease-in-out infinite}
+.bot-head:before{content:"";position:absolute;inset:7px 9px 9px;border-radius:27px;background:linear-gradient(145deg,#07131d,#102c3a 55%,#06121b);border:1px solid #3c7380;box-shadow:inset 0 2px 9px #000b;transform:translateZ(8px)}
+.bot-face{position:absolute;z-index:2;inset:15px 15px 17px;border-radius:20px;background:linear-gradient(145deg,#071018,#102432);display:flex;align-items:center;justify-content:center;gap:19px;transform:translateZ(17px)}
+.bot-eye{width:9px;height:15px;border-radius:50%;background:#77ffe2;box-shadow:0 0 8px #48f4d7,0 0 18px #21c8ec;animation:bot-eye-blink 5.2s infinite}
+.bot-smile{position:absolute;bottom:9px;width:19px;height:7px;border-bottom:2px solid #57e9ce;border-radius:50%}
+.bot-ear{position:absolute;z-index:-1;top:25px;width:14px;height:27px;border-radius:7px;background:linear-gradient(90deg,#07121b,#4c8290,#102432);border:1px solid #3dcbb8;box-shadow:0 0 12px #25dfba33;transform:translateZ(-8px)}
+.bot-ear-left{left:-10px}.bot-ear-right{right:-10px}
+.bot-head-highlight{position:absolute;z-index:3;top:8px;left:25px;width:38px;height:5px;border-radius:5px;background:#a7fff0;opacity:.45;filter:blur(2px);transform:translateZ(20px)}
+.bot-antenna{position:absolute;z-index:5;top:3px;left:71px;width:8px;height:22px;border-radius:6px;background:linear-gradient(90deg,#143f4c,#6df9d8,#1a5668);transform:translateZ(12px)}
+.bot-antenna i{position:absolute;top:-8px;left:-3px;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#d5fff4,#34e5bd 48%,#087c9d);box-shadow:0 0 14px #31e8c0}
+.bot-neck{position:absolute;z-index:2;top:91px;left:65px;width:25px;height:16px;background:linear-gradient(90deg,#08141e,#527482,#0a1c27);border-radius:7px;transform:translateZ(4px)}
+.bot-body{position:absolute;z-index:3;top:101px;left:32px;width:88px;height:65px;border-radius:25px 25px 18px 18px;background:linear-gradient(135deg,#41616d,#193746 38%,#071722 78%);border:1px solid #45cbb8;box-shadow:inset 4px 4px 9px #ffffff20,inset -6px -6px 12px #000a,0 9px 15px #0008;transform:translateZ(10px);transform-style:preserve-3d}
+.bot-chest{position:absolute;inset:11px 22px 10px;border-radius:13px;background:linear-gradient(145deg,#0b1b27,#163b49);border:1px solid #367f83;display:grid;place-items:center;box-shadow:inset 0 0 12px #0009;transform:translateZ(9px)}
+.bot-chest i{position:absolute;top:5px;width:18px;height:3px;border-radius:3px;background:#6fffe0;box-shadow:0 0 8px #55eaca}
+.bot-chest b{font:900 12px Arial,sans-serif;color:#b6fff0;text-shadow:0 0 8px #31d9bd;letter-spacing:1px}
+.bot-chest span{position:absolute;bottom:5px;width:24px;height:2px;background:#348fc0;border-radius:2px}
+.bot-shoulder{position:absolute;top:4px;width:23px;height:24px;border-radius:12px;background:linear-gradient(135deg,#62818a,#132e3b 75%);border:1px solid #3b9c98;transform:translateZ(4px)}
+.bot-shoulder-left{left:-12px}.bot-shoulder-right{right:-12px}
+.bot-arm{position:absolute;z-index:2;top:111px;width:19px;height:49px;border-radius:11px;background:linear-gradient(90deg,#091722,#43616d 42%,#102b39);border:1px solid #397f85;transform-style:preserve-3d}
+.bot-arm:after{content:"";position:absolute;bottom:-5px;left:1px;width:15px;height:15px;border-radius:50%;background:linear-gradient(145deg,#4e8b92,#0a1a26);border:1px solid #3dcdb5;transform:translateZ(5px)}
+.bot-arm-left{left:17px;transform:rotate(12deg) translateZ(2px);animation:bot-wave-left 3.8s ease-in-out infinite}
+.bot-arm-right{right:14px;transform:rotate(-12deg) translateZ(2px);animation:bot-wave-right 4.5s ease-in-out infinite}
+.bot-arm i{position:absolute;top:12px;left:5px;width:7px;height:17px;border-radius:5px;background:#52e8cf;box-shadow:0 0 8px #3ddcbd}
+.bot-leg{position:absolute;z-index:1;top:158px;width:25px;height:28px;border-radius:8px 8px 11px 11px;background:linear-gradient(90deg,#0a1720,#3b5b68,#0a1a25);border:1px solid #357e81;transform:translateZ(5px)}
+.bot-leg:after{content:"";position:absolute;bottom:-3px;left:-3px;width:31px;height:10px;border-radius:8px;background:linear-gradient(90deg,#091721,#355866,#07131d);border:1px solid #337f82}
+.bot-leg-left{left:46px}.bot-leg-right{right:46px}
+.dashboard-bot-label{position:relative;margin-top:-3px;color:#a8ffe7;font:900 10px Arial,sans-serif;letter-spacing:2px;text-shadow:0 0 14px #28e2b455;text-align:center}
+.dashboard-bot-label span{display:block;margin-top:5px;color:#82aeb7;font-size:7px;letter-spacing:2.2px}
+@keyframes bot-hover-3d{0%,100%{transform:translateY(0) rotateY(-8deg) rotateX(2deg)}50%{transform:translateY(-8px) rotateY(8deg) rotateX(-2deg)}}
+@keyframes bot-head-look{0%,100%{transform:translateZ(15px) rotateY(-10deg)}50%{transform:translateZ(15px) rotateY(9deg)}}
+@keyframes bot-wave-left{0%,100%{transform:rotate(12deg) translateZ(2px)}50%{transform:rotate(25deg) translateZ(2px)}}
+@keyframes bot-wave-right{0%,100%{transform:rotate(-12deg) translateZ(2px)}50%{transform:rotate(-20deg) translateZ(2px)}}
+@keyframes bot-eye-blink{0%,46%,50%,100%{transform:scaleY(1)}48%{transform:scaleY(.08)}}
+@keyframes bot-shadow-pulse{0%,100%{transform:scaleX(1);opacity:.7}50%{transform:scaleX(.75);opacity:.4}}
+@media(max-width:760px){.dashboard-bot-wrap{top:0;inset-inline-end:0;width:44%;height:190px}.bot-stage{transform:scale(.78);transform-origin:center}.dashboard-bot-label{font-size:8px}}
 </style>
 </head>
 <body>
@@ -144,27 +239,23 @@
 <aside class="sidebar"><div class="side-label">WORKSPACE</div><button class="nav-btn active" data-page="home">⌂　Dashboard</button><button class="nav-btn" data-page="chat">💬　چت هوشمند</button><button class="nav-btn" data-page="prompt">✍️　Prompt Lab</button><button class="nav-btn" data-page="projects">▤　My Projects</button><button class="nav-btn" data-page="account">◉　Account & Wallet</button><div class="side-label">STUDIOS</div><button class="nav-btn" data-page="image">🎨　Image Studio</button><button class="nav-btn" data-page="video">🎬　Video Studio</button></aside>
 <main class="main">
 <section class="page active dashboard-home" id="page-home">
-<div class="dashboard-bot-wrap" role="img" aria-label="ربات هوشمند LOKAL AI">
- <div class="dashboard-bot-aura"></div>
- <svg class="dashboard-bot" viewBox="0 0 220 220" aria-hidden="true">
-  <defs>
-   <linearGradient id="botShell" x1="35" y1="24" x2="182" y2="196" gradientUnits="userSpaceOnUse"><stop stop-color="#1b3d48"/><stop offset=".55" stop-color="#102631"/><stop offset="1" stop-color="#08131d"/></linearGradient>
-   <linearGradient id="botTrim" x1="45" y1="35" x2="174" y2="183" gradientUnits="userSpaceOnUse"><stop stop-color="#54ffd0"/><stop offset=".55" stop-color="#3199ed"/><stop offset="1" stop-color="#8a72ff"/></linearGradient>
-   <filter id="botGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  </defs>
-  <path d="M110 16v17" stroke="url(#botTrim)" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="110" cy="13" r="7" fill="#28e2b4" filter="url(#botGlow)"/>
-  <rect x="36" y="44" width="148" height="119" rx="42" fill="url(#botShell)" stroke="url(#botTrim)" stroke-width="4"/>
-  <rect x="51" y="59" width="118" height="88" rx="30" fill="#06121b" stroke="#31596a" stroke-width="2"/>
-  <g class="bot-eyes" fill="#72ffe0" filter="url(#botGlow)"><ellipse cx="83" cy="100" rx="10" ry="14"/><ellipse cx="137" cy="100" rx="10" ry="14"/></g>
-  <path d="M91 124q19 15 38 0" fill="none" stroke="#4adfc2" stroke-width="4" stroke-linecap="round"/>
-  <path d="M36 88H20M184 88h16" stroke="url(#botTrim)" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="18" cy="88" r="7" fill="#3199ed"/><circle cx="202" cy="88" r="7" fill="#28e2b4"/>
-  <path d="M76 163v15q0 10 10 10h48q10 0 10-10v-15" fill="url(#botShell)" stroke="url(#botTrim)" stroke-width="3"/>
-  <rect x="91" y="177" width="38" height="8" rx="4" fill="#28e2b4" opacity=".85"/>
-  <path d="M66 198h88" stroke="#3199ed" stroke-width="5" stroke-linecap="round" opacity=".75"/>
- </svg>
- <div class="dashboard-bot-label">LOKAL AI <span>SMART ASSISTANT</span></div>
+<div class="dashboard-bot-wrap" role="img" aria-label="ربات سه‌بعدی هوشمند LOKAL AI">
+ <div class="bot-stage">
+  <div class="bot-shadow"></div>
+  <div class="bot-figure">
+   <div class="bot-antenna"><i></i></div>
+   <div class="bot-head">
+    <div class="bot-ear bot-ear-left"></div><div class="bot-ear bot-ear-right"></div>
+    <div class="bot-face"><i class="bot-eye bot-eye-left"></i><i class="bot-eye bot-eye-right"></i><b class="bot-smile"></b></div>
+    <div class="bot-head-highlight"></div>
+   </div>
+   <div class="bot-neck"></div>
+   <div class="bot-body"><div class="bot-chest"><i></i><b>LA</b><span></span></div><div class="bot-shoulder bot-shoulder-left"></div><div class="bot-shoulder bot-shoulder-right"></div></div>
+   <div class="bot-arm bot-arm-left"><i></i></div><div class="bot-arm bot-arm-right"><i></i></div>
+   <div class="bot-leg bot-leg-left"><i></i></div><div class="bot-leg bot-leg-right"><i></i></div>
+  </div>
+ </div>
+ <div class="dashboard-bot-label">LOKAL AI <span>YOUR CREATIVE COMPANION</span></div>
 </div>
 <div class="dashboard-intro"><div><div class="eyebrow">LOKAL AI · CREATIVE WORKSPACE</div><h1>داشبورد هوشمند تو</h1><p>همه ابزارهای خلاقانه و پروژه‌هایت، یک‌جا.</p></div><button class="btn" data-go="prompt">＋ شروع پروژه جدید</button></div>
 <div class="dashboard-overview"><div class="stats"><div class="stat"><span>اعتبار کیف پول</span><b id="walletStat">—</b></div><div class="stat"><span>پروژه‌های ذخیره‌شده</span><b id="projectCount">۰</b></div><div class="stat"><span>ابزارهای اصلی</span><b>۲</b></div></div><div class="dashboard-shortcuts"><button class="dashboard-shortcut" data-page="account"><span>◈</span><strong>کیف پول و حساب</strong><small>موجودی و تنظیمات حساب</small></button><button class="dashboard-shortcut" data-page="projects"><span>▤</span><strong>پروژه‌ها و گالری</strong><small>مشاهده و مدیریت آثار</small></button></div></div>
