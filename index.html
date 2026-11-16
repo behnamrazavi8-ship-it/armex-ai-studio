@@ -728,197 +728,75 @@ body{
 }
 
 
-/* LOKAL AI — balanced electric blue + violet accents; based on approved 5492bea */
-:root{
-  --blue:#aa55ff;
-  --purple:#c68cff;
-}
-body{
-  background:
-    radial-gradient(ellipse at 88% 8%,#b162ff20,transparent 31%),
-    radial-gradient(ellipse at 4% 38%,#8f31ed1c,transparent 34%),
-    radial-gradient(ellipse at 58% 100%,#8528e20a,transparent 42%),
-    var(--bg);
-}
-#public-site .lokal-hero-logo,
-#workspace-app .dashboard-intro{
-  background-image:
-    radial-gradient(ellipse at 82% 12%,#bd7bff22,transparent 42%),
-    radial-gradient(ellipse at 12% 88%,#8f31ed1c,transparent 46%),
-    linear-gradient(135deg,#121215 0%,#101013 58%,#17171a 100%);
-  border-color:#9b66d080;
-}
-#public-site .lokal-hero-wordmark{
-  background:linear-gradient(100deg,#ecd9ff 0%,#a969e8 28%,#b163ff 58%,#c891ff 84%,#e9d2ff 100%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  text-shadow:0 0 24px #aa55ff2b,0 0 34px #c68cff22;
-}
-#public-site .gradient{
-  background:linear-gradient(90deg,#efdfff 0%,#aa55ff 52%,#c68cff 100%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-}
-#public-site .eyebrow,
-#workspace-app .side-label{color:#c68cff}
-#public-site .feature-icon,
-#public-site #studios .tool .feature-icon,
-#workspace-app .app-tool .feature-icon,
-#workspace-app .dashboard-tools-panel .dashboard-tool-icon{
-  border-color:#c182ff!important;
-  background:
-    radial-gradient(circle at 25% 18%,#ffffff55,transparent 42%),
-    linear-gradient(145deg,#562883 0%,#53366f 100%)!important;
-  box-shadow:0 0 12px #aa55ff66,0 0 23px #bc79ff30,inset 0 1px 0 #ffffffb5,inset 0 0 14px #bc78ff38!important;
-}
-#public-site .feature-icon svg,
-#public-site #studios .tool .feature-icon svg,
-#workspace-app .app-tool .feature-icon svg,
-#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg{
-  filter:drop-shadow(0 0 5px #c68dffaa) drop-shadow(0 0 9px #bc79ff66)!important;
-}
-#public-site .feature:nth-child(3n+2) .feature-icon,
-#workspace-app .app-tool:nth-child(3n+2) .feature-icon{
-  border-color:#d0a0ff!important;
-  background:linear-gradient(145deg,#60417f,#422461)!important;
-  box-shadow:0 0 12px #bc79ff66,0 0 22px #aa55ff2b,inset 0 1px 0 #ffffffaa!important;
-}
-#public-site .feature:nth-child(3n+2) .feature-icon svg,
-#workspace-app .app-tool:nth-child(3n+2) .feature-icon svg{
-  filter:drop-shadow(0 0 6px #d2a4ffb0)!important;
-}
-#public-site .feature,
-#public-site #studios .tool,
-#workspace-app .app-tool,
-#workspace-app .dashboard-shortcut{
-  border-color:#66428a;
-  background:
-    radial-gradient(ellipse at 92% 0%,#bc79ff12,transparent 46%),
-    linear-gradient(145deg,#131316 0%,#101013 70%,#131316 100%);
-}
-#public-site .feature:hover,
-#public-site #studios .tool:hover,
-#workspace-app .app-tool:hover,
-#workspace-app .dashboard-shortcut:hover{
-  border-color:#c182ff;
-  box-shadow:0 16px 34px #00000088,0 0 18px #aa55ff2a,0 0 25px #bc79ff18,inset 0 1px 0 #ffffff2b;
-}
-#workspace-app .nav-btn:hover{
-  background:linear-gradient(100deg,#aa55ff18,#c68cff18);
-  border-color:#a27bc85c;
-  color:#f0e1ff;
-}
-#workspace-app .nav-btn.active{
-  background:linear-gradient(100deg,#aa55ff24,#c68cff1c);
-  border-color:#ba8de66b;
-  color:#f1e2ff;
-  box-shadow:inset -3px 0 #c68cff,0 0 18px #bc79ff18;
-}
-#workspace-app .mobile-nav button.active{
-  color:#d1a2ff;
-  text-shadow:0 0 12px #bc79ff66;
-}
-#public-site .tag,
-#workspace-app .tag{
-  border-color:#9664c7;
-  color:#e2c5ff;
-  background:linear-gradient(100deg,#1e1e21,#242427);
-}
-#public-site .btn-ghost,
-#workspace-app .btn-ghost{
-  border-color:#8f6db0;
-  background:linear-gradient(120deg,#18181b,#1f1f22);
-  color:#eedcff;
-}
-#public-site .input:focus,
-#public-site .textarea:focus,
-#public-site .select:focus,
-#workspace-app .input:focus,
-#workspace-app .textarea:focus,
-#workspace-app .select:focus{
-  border-color:#bc79ff;
-  box-shadow:0 0 0 3px #aa55ff20,0 0 18px #bc79ff20;
-}
-#public-site .visual-card{
-  border-color:#77539b;
-  background:
-    radial-gradient(circle at 70% 18%,#bc79ff28,transparent 38%),
-    radial-gradient(circle at 12% 88%,#8f31ed20,transparent 44%),
-    linear-gradient(145deg,#141417,#141417 72%);
-}
-#public-site .orb{
-  box-shadow:0 0 40px #7f21dc66,0 0 80px #8f31ed55,0 0 110px #bc79ff35;
-}
-@media(prefers-reduced-motion:reduce){
-  #public-site *,#workspace-app *{scroll-behavior:auto}
-}
-
-
-/* LOKAL AI — controlled graphite palette */
+/* LOKAL AI — definitive graphite + restrained neon-blue palette (single final override) */
 :root{
  color-scheme:dark;
- --bg:#05080b;
- --panel:#0b1015;
- --panel2:#111820;
- --line:#202d37;
- --text:#edf4f8;
- --muted:#91a0aa;
- --mint:#36bff2;
- --blue:#36bff2;
- --gold:#a8bac5;
+ --bg:#05080b;--panel:#0b1015;--panel2:#111820;--line:#202d37;
+ --text:#edf4f8;--muted:#91a0aa;--mint:#36bff2;--blue:#36bff2;--gold:#a8bac5;
  --shadow:0 24px 70px #000000bb;
 }
-body{
- background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05080b;
- color:var(--text);
+body{background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05080b!important;color:var(--text)!important}
+#public-site .topbar,#workspace-app .app-top{background:#070b0ff2!important;border-color:#1c2932!important}
+.brand,.brand-mark{color:#e6f4fb!important}
+.brand-mark{background:linear-gradient(145deg,#111a21,#080d12)!important;border:1px solid #28516a!important;box-shadow:0 0 12px #28bfff20!important}
+#public-site .lokal-hero-logo,#workspace-app .dashboard-intro,.visual-card,.feature,.tool,.step,.auth-wrap,.stat,.panel,.sidebar,.app-tool,.account-card,#workspace-app .dashboard-shortcut,#workspace-app .dashboard-tools-panel,#workspace-app .dashboard-info-card{
+ background:linear-gradient(145deg,#111820,#090e13 78%)!important;border-color:#22323d!important;color:#edf4f8!important;
 }
-.topbar,.app-top{background:#070b0ff2;border-color:#1c2932}
-.brand,.brand-mark{color:#e6f4fb}
-.brand-mark{background:linear-gradient(145deg,#111a21,#080d12);border:1px solid #28516a;box-shadow:0 0 12px #28bfff20}
-.brand small,.lokal-hero-caption,.hero-note,.mini-stat span,.public-footer{color:#8496a2}
-.top-links a{color:#a9b8c2}
-.top-links a:hover,.eyebrow,.hero-panel-kicker,.side-label{color:#63cef7}
-.btn{background:linear-gradient(120deg,#58c9f2,#287da2);color:#041017;box-shadow:0 6px 20px #20bfff20}
-.btn-ghost{background:#ffffff07;border:1px solid #2a3b47;color:#dce9ef;box-shadow:none}
-.lokal-hero-logo,.visual-card,.feature,.tool,.step,.auth-wrap,.stat,.panel,.sidebar,.app-tool,.account-card{
- background:linear-gradient(145deg,#111820,#090e13 78%);
- border-color:#22323d;
+#public-site .lokal-hero-logo{box-shadow:0 12px 38px #0009,inset 0 0 18px #20bfff07!important}
+#public-site .lokal-hero-logo:before{background:radial-gradient(ellipse at 50% 0%,#20bfff0b,transparent 62%)!important}
+#public-site .lokal-hero-wordmark,#public-site .gradient{
+ background:linear-gradient(100deg,#eaf5fb,#b8d9e8 62%,#75d5fa)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;text-shadow:0 0 14px #20bfff12!important;
 }
-.lokal-hero-logo{box-shadow:0 12px 38px #0009,inset 0 0 18px #20bfff07}
-.lokal-hero-logo:before{background:radial-gradient(ellipse at 50% 0%,#20bfff0b,transparent 62%)}
-.lokal-hero-logo svg,.feature-icon svg,.app-tool .feature-icon svg{filter:drop-shadow(0 0 4px #20bfff35)}
-.lokal-hero-wordmark{background:linear-gradient(100deg,#eaf5fb,#b8d9e8 62%,#75d5fa);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 14px #20bfff12}
-.gradient{background:linear-gradient(90deg,#eaf5fb,#b8d9e8 55%,#75d5fa);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
-.hero p,.dash-hero p,.cta p{color:#aebdc6}
-.visual-card{background:radial-gradient(circle at 70% 18%,#12324720,transparent 35%),linear-gradient(145deg,#111820,#090e13 72%)}
-.visual-card:before{border-color:#35bfff20;box-shadow:0 0 0 32px #35bfff05,0 0 0 66px #35bfff02}
-.orb{background:radial-gradient(circle at 35% 28%,#c5edff 0,#4389a7 10%,#1b465a 42%,#141b20 70%,#090e12 78%);box-shadow:0 0 28px #20bfff25,0 0 65px #20bfff0d}
-.live-dot{background:#35caff;box-shadow:0 0 8px #35caff55}
-.feature-icon{background:linear-gradient(145deg,#172832,#0c151b);border:1px solid #29495a}
-.tag,.tag.soon{border-color:#294654;color:#a9dff3;background:#101a20}
-.cta,.dash-hero{border-color:#29414e;background:radial-gradient(ellipse at 10% 100%,#12384a20,transparent 45%),linear-gradient(110deg,#111820,#0a1015)}
-.auth-wrap,.signup-dialog{border-color:#263c49}
-.input,.textarea,.select{background:#080d12;border-color:#2a3a45;color:#edf4f8}
-.input:focus,.textarea:focus,.select:focus{border-color:#38bff0;box-shadow:0 0 0 3px #20bfff16}
-.message,.result,.image-cost-note{border-color:#294654;background:#0e171d;color:#d6edf7}
-.nav-btn{color:#a9b8c2}
-.nav-btn:hover,.nav-btn.active{background:#20bfff0c;color:#e8f7ff}
-.nav-btn.active{box-shadow:inset -2px 0 #37caff}
-.app-tool{border-color:#22323d;background:#0d141a}
-.app-tool:hover,.feature[role=button]:hover,#studios .tool[role=button]:hover{border-color:#34718f}
-.notice{border-right-color:#38bff0;background:#20bfff0a;color:#c5d7e0}
-.image-studio-panel,.image-preview,.download-progress,.image-gallery-card,.compiler-review{border-color:#263d4a;background:#0a1015}
-.image-gallery-card a{color:#69cff4}
-.compiler-review h4{color:#9eddf5}
-.compiler-review .compiled-prompt{border-color:#263d4a;background:#070c10;color:#e5f4fa}
-.download-progress-fill{background:linear-gradient(90deg,#58c9f2,#287da2)}
-.account-details>div{background:#080d12}
-.account-profile img{border-color:#2c7898}
-.toast{background:#101820;border-color:#294654;color:#e6f4fb}
-.signup-dialog{background:linear-gradient(145deg,#111820,#090e13)}
-.signup-dialog::backdrop{background:#03080bdc}
-.signup-dialog-message{color:#b4c5cf}
-.signup-dialog-message.error{color:#f0b6b6}
-#public-site .feature-icon svg,#workspace-app .feature-icon svg{filter:drop-shadow(0 0 4px #20bfff30)}
-#public-site .lokal-hero-wordmark,#public-site .gradient{filter:drop-shadow(0 0 5px #20bfff16)}
+#public-site .hero p,#workspace-app .dashboard-intro p,#workspace-app .dashboard-section-head p,#workspace-app .dashboard-info-card p{color:#aebdc6!important}
+#public-site .eyebrow,#workspace-app .side-label,#workspace-app .dashboard-section-head h3,#workspace-app .dashboard-info-card h3{color:#63cef7!important}
+#public-site .feature,#public-site #studios .tool,#workspace-app .app-tool,#workspace-app .dashboard-shortcut{border-color:#22323d!important;background:linear-gradient(145deg,#111820,#090e13 78%)!important}
+#public-site .feature:hover,#public-site #studios .tool:hover,#workspace-app .app-tool:hover,#workspace-app .dashboard-shortcut:hover{border-color:#34718f!important;box-shadow:0 16px 34px #00000088,0 0 12px #20bfff12!important}
+#public-site .feature-icon,#public-site #studios .tool .feature-icon,#workspace-app .app-tool .feature-icon,#workspace-app .dashboard-tools-panel .dashboard-tool-icon{
+ border-color:#29495a!important;background:linear-gradient(145deg,#172832,#0c151b)!important;box-shadow:0 0 9px #20bfff12,inset 0 1px 0 #ffffff18!important;
+}
+#public-site .feature-icon svg,#public-site #studios .tool .feature-icon svg,#workspace-app .app-tool .feature-icon svg,#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg{filter:drop-shadow(0 0 3px #20bfff25)!important}
+#public-site .btn,#workspace-app .btn{border-color:#34718f!important;background:linear-gradient(120deg,#58c9f2,#287da2)!important;color:#041017!important;box-shadow:0 6px 20px #20bfff16!important;text-shadow:none!important}
+#public-site .btn-ghost,#workspace-app .btn-ghost{background:#ffffff07!important;border:1px solid #2a3b47!important;color:#dce9ef!important;box-shadow:none!important}
+#workspace-app .nav-btn{color:#a9b8c2!important}
+#workspace-app .nav-btn:hover,#workspace-app .nav-btn.active,#workspace-app .mobile-nav button.active{background:#20bfff0c!important;color:#e8f7ff!important;border-color:#2a5267!important}
+#workspace-app .nav-btn.active{box-shadow:inset -2px 0 #37caff!important}
+#public-site .tag,#workspace-app .tag{border-color:#294654!important;color:#a9dff3!important;background:#101a20!important}
+#public-site .input:focus,#public-site .textarea:focus,#public-site .select:focus,#workspace-app .input:focus,#workspace-app .textarea:focus,#workspace-app .select:focus{border-color:#38bff0!important;box-shadow:0 0 0 3px #20bfff16!important}
+#public-site .visual-card{background:radial-gradient(circle at 70% 18%,#12324720,transparent 35%),linear-gradient(145deg,#111820,#090e13 72%)!important;border-color:#263d4a!important}
+#public-site .visual-card:before{border-color:#35bfff20!important;box-shadow:0 0 0 32px #35bfff05,0 0 0 66px #35bfff02!important}
+#public-site .orb{background:radial-gradient(circle at 35% 28%,#c5edff 0,#4389a7 10%,#1b465a 42%,#141b20 70%,#090e12 78%)!important;box-shadow:0 0 28px #20bfff25,0 0 65px #20bfff0d!important}
+#workspace-app .dashboard-bot-aura{background:radial-gradient(circle,#20bfff12 0,#20bfff06 48%,transparent 72%)!important}
+#workspace-app .bot-shadow{background:radial-gradient(ellipse,#20bfff18,transparent 70%)!important}
+#workspace-app .bot-head,#workspace-app .bot-body{background:linear-gradient(135deg,#263b49 0%,#20272d 26%,#0f1418 70%,#090e12 100%)!important;border-color:#34718f!important}
+#workspace-app .bot-head:before{background:linear-gradient(145deg,#0a0e12,#161e24 55%,#090d11)!important;border-color:#29495a!important}
+#workspace-app .bot-eye,#workspace-app .bot-arm i,#workspace-app .bot-chest i{background:#55cfff!important;box-shadow:0 0 8px #20bfff55!important}
+#workspace-app .bot-smile{border-bottom-color:#55cfff!important}
+#workspace-app .bot-ear,#workspace-app .bot-neck,#workspace-app .bot-shoulder,#workspace-app .bot-arm,#workspace-app .bot-arm:after,#workspace-app .bot-leg,#workspace-app .bot-leg:after{background:linear-gradient(90deg,#0c1115,#263b49 42%,#111820)!important;border-color:#29495a!important}
+#workspace-app .bot-antenna{background:linear-gradient(90deg,#1c242a,#55cfff,#183c50)!important}
+#workspace-app .bot-antenna i{background:radial-gradient(circle at 35% 30%,#eafaff,#55cfff 48%,#1a6384)!important;box-shadow:0 0 12px #20bfff35!important}
+#workspace-app .bot-head-highlight{background:#bcecff!important}
+#workspace-app .bot-chest{background:linear-gradient(145deg,#0f1418,#1d2930)!important;border-color:#29495a!important}
+#workspace-app .bot-chest b{color:#b8e9fb!important;text-shadow:0 0 8px #20bfff25!important}
+#workspace-app .bot-chest span{background:#34718f!important}
+#workspace-app .dashboard-bot-label{color:#b8e9fb!important;text-shadow:0 0 10px #20bfff18!important}
+#workspace-app .dashboard-bot-label span{color:#8faebb!important}
+#workspace-app .dashboard-shortcut>span{color:#55cfff!important;text-shadow:0 0 8px #20bfff22!important}
+#workspace-app .dashboard-home .stat span,#workspace-app .dashboard-shortcut small{color:#91a0aa!important}
+#workspace-app .dashboard-home .stat b,#workspace-app .dashboard-shortcut strong{color:#edf4f8!important}
+#workspace-app .notice{border-right-color:#38bff0!important;background:#20bfff0a!important;color:#c5d7e0!important}
+#workspace-app .image-studio-panel,#workspace-app .image-preview,#workspace-app .download-progress,#workspace-app .image-gallery-card,#workspace-app .compiler-review{border-color:#263d4a!important;background:#0a1015!important}
+#workspace-app .image-gallery-card a{color:#69cff4!important}
+#workspace-app .compiler-review h4{color:#9eddf5!important}
+#workspace-app .compiler-review .compiled-prompt{border-color:#263d4a!important;background:#070c10!important;color:#e5f4fa!important}
+#workspace-app .download-progress-fill{background:linear-gradient(90deg,#58c9f2,#287da2)!important}
+#workspace-app .account-details>div{background:#080d12!important}
+#workspace-app .account-profile img{border-color:#2c7898!important}
+#workspace-app .toast{background:#101820!important;border-color:#294654!important;color:#e6f4fb!important}
+#workspace-app .signup-dialog{background:linear-gradient(145deg,#111820,#090e13)!important;border-color:#263c49!important}
+#workspace-app .signup-dialog::backdrop{background:#03080bdc!important}
+#workspace-app .signup-dialog-message{color:#b4c5cf!important}
+#workspace-app .signup-dialog-message.error{color:#f0b6b6!important}
+#public-site *,#workspace-app *{--purple:#36bff2}
 @media(prefers-reduced-motion:reduce){#public-site *,#workspace-app *{scroll-behavior:auto}}
 </style>
 </head>
