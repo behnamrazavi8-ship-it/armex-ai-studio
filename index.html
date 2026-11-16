@@ -351,6 +351,100 @@
   transform:translateY(-1px);
 }
 
+
+
+/* LOKAL AI dashboard: glossy emerald glass surfaces (static, no mascot replacement) */
+#workspace-app .dash-hero{
+  border-color:#36eac0!important;
+  background:
+    radial-gradient(ellipse at 16% 0%,#70ffe02b 0,transparent 42%),
+    radial-gradient(ellipse at 92% 100%,#0ed9a51c 0,transparent 45%),
+    linear-gradient(135deg,#12352f 0%,#0d2926 48%,#091820 100%)!important;
+  box-shadow:0 18px 48px #0009,0 0 24px #18d6a51c,inset 0 1px 0 #caffef26,inset 0 0 28px #20edb90c!important;
+}
+#workspace-app .stat,
+#workspace-app .panel,
+#workspace-app .account-card,
+#workspace-app .account-details>div{
+  border-color:#28584f!important;
+  background:
+    radial-gradient(ellipse at 12% 0%,#8affdf10 0,transparent 52%),
+    linear-gradient(145deg,#142a2b 0%,#0d1d22 56%,#09151b 100%)!important;
+  box-shadow:0 12px 30px #0006,inset 0 1px 0 #d9fff018,inset 0 0 22px #19d6a509!important;
+}
+#workspace-app .app-tool{
+  position:relative;
+  overflow:hidden;
+  border-color:#286354!important;
+  background:
+    radial-gradient(ellipse at 18% 0%,#6dffdc17 0,transparent 48%),
+    linear-gradient(145deg,#15312e 0%,#0d2023 55%,#09161d 100%)!important;
+  box-shadow:0 10px 26px #0007,inset 0 1px 0 #dfffff20,inset 0 0 24px #18d6a50b!important;
+  transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,filter .2s ease!important;
+}
+#workspace-app .app-tool:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+  background:linear-gradient(125deg,#ffffff0d 0%,transparent 28%,transparent 70%,#35f5c40a 100%);
+}
+#workspace-app .app-tool:hover,
+#workspace-app .app-tool:focus-visible{
+  transform:translateY(-2px);
+  border-color:#55f4c9!important;
+  box-shadow:0 14px 34px #0008,0 0 20px #18d6a526,inset 0 1px 0 #eafff044,inset 0 0 25px #18d6a515!important;
+  filter:brightness(1.07) saturate(1.08);
+}
+#workspace-app .btn,
+#workspace-app button.btn{
+  background:linear-gradient(115deg,#9affdf 0%,#35e9b9 34%,#0bbd91 72%,#087d70 100%)!important;
+  border:1px solid #8affdc!important;
+  box-shadow:0 7px 22px #10d9a64a,inset 0 1px 0 #efffffc9,inset 0 -2px 5px #005e4b55!important;
+  text-shadow:0 1px 0 #d5fff0a6;
+}
+#workspace-app .btn:hover,
+#workspace-app button.btn:hover{
+  filter:brightness(1.14) saturate(1.15)!important;
+  box-shadow:0 9px 28px #10e5ae70,inset 0 1px 0 #ffffffdf,inset 0 -2px 5px #005e4b55!important;
+}
+#workspace-app .btn-ghost{
+  background:linear-gradient(145deg,#1b3936,#0d2024)!important;
+  border:1px solid #3c8e78!important;
+  color:#dffff4!important;
+  box-shadow:0 6px 18px #0006,inset 0 1px 0 #dfffff24,inset 0 0 14px #20d9ad12!important;
+}
+#workspace-app .nav-btn.active,
+#workspace-app .mobile-nav button.active{
+  background:linear-gradient(100deg,#18d6a52a,#18d6a50c)!important;
+  color:#dffff4!important;
+  box-shadow:inset -2px 0 #54ffd0,0 0 18px #18d6a51c!important;
+}
+#workspace-app .sidebar{
+  border-color:#28584f!important;
+  background:linear-gradient(160deg,#102522 0%,#0a171c 68%,#081219 100%)!important;
+  box-shadow:0 14px 34px #0007,inset 0 1px 0 #dfffff17!important;
+}
+#workspace-app .input,
+#workspace-app .textarea,
+#workspace-app .select{
+  border-color:#315e53;
+  background:linear-gradient(145deg,#091a19,#071217);
+  box-shadow:inset 0 1px 0 #dfffff0c;
+}
+#workspace-app .input:focus,
+#workspace-app .textarea:focus,
+#workspace-app .select:focus{
+  border-color:#54f4c9;
+  box-shadow:0 0 0 3px #18d6a51c,0 0 18px #18d6a51a,inset 0 1px 0 #dfffff18;
+}
+@media(prefers-reduced-motion:reduce){
+ #workspace-app .app-tool,
+ #workspace-app .app-tool .feature-icon,
+ #workspace-app .btn{transition:none!important}
+}
+
 </style>
 </head>
 <body>
