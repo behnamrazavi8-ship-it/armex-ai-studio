@@ -53,3 +53,19 @@ test("authenticated preview refresh remains in preview from the URL marker", () 
     queryPage: "chat"
   }), { preview: true, page: "chat" });
 });
+
+test("legacy assistant preview route normalizes to the real Smart Chat page", () => {
+  assert.deepEqual(resolveAuthReturnContext({
+    hash: "#preview-assistant",
+    queryReturn: "preview",
+    queryPage: "assistant"
+  }), { preview: true, page: "chat" });
+});
+
+test("legacy assistant route in saved browser state restores Smart Chat", () => {
+  assert.deepEqual(resolveAuthReturnContext({
+    historyState: { lokalRoute: "preview", lokalWorkspacePage: "assistant" },
+    storedPreview: true,
+    storedPage: "assistant"
+  }), { preview: true, page: "chat" });
+});
