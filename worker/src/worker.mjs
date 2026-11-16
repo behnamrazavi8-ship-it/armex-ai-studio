@@ -133,10 +133,28 @@ async function runImageEditProvider(job) {
   return { bytes, mimeType: "image/jpeg" };
 }
 
+async function removeImageEditIfJobNotCompleted(jobId, path) {
+  try {
+    const rows = await supabase(
+      "/rest/v1/armex_image_edit_jobs?id=eq." + encodeURIComponent(jobId) + "&select=status",
+      { method: "GET", signal: AbortSignal.timeout(10000) },
+    );
+    if (!Array.isArray(rows) || !rows.length) {
+      log("image_edit_storage_cleanup_skipped_unknown_job", { job_id: jobId });
+      return;
+    }
+    if (rows[0].status !== "completed") await removeImage(path);
+  } catch {
+    // Never delete an output if the database outcome cannot be established.
+    log("image_edit_storage_cleanup_skipped_ambiguous_job_state", { job_id: jobId });
+  }
+}
+
 async function processImageEditJob(job) {
   const jobId = job.job_id;
   const storagePath = job.user_id + "/edit/" + job.request_id + "-" + workerId + "-output.jpg";
   let leaseLost = false;
+  let uploadAttempted = false;
   let heartbeatBusy = false;
   const timer = setInterval(async () => {
     if (heartbeatBusy || leaseLost) return;
@@ -154,6 +172,7 @@ async function processImageEditJob(job) {
     log("image_edit_started", { job_id: jobId, attempt: job.attempt_count, model: job.model });
     const output = await runImageEditProvider(job);
     if (leaseLost) return;
+    uploadAttempted = true;
     await uploadImage(storagePath, output.bytes, output.mimeType);
     if (leaseLost) {
       await removeImage(storagePath);
@@ -180,6 +199,7 @@ async function processImageEditJob(job) {
     } catch {
       log("image_edit_failure_deferred_to_lease_recovery", { job_id: jobId, code });
     }
+    if (uploadAttempted) await removeImageEditIfJobNotCompleted(jobId, storagePath);
   } finally {
     clearInterval(timer);
   }
