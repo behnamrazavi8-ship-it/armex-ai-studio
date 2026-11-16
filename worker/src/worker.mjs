@@ -72,7 +72,7 @@ async function claimImageEditJob() {
   try { return await rpc("armex_claim_image_edit_job", { p_worker_id: workerId }); }
   catch (error) {
     // Keep the existing text-to-image queue operational before the edit migration is applied.
-    if (error?.status === 404 || error?.status === 400) return null;
+    if (error?.status === 404) return null;
     throw error;
   }
 }
