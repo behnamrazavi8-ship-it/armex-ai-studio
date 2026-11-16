@@ -1439,7 +1439,11 @@ const completeChatMediaUpload = async (
     const { data: signed, error } = await db.storage.from(CHAT_MEDIA_BUCKET)
       .createSignedUrl(attachment.storage_path, 300);
     if (error || !signed?.signedUrl) return fail("Could not prepare a private preview", 503, cors);
-    return json({ success: true, attachment: { ...attachment, signed_url: signed.signedUrl } }, 200, cors);
+    return json({ success: true, attachment: {
+      id: attachment.id, conversation_id: attachment.conversation_id,
+      original_filename: attachment.original_filename, mime_type: attachment.mime_type,
+      size_bytes: attachment.size_bytes, status: attachment.status, signed_url: signed.signedUrl,
+    } }, 200, cors);
   }
   if (attachment.status !== "pending") return fail("Attachment is not awaiting upload", 409, cors);
   const { data: blob, error: downloadError } = await db.storage.from(CHAT_MEDIA_BUCKET)
@@ -1522,7 +1526,7 @@ const handle = async (request: Request): Promise<Response> => {
       status: "online",
       api_version: "5.0",
       secure_api: true,
-      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger", "image_generation", "video_generation", "zarinpal_payments", "private_image_storage"],
+      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger", "image_generation", "video_generation", "zarinpal_payments", "private_image_storage", "private_chat_media"],
     }, 200, cors);
   }
 
