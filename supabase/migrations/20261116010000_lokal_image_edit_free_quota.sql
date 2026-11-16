@@ -72,6 +72,14 @@ begin
     on conflict(user_id,usage_date) do nothing;
   select edits_used into v_used from public.armex_image_edit_daily_usage
     where user_id=p_user_id and usage_date=v_today for update;
+  -- Re-check idempotency after acquiring the per-user/day lock. Concurrent
+  -- retries with the same request_id must not consume a second daily slot.
+  select * into v_existing from public.armex_image_edit_jobs
+    where user_id=p_user_id and request_id=p_request_id;
+  if found then
+    return jsonb_build_object('success',true,'duplicate',true,'job_id',v_existing.id,'status',v_existing.status);
+  end if;
+
   if v_used >= 5 then
     return jsonb_build_object('success',false,'code','daily_quota_exceeded','limit',5,'used',v_used);
   end if;
