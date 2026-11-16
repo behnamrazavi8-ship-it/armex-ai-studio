@@ -238,6 +238,26 @@
  flex:none!important;overflow:visible!important;
 }
 
+
+/* Restore normal mobile page scrolling outside Smart Chat */
+@media(max-width:760px){
+ #workspace-app .main:not(.chat-page-active){
+  display:block;
+  flex:1 1 auto;
+  width:100%;
+  height:auto;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+ }
+ #workspace-app .main:not(.chat-page-active) .page.active{
+  display:block;
+  min-height:max-content;
+ }
+}
+
 </style>
 </head>
 <body>
