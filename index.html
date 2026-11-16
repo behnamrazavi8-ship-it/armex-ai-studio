@@ -18,30 +18,6 @@
 @media(max-width:680px){.container{width:min(100% - 28px,540px)}.topbar{height:64px;padding:0 14px}.top-links{display:none}.brand-mark{width:37px;height:37px}.hero{padding:55px 0 45px}.hero-grid{grid-template-columns:1fr}.visual-card{min-height:300px}.visual-core{height:205px}.orb{width:150px;height:150px}.features{grid-template-columns:1fr 1fr}.tool-grid,.steps{grid-template-columns:1fr 1fr}.section{padding:45px 0}.cta{align-items:flex-start;flex-direction:column;padding:25px}.app-top{height:62px;padding:0 14px}.app-layout{display:block;padding:16px 13px 88px}.sidebar{display:none}.stats{gap:8px}.stat{padding:12px}.stat b{font-size:17px}.field-row{grid-template-columns:1fr}.tools-grid{grid-template-columns:1fr 1fr}.mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:25;background:#071016ed;border-top:1px solid var(--line);justify-content:space-evenly;padding:8px 3px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(16px)}.mobile-nav button{flex:1 1 0;min-width:0;border:0;background:none;color:#90a8ac;font-size:8px;white-space:nowrap;display:grid;gap:4px;justify-items:center}.mobile-nav button span{font-size:18px}.mobile-nav button.active{color:var(--mint)}}
 @media(max-width:390px){.features{grid-template-columns:1fr}.hero h1{font-size:34px}.top-actions .btn{padding:9px 11px}.tools-grid{grid-template-columns:1fr}}
 .lokal-hero-logo{width:min(100%,780px);min-height:220px;padding:22px 18px;gap:10px;position:relative;overflow:hidden}.lokal-hero-logo:before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#31d9c51c,transparent 62%);pointer-events:none}.lokal-hero-logo svg{width:116px;height:116px;filter:drop-shadow(0 0 14px #25dcb588)}.lokal-hero-wordmark{font-size:clamp(32px,5vw,52px);text-shadow:0 0 24px #35b9ed33}.lokal-hero-caption{letter-spacing:clamp(2px,1vw,4px)}.app-tool h4,.nav-btn,.mobile-nav button{font-family:Arial,Tahoma,sans-serif;letter-spacing:.25px}@media(max-width:680px){.lokal-hero-logo{width:calc(100vw - 24px);max-width:none;min-height:205px;padding:20px 10px;margin-inline:auto;border-radius:22px}.lokal-hero-logo svg{width:108px;height:108px}.lokal-hero-wordmark{font-size:clamp(31px,8vw,42px)}.lokal-hero-caption{font-size:8px;letter-spacing:2.5px}}
-/* LOKAL AI dashboard globe: subtle, low-motion background */
-.dashboard-home{position:relative;isolation:isolate;overflow:hidden;border-radius:24px;padding:4px 2px 18px}
-.dashboard-globe-wrap{position:absolute;z-index:-1;top:-42px;inset-inline-end:-28px;width:min(100%,590px);height:360px;min-height:0;display:grid;place-items:center;overflow:hidden;margin:0;border:0;border-radius:0;background:transparent;pointer-events:none}
-.dashboard-globe-wrap canvas{display:block;width:100%;height:360px;max-width:100%;opacity:.48}
-.dashboard-globe-caption{display:none}
-.dashboard-intro{display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:150px;padding:24px 18px 30px}
-.dashboard-intro h1{font-size:clamp(23px,4vw,34px);margin:10px 0 7px;color:#effffb}
-.dashboard-intro p,.dashboard-section-head p,.dashboard-info-card p{font-size:12px;line-height:1.9;color:#9bb5b8;margin:0}
-.dashboard-overview{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(230px,.8fr);gap:14px;margin:0 0 18px}
-.dashboard-home .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0}
-.dashboard-home .stat{background:#0b171dcc;border:1px solid #23413e;border-radius:17px;padding:17px;backdrop-filter:blur(12px);min-width:0}
-.dashboard-home .stat span{display:block;color:#9bb5b8;font-size:10px;margin-bottom:9px}
-.dashboard-home .stat b{font-size:clamp(17px,2.2vw,23px);color:#dffff5}
-.dashboard-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.dashboard-shortcut{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px;text-align:right;padding:13px;border:1px solid #23413e;border-radius:16px;background:#0b171dcc;color:#e8fbf6;cursor:pointer;backdrop-filter:blur(12px)}
-.dashboard-shortcut>span{font-size:20px;color:#54e5c2}.dashboard-shortcut strong{font-size:11px}.dashboard-shortcut small{font-size:9px;color:#8fa9ad;line-height:1.6}
-.dashboard-tools-panel{position:relative;background:#0a141bdc;backdrop-filter:blur(14px);border-color:#1d393b}
-.dashboard-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.dashboard-section-head h3,.dashboard-info-card h3{margin:0 0 5px;font-size:15px;color:#e8fbf6}
-.dashboard-home .tools-grid{margin-top:0}
-.dashboard-lower-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
-.dashboard-info-card{background:#0a141bdc;backdrop-filter:blur(12px)}.dashboard-info-card .btn{margin-top:16px}
-@media(max-width:760px){.dashboard-intro{align-items:flex-start;flex-direction:column;min-height:0;padding:24px 12px 28px}.dashboard-intro .btn{width:100%}.dashboard-overview{grid-template-columns:1fr}.dashboard-lower-grid{grid-template-columns:1fr}.dashboard-globe-wrap{top:-12px;inset-inline-end:-90px;width:100%;height:300px}.dashboard-globe-wrap canvas{height:300px;opacity:.35}}
-@media(max-width:420px){.dashboard-home .stats{grid-template-columns:1fr 1fr}.dashboard-home .stat:last-child{grid-column:1/-1}.dashboard-shortcuts{grid-template-columns:1fr 1fr}.dashboard-section-head{align-items:flex-start;flex-direction:column}}
-@media(prefers-reduced-motion:reduce){.dashboard-globe-wrap canvas{opacity:.4}}
 @media(min-width:901px){.hero-copy{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.9fr);column-gap:34px;align-items:center}.hero-copy>.eyebrow,.hero-copy>h1,.hero-copy>p,.hero-copy>.hero-actions,.hero-copy>.hero-note{grid-column:1}.hero-copy>.eyebrow{grid-row:1}.hero-copy>h1{grid-row:2}.hero-copy>.lokal-hero-logo{grid-column:2;grid-row:1/4;width:100%;max-width:none;margin:0;min-height:350px;align-self:stretch}.hero-copy>.hero-desktop-panel{grid-column:2;grid-row:4/6;align-self:stretch;margin-top:0}.hero-desktop-panel{border:1px solid #28515a;border-radius:24px;padding:25px;background:linear-gradient(145deg,#102630b8,#08141dcc);box-shadow:0 12px 38px #02090d88;display:flex;flex-direction:column;justify-content:center;gap:12px}.hero-panel-kicker{font-size:10px;letter-spacing:2px;color:var(--mint);font-weight:bold}.hero-desktop-panel h2{font-size:22px;line-height:1.6;margin:0}.hero-desktop-panel p{font-size:12px;line-height:2;color:#a8bdc0;margin:0}.hero-panel-foot{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.hero-panel-foot span{border:1px solid #29444c;border-radius:99px;padding:6px 9px;color:#91a8ad;font-size:9px}}@media(max-width:900px){.hero-copy>.hero-desktop-panel{display:none}}.lokal-hero-logo{cursor:pointer;transition:border-color .2s,transform .2s}.lokal-hero-logo:hover,.lokal-hero-logo:focus-visible{border-color:#54ffd0;transform:translateY(-2px);outline:2px solid #28e2b455;outline-offset:3px}.feature[role=button],#studios .tool[role=button]{cursor:pointer;transition:transform .18s,border-color .18s}.feature[role=button]:hover,#studios .tool[role=button]:hover{transform:translateY(-2px);border-color:#28e2b477}.feature[role=button]:focus-visible,#studios .tool[role=button]:focus-visible{outline:2px solid #28e2b4;outline-offset:3px}.signup-dialog{width:min(460px,calc(100% - 28px));max-width:460px;border:1px solid #2b655c;border-radius:22px;padding:0;background:linear-gradient(145deg,#102129,#081219);color:var(--text);box-shadow:0 28px 90px #000c}.signup-dialog::backdrop{background:#02070bd9;backdrop-filter:blur(7px)}.signup-dialog-head{padding:21px 23px;border-bottom:1px solid var(--line)}.signup-dialog-head h3{margin:0 0 7px;font-size:18px}.signup-dialog-head p{margin:0;color:var(--muted);font-size:11px;line-height:1.9}.signup-dialog-body{padding:22px}.signup-dialog-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.signup-dialog-message{min-height:20px;margin-top:12px;color:#a9c4c2;font-size:11px;line-height:1.9}.signup-dialog-message.error{color:#ffc0ca}.signup-dialog-close{float:left;border:1px solid #29444c;border-radius:10px;background:#ffffff08;color:#d9eeeb;padding:6px 10px;font-size:11px}
 /* Independent Smart Chat module */
 .chat-workspace{display:grid;grid-template-columns:250px minmax(0,1fr);gap:14px;min-height:620px}
@@ -61,6 +37,284 @@
 .chat-empty-state{margin:auto;text-align:center;color:#91a8ad;line-height:2;font-size:12px;max-width:420px;padding:25px}
 .chat-empty-state b{display:block;color:#e8fbf6;font-size:17px;margin-bottom:8px}
 @media(max-width:760px){.chat-workspace{grid-template-columns:1fr;min-height:unset}.chat-conversation{min-height:560px}.chat-transcript{min-height:320px;max-height:52vh}.chat-history-list{max-height:180px;grid-template-columns:repeat(2,minmax(0,1fr))}.chat-message{max-width:94%}}
+
+
+/* Workspace viewport and isolated Smart Chat scrolling */
+#workspace-app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+#workspace-app .app-top{flex:0 0 70px}
+#workspace-app .app-layout{flex:1;min-height:0;overflow:hidden}
+#workspace-app .main{min-height:0;overflow-y:auto;overscroll-behavior-y:contain}
+#workspace-app .main.chat-page-active{display:flex;flex-direction:column;overflow:hidden}
+#workspace-app .main.chat-page-active #page-chat.active{display:flex;flex:1;min-height:0;flex-direction:column;overflow:hidden}
+#workspace-app .main.chat-page-active #page-chat .welcome{flex:0 0 auto}
+#workspace-app .main.chat-page-active .chat-workspace{flex:1;min-height:0;overflow:hidden}
+#workspace-app .main.chat-page-active .chat-conversation{height:100%;min-height:0}
+#workspace-app .main.chat-page-active .chat-transcript{flex:1;min-height:0;max-height:none;overscroll-behavior:contain}
+#workspace-app .main.chat-page-active .chat-history-list{overscroll-behavior:contain}
+#workspace-app .main.chat-page-active .chat-compose-box{flex:0 0 auto}
+.dashboard-bot-wrap{position:absolute;z-index:0;top:-16px;inset-inline-end:12px;width:min(42%,300px);height:250px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.dashboard-bot-aura{position:absolute;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,#28e2b420 0, #3199ed0d 48%,transparent 72%);filter:blur(5px)}
+.dashboard-bot{position:relative;width:min(100%,205px);height:auto;overflow:visible;filter:drop-shadow(0 10px 24px #28e2b422);animation:lokal-bot-float 4.8s ease-in-out infinite}
+.bot-eyes{transform-origin:center;animation:lokal-bot-blink 5.5s ease-in-out infinite}
+.dashboard-bot-label{position:relative;margin-top:-3px;color:#a8ffe7;font:900 10px Arial,sans-serif;letter-spacing:2px;text-shadow:0 0 14px #28e2b455}
+.dashboard-bot-label span{display:block;margin-top:5px;color:#82aeb7;font-size:7px;letter-spacing:2.2px;text-align:center}
+@keyframes lokal-bot-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes lokal-bot-blink{0%,46%,50%,100%{opacity:1}48%{opacity:.12}}
+@media(prefers-reduced-motion:reduce){.dashboard-bot,.bot-eyes{animation:none}}
+@media(max-width:760px){
+ #workspace-app .app-top{flex-basis:62px}
+ #workspace-app .app-layout{display:flex;flex-direction:column;padding:12px 10px calc(58px + env(safe-area-inset-bottom));gap:0}
+ #workspace-app .sidebar{display:none}
+ #workspace-app .main{flex:1;min-height:0;width:100%}
+ #workspace-app .main.chat-page-active{overflow:hidden}
+ #workspace-app .main.chat-page-active #page-chat .welcome{margin:0 0 8px}
+ #workspace-app .main.chat-page-active #page-chat .welcome h1{font-size:22px;margin:5px 0}
+ #workspace-app .main.chat-page-active #page-chat .welcome p{font-size:10px}
+ #workspace-app .main.chat-page-active .chat-workspace{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:8px}
+ #workspace-app .main.chat-page-active .chat-history-panel{max-height:112px;min-height:0;margin:0;padding:9px}
+ #workspace-app .main.chat-page-active #chat-new{width:auto!important;padding:8px 12px;font-size:10px}
+ #workspace-app .main.chat-page-active .chat-history-list{display:flex;gap:7px;max-height:43px;overflow-x:auto;overflow-y:hidden;margin-top:7px}
+ #workspace-app .main.chat-page-active .chat-history-item{flex:0 0 150px;min-width:0;padding:7px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #workspace-app .main.chat-page-active .chat-conversation{margin:0;padding:11px;overflow:hidden}
+ #workspace-app .main.chat-page-active .chat-conversation-head{flex:0 0 auto;padding-bottom:8px}
+ #workspace-app .main.chat-page-active .chat-transcript{min-height:0;max-height:none;padding:12px 1px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+ #workspace-app .main.chat-page-active .chat-compose-box textarea{min-height:58px;max-height:110px;resize:none}
+ #workspace-app .main.chat-page-active .chat-live-status{flex:0 0 auto;margin-top:5px}
+ #workspace-app .main.chat-page-active #page-chat>.notice{display:none}
+ .dashboard-bot-wrap{top:0;inset-inline-end:0;width:44%;height:190px;opacity:.92}
+ .dashboard-bot{width:min(100%,145px)}
+ .dashboard-bot-aura{width:135px;height:135px}
+ .dashboard-bot-label{font-size:8px}
+}
+
+/* Preserve dashboard composition while keeping the mascot lightweight */
+.dashboard-home{position:relative;isolation:isolate;overflow:hidden;border-radius:24px;padding:4px 2px 18px}
+.dashboard-intro{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:150px;padding:24px 18px 30px}
+.dashboard-intro h1{font-size:clamp(23px,4vw,34px);margin:10px 0 7px;color:#effffb}
+.dashboard-intro p,.dashboard-section-head p,.dashboard-info-card p{font-size:12px;line-height:1.9;color:#9bb5b8;margin:0}
+.dashboard-overview{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(230px,.8fr);gap:14px;margin:0 0 18px}
+.dashboard-home .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0}
+.dashboard-home .stat{background:#0b171dcc;border:1px solid #23413e;border-radius:17px;padding:17px;backdrop-filter:blur(12px);min-width:0}
+.dashboard-home .stat span{display:block;color:#9bb5b8;font-size:10px;margin-bottom:9px}
+.dashboard-home .stat b{font-size:clamp(17px,2.2vw,23px);color:#dffff5}
+.dashboard-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.dashboard-shortcut{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px;text-align:right;padding:13px;border:1px solid #23413e;border-radius:16px;background:#0b171dcc;color:#e8fbf6;cursor:pointer;backdrop-filter:blur(12px)}
+.dashboard-shortcut>span{font-size:20px;color:#54e5c2}.dashboard-shortcut strong{font-size:11px}.dashboard-shortcut small{font-size:9px;color:#8fa9ad;line-height:1.6}
+.dashboard-tools-panel{position:relative;z-index:1;background:#0a141bdc;backdrop-filter:blur(14px);border-color:#1d393b}
+.dashboard-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.dashboard-section-head h3,.dashboard-info-card h3{margin:0 0 5px;font-size:15px;color:#e8fbf6}
+.dashboard-home .tools-grid{margin-top:0}
+.dashboard-lower-grid{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.dashboard-info-card{background:#0a141bdc;backdrop-filter:blur(12px)}.dashboard-info-card .btn{margin-top:16px}
+@media(max-width:760px){.dashboard-intro{align-items:flex-start;flex-direction:column;min-height:0;padding:24px 12px 28px}.dashboard-intro .btn{width:100%}.dashboard-overview{grid-template-columns:1fr}.dashboard-lower-grid{grid-template-columns:1fr}}
+@media(max-width:420px){.dashboard-home .stats{grid-template-columns:1fr 1fr}.dashboard-home .stat:last-child{grid-column:1/-1}.dashboard-shortcuts{grid-template-columns:1fr 1fr}.dashboard-section-head{align-items:flex-start;flex-direction:column}}
+
+/* Full-height Smart Chat workspace: no dashboard bleed-through */
+#workspace-app{height:100vh;height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+#workspace-app .app-top{flex:0 0 auto}
+#workspace-app .app-layout{flex:1 1 auto;min-height:0;overflow:hidden;box-sizing:border-box}
+#workspace-app .main{min-height:0;min-width:0;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box}
+#workspace-app .main.chat-page-active{display:flex;flex-direction:column;overflow:hidden;padding:0}
+#workspace-app .main.chat-page-active #page-home{display:none!important}
+#workspace-app .main.chat-page-active #page-chat.active{display:flex!important;flex:1 1 auto;flex-direction:column;width:100%;height:100%;min-height:0;overflow:hidden}
+#workspace-app .main.chat-page-active #page-chat .welcome{flex:0 0 auto;margin:0;padding:10px 14px 12px}
+#workspace-app .main.chat-page-active #page-chat .welcome h1{margin:5px 0;font-size:clamp(20px,2.5vw,27px)}
+#workspace-app .main.chat-page-active #page-chat .welcome p{font-size:11px}
+#workspace-app .main.chat-page-active #page-chat .chat-workspace{display:grid;grid-template-columns:230px minmax(0,1fr);grid-template-rows:minmax(0,1fr);flex:1 1 auto;width:100%;height:100%;min-height:0;overflow:hidden;gap:12px}
+#workspace-app .main.chat-page-active #page-chat .chat-history-panel{min-height:0;overflow:hidden}
+#workspace-app .main.chat-page-active #page-chat .chat-history-list{max-height:none;height:calc(100% - 48px);overflow:auto;overscroll-behavior:contain}
+#workspace-app .main.chat-page-active #page-chat .chat-conversation{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;overflow:hidden}
+#workspace-app .main.chat-page-active #page-chat .chat-conversation-head{flex:0 0 auto}
+#workspace-app .main.chat-page-active #page-chat .chat-transcript{display:flex;flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+#workspace-app .main.chat-page-active #page-chat .chat-compose-box{flex:0 0 auto}
+#workspace-app .main.chat-page-active #page-chat .chat-live-status{flex:0 0 auto}
+#workspace-app .main.chat-page-active #page-chat>.notice{display:none}
+#workspace-app .main.chat-page-active #page-chat .chat-message{max-width:min(88%,760px)}
+@media(max-width:760px){
+ #workspace-app .app-top{flex-basis:58px;padding-inline:10px}
+ #workspace-app .app-layout{display:flex;flex-direction:column;width:100%;margin:0;padding:8px 8px calc(66px + env(safe-area-inset-bottom));gap:0}
+ #workspace-app .sidebar{display:none}
+ #workspace-app .main{display:flex;flex:1 1 auto;width:100%;height:100%;min-height:0;overflow-y:auto}
+ #workspace-app .main.chat-page-active{overflow:hidden}
+ #workspace-app .main.chat-page-active #page-chat .welcome{padding:4px 8px 9px;margin:0}
+ #workspace-app .main.chat-page-active #page-chat .welcome .eyebrow{font-size:9px}
+ #workspace-app .main.chat-page-active #page-chat .welcome h1{font-size:20px;margin:3px 0}
+ #workspace-app .main.chat-page-active #page-chat .welcome p{font-size:10px;line-height:1.6}
+ #workspace-app .main.chat-page-active #page-chat .chat-workspace{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;height:100%;gap:7px}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-panel{flex:0 0 auto;display:block;max-height:43px;min-height:43px;margin:0;padding:6px 8px;overflow:hidden}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-panel #chat-new{width:auto!important;min-height:29px;padding:5px 12px;font-size:10px}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-list{display:none}
+ #workspace-app .main.chat-page-active #page-chat .chat-conversation{flex:1 1 auto;min-height:0;height:100%;margin:0;padding:9px;overflow:hidden}
+ #workspace-app .main.chat-page-active #page-chat .chat-conversation-head{padding-bottom:7px;gap:6px}
+ #workspace-app .main.chat-page-active #page-chat .chat-conversation-head .muted-copy{font-size:9px}
+ #workspace-app .main.chat-page-active #page-chat .chat-transcript{flex:1 1 auto;min-height:0;max-height:none;padding:10px 1px;gap:9px}
+ #workspace-app .main.chat-page-active #page-chat .chat-message{max-width:96%;padding:10px 12px;font-size:11px;line-height:1.85}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-box{padding:8px}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-box textarea{min-height:52px;max-height:96px;resize:none;font-size:11px}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-actions{gap:5px}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-actions .muted-copy{max-width:65%;font-size:9px;line-height:1.5}
+ #workspace-app .main.chat-page-active #page-chat #chat-send{padding:8px 12px;font-size:10px}
+ #workspace-app .main.chat-page-active #page-chat .chat-live-status{min-height:16px;font-size:9px;margin-top:3px}
+}
+@media(max-height:650px) and (max-width:760px){
+ #workspace-app .main.chat-page-active #page-chat .welcome{padding-block:1px 5px}
+ #workspace-app .main.chat-page-active #page-chat .welcome p{display:none}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-panel{max-height:35px;min-height:35px;padding:3px 7px}
+ #workspace-app .main.chat-page-active #page-chat .chat-compose-box textarea{min-height:42px;max-height:68px}
+}
+@media(prefers-reduced-motion:reduce){.bot-figure,.bot-head,.bot-arm{animation:none!important}}
+/* Lightweight CSS 3D mascot */
+.dashboard-bot-wrap{position:absolute;z-index:0;top:-8px;inset-inline-end:16px;width:min(40%,300px);height:255px;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.bot-stage{position:relative;width:225px;height:210px;perspective:850px;perspective-origin:50% 42%;display:grid;place-items:center}
+.bot-shadow{position:absolute;bottom:3px;width:120px;height:19px;border-radius:50%;background:radial-gradient(ellipse,#25dfba55,transparent 70%);filter:blur(5px);animation:bot-shadow-pulse 4.6s ease-in-out infinite}
+.bot-figure{position:relative;width:150px;height:190px;transform-style:preserve-3d;animation:bot-hover-3d 5s ease-in-out infinite}
+.bot-head{position:absolute;z-index:4;left:25px;top:21px;width:100px;height:77px;border-radius:34px 34px 29px 29px;background:linear-gradient(135deg,#52717c 0%,#1b3947 26%,#0b1b28 70%,#07121c 100%);border:1px solid #5de7d0;box-shadow:inset 5px 5px 12px #ffffff25,inset -7px -8px 13px #0009,0 8px 18px #0008;transform:translateZ(15px) rotateY(-10deg);transform-style:preserve-3d;animation:bot-head-look 7s ease-in-out infinite}
+.bot-head:before{content:"";position:absolute;inset:7px 9px 9px;border-radius:27px;background:linear-gradient(145deg,#07131d,#102c3a 55%,#06121b);border:1px solid #3c7380;box-shadow:inset 0 2px 9px #000b;transform:translateZ(8px)}
+.bot-face{position:absolute;z-index:2;inset:15px 15px 17px;border-radius:20px;background:linear-gradient(145deg,#071018,#102432);display:flex;align-items:center;justify-content:center;gap:19px;transform:translateZ(17px)}
+.bot-eye{width:9px;height:15px;border-radius:50%;background:#77ffe2;box-shadow:0 0 8px #48f4d7,0 0 18px #21c8ec;animation:bot-eye-blink 5.2s infinite}
+.bot-smile{position:absolute;bottom:9px;width:19px;height:7px;border-bottom:2px solid #57e9ce;border-radius:50%}
+.bot-ear{position:absolute;z-index:-1;top:25px;width:14px;height:27px;border-radius:7px;background:linear-gradient(90deg,#07121b,#4c8290,#102432);border:1px solid #3dcbb8;box-shadow:0 0 12px #25dfba33;transform:translateZ(-8px)}
+.bot-ear-left{left:-10px}.bot-ear-right{right:-10px}
+.bot-head-highlight{position:absolute;z-index:3;top:8px;left:25px;width:38px;height:5px;border-radius:5px;background:#a7fff0;opacity:.45;filter:blur(2px);transform:translateZ(20px)}
+.bot-antenna{position:absolute;z-index:5;top:3px;left:71px;width:8px;height:22px;border-radius:6px;background:linear-gradient(90deg,#143f4c,#6df9d8,#1a5668);transform:translateZ(12px)}
+.bot-antenna i{position:absolute;top:-8px;left:-3px;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#d5fff4,#34e5bd 48%,#087c9d);box-shadow:0 0 14px #31e8c0}
+.bot-neck{position:absolute;z-index:2;top:91px;left:65px;width:25px;height:16px;background:linear-gradient(90deg,#08141e,#527482,#0a1c27);border-radius:7px;transform:translateZ(4px)}
+.bot-body{position:absolute;z-index:3;top:101px;left:32px;width:88px;height:65px;border-radius:25px 25px 18px 18px;background:linear-gradient(135deg,#41616d,#193746 38%,#071722 78%);border:1px solid #45cbb8;box-shadow:inset 4px 4px 9px #ffffff20,inset -6px -6px 12px #000a,0 9px 15px #0008;transform:translateZ(10px);transform-style:preserve-3d}
+.bot-chest{position:absolute;inset:11px 22px 10px;border-radius:13px;background:linear-gradient(145deg,#0b1b27,#163b49);border:1px solid #367f83;display:grid;place-items:center;box-shadow:inset 0 0 12px #0009;transform:translateZ(9px)}
+.bot-chest i{position:absolute;top:5px;width:18px;height:3px;border-radius:3px;background:#6fffe0;box-shadow:0 0 8px #55eaca}
+.bot-chest b{font:900 12px Arial,sans-serif;color:#b6fff0;text-shadow:0 0 8px #31d9bd;letter-spacing:1px}
+.bot-chest span{position:absolute;bottom:5px;width:24px;height:2px;background:#348fc0;border-radius:2px}
+.bot-shoulder{position:absolute;top:4px;width:23px;height:24px;border-radius:12px;background:linear-gradient(135deg,#62818a,#132e3b 75%);border:1px solid #3b9c98;transform:translateZ(4px)}
+.bot-shoulder-left{left:-12px}.bot-shoulder-right{right:-12px}
+.bot-arm{position:absolute;z-index:2;top:111px;width:19px;height:49px;border-radius:11px;background:linear-gradient(90deg,#091722,#43616d 42%,#102b39);border:1px solid #397f85;transform-style:preserve-3d}
+.bot-arm:after{content:"";position:absolute;bottom:-5px;left:1px;width:15px;height:15px;border-radius:50%;background:linear-gradient(145deg,#4e8b92,#0a1a26);border:1px solid #3dcdb5;transform:translateZ(5px)}
+.bot-arm-left{left:17px;transform:rotate(12deg) translateZ(2px);animation:bot-wave-left 3.8s ease-in-out infinite}
+.bot-arm-right{right:14px;transform:rotate(-12deg) translateZ(2px);animation:bot-wave-right 4.5s ease-in-out infinite}
+.bot-arm i{position:absolute;top:12px;left:5px;width:7px;height:17px;border-radius:5px;background:#52e8cf;box-shadow:0 0 8px #3ddcbd}
+.bot-leg{position:absolute;z-index:1;top:158px;width:25px;height:28px;border-radius:8px 8px 11px 11px;background:linear-gradient(90deg,#0a1720,#3b5b68,#0a1a25);border:1px solid #357e81;transform:translateZ(5px)}
+.bot-leg:after{content:"";position:absolute;bottom:-3px;left:-3px;width:31px;height:10px;border-radius:8px;background:linear-gradient(90deg,#091721,#355866,#07131d);border:1px solid #337f82}
+.bot-leg-left{left:46px}.bot-leg-right{right:46px}
+.dashboard-bot-label{position:relative;margin-top:-3px;color:#a8ffe7;font:900 10px Arial,sans-serif;letter-spacing:2px;text-shadow:0 0 14px #28e2b455;text-align:center}
+.dashboard-bot-label span{display:block;margin-top:5px;color:#82aeb7;font-size:7px;letter-spacing:2.2px}
+@keyframes bot-hover-3d{0%,100%{transform:translateY(0) rotateY(-8deg) rotateX(2deg)}50%{transform:translateY(-8px) rotateY(8deg) rotateX(-2deg)}}
+@keyframes bot-head-look{0%,100%{transform:translateZ(15px) rotateY(-10deg)}50%{transform:translateZ(15px) rotateY(9deg)}}
+@keyframes bot-wave-left{0%,100%{transform:rotate(12deg) translateZ(2px)}50%{transform:rotate(25deg) translateZ(2px)}}
+@keyframes bot-wave-right{0%,100%{transform:rotate(-12deg) translateZ(2px)}50%{transform:rotate(-20deg) translateZ(2px)}}
+@keyframes bot-eye-blink{0%,46%,50%,100%{transform:scaleY(1)}48%{transform:scaleY(.08)}}
+@keyframes bot-shadow-pulse{0%,100%{transform:scaleX(1);opacity:.7}50%{transform:scaleX(.75);opacity:.4}}
+@media(max-width:760px){.dashboard-bot-wrap{top:0;inset-inline-end:0;width:44%;height:190px}.bot-stage{transform:scale(.78);transform-origin:center}.dashboard-bot-label{font-size:8px}}
+
+/* Dashboard icon visibility guard: keep inline SVG artwork visible in all workspace routes */
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon{
+ display:grid!important;place-items:center!important;visibility:visible!important;opacity:1!important;
+ min-width:54px;min-height:54px;overflow:visible!important;
+}
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon svg{
+ display:block!important;visibility:visible!important;opacity:1!important;
+ width:34px!important;height:34px!important;max-width:none!important;max-height:none!important;
+ overflow:visible!important;flex:none!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-shortcut>span{
+ display:inline-flex!important;align-items:center;justify-content:center;
+ min-width:28px;min-height:28px;visibility:visible!important;opacity:1!important;
+ color:#54e5c2!important;font-size:22px!important;line-height:1!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-bot-wrap{pointer-events:none;z-index:0}
+#workspace-app #page-home.dashboard-home .dashboard-intro,
+#workspace-app #page-home.dashboard-home .dashboard-overview,
+#workspace-app #page-home.dashboard-home .dashboard-tools-panel,
+#workspace-app #page-home.dashboard-home .dashboard-lower-grid{position:relative;z-index:1}
+
+
+/* Restore the original vector icons inside dashboard tool cards */
+#workspace-app #page-home .dashboard-tools-panel .dashboard-tool-icon{
+ display:grid!important;place-items:center!important;width:54px!important;height:54px!important;
+ min-width:54px!important;min-height:54px!important;visibility:visible!important;opacity:1!important;
+ background:linear-gradient(145deg,#19d9ae26,#268fdf29)!important;border:1px solid #258d8980!important;
+ overflow:visible!important;
+}
+#workspace-app #page-home .dashboard-tools-panel .dashboard-tool-icon svg{
+ display:block!important;visibility:visible!important;opacity:1!important;
+ width:34px!important;height:34px!important;max-width:none!important;max-height:none!important;
+ flex:none!important;overflow:visible!important;
+}
+
+
+/* Restore normal mobile page scrolling outside Smart Chat */
+@media(max-width:760px){
+ #workspace-app .main:not(.chat-page-active){
+  display:block;
+  flex:1 1 auto;
+  width:100%;
+  height:auto;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+ }
+ #workspace-app .main:not(.chat-page-active) .page.active{
+  display:block;
+  min-height:max-content;
+ }
+}
+
+
+/* Full-screen Smart Chat workspace: remove intro and centered assistant greeting */
+#workspace-app .main.chat-page-active #page-chat>.welcome,
+#workspace-app .main.chat-page-active #page-chat>.notice{display:none!important}
+#workspace-app .main.chat-page-active #page-chat{padding:0;min-height:0}
+#workspace-app .main.chat-page-active #page-chat .chat-workspace{width:100%;height:100%;min-height:0;margin:0}
+#workspace-app .main.chat-page-active #page-chat .chat-conversation{min-height:0}
+#workspace-app .main.chat-page-active #page-chat .chat-transcript{min-height:0}
+@media(max-width:760px){
+ #workspace-app .main.chat-page-active #page-chat .chat-workspace{grid-template-columns:minmax(0,1fr)}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-panel{padding:9px;max-height:94px;overflow:auto}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-list{max-height:48px;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:6px}
+ #workspace-app .main.chat-page-active #page-chat .chat-conversation{height:100%;min-height:0}
+}
+
+
+/* Smart Chat: true immersive full-screen mode */
+#workspace-app:has(.main.chat-page-active) .app-top{display:none!important}
+#workspace-app:has(.main.chat-page-active) .app-layout{display:flex!important;flex:1 1 auto!important;min-height:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;gap:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) .sidebar,
+#workspace-app:has(.main.chat-page-active) .mobile-nav{display:none!important}
+#workspace-app:has(.main.chat-page-active) .main.chat-page-active{display:flex!important;flex:1 1 auto!important;width:100%!important;max-width:none!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) #page-chat.active{display:flex!important;flex:1 1 auto!important;min-height:0!important;width:100%!important;margin:0!important;padding:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) #page-chat>.welcome,
+#workspace-app:has(.main.chat-page-active) #page-chat>.notice,
+#workspace-app:has(.main.chat-page-active) .chat-history-panel{display:none!important}
+#workspace-app:has(.main.chat-page-active) .chat-workspace{display:flex!important;flex:1 1 auto!important;min-height:0!important;width:100%!important;margin:0!important;padding:0!important;gap:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) .chat-conversation{display:flex!important;flex:1 1 auto!important;width:100%!important;height:100%!important;min-height:0!important;margin:0!important;padding:12px!important;border:0!important;border-radius:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) .chat-fullscreen-head{flex:0 0 auto!important;justify-content:space-between!important;align-items:center!important;padding:0 0 10px!important}
+#workspace-app:has(.main.chat-page-active) .chat-fullscreen-head #chat-title{font-size:12px!important;color:#91a8ad!important}
+#workspace-app:has(.main.chat-page-active) .chat-transcript{flex:1 1 auto!important;min-height:0!important;max-height:none!important;padding:12px 2px!important;overflow-y:auto!important}
+#workspace-app:has(.main.chat-page-active) .chat-compose-box{flex:0 0 auto!important;margin-top:8px!important}
+#workspace-app:has(.main.chat-page-active) .chat-compose-box textarea{min-height:64px!important;max-height:24dvh!important}
+#workspace-app:has(.main.chat-page-active) .chat-live-status{flex:0 0 auto!important;min-height:0!important;margin-top:4px!important}
+@media(max-width:760px){
+ #workspace-app:has(.main.chat-page-active) .chat-conversation{padding:calc(8px + env(safe-area-inset-top)) 9px calc(8px + env(safe-area-inset-bottom))!important}
+ #workspace-app:has(.main.chat-page-active) .chat-fullscreen-head{padding-bottom:7px!important}
+ #workspace-app:has(.main.chat-page-active) .chat-compose-box textarea{min-height:56px!important;max-height:20dvh!important}
+ #workspace-app:has(.main.chat-page-active) .chat-compose-actions .muted-copy{display:none!important}
+}
+
+/* Keep immersive chat aligned to Android's visible viewport while the keyboard is open */
+#workspace-app:has(.main.chat-page-active){position:fixed!important;inset-inline:0!important;top:var(--lokal-vv-top,0px)!important;bottom:auto!important;height:var(--lokal-vv-height,100dvh)!important;min-height:0!important;width:100%!important;z-index:40!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) .app-layout,
+#workspace-app:has(.main.chat-page-active) .main.chat-page-active,
+#workspace-app:has(.main.chat-page-active) #page-chat.active,
+#workspace-app:has(.main.chat-page-active) .chat-workspace,
+#workspace-app:has(.main.chat-page-active) .chat-conversation{min-height:0!important;max-height:100%!important}
+#workspace-app:has(.main.chat-page-active) .chat-fullscreen-head{position:relative!important;z-index:3!important;flex-shrink:0!important;min-height:38px!important;visibility:visible!important;opacity:1!important}
+#workspace-app:has(.main.chat-page-active) .chat-transcript{min-height:0!important;overscroll-behavior:contain!important;overflow-y:auto!important}
+#workspace-app:has(.main.chat-page-active) .chat-compose-box{position:relative!important;z-index:2!important;flex-shrink:0!important}
+@media(max-width:760px){
+ #workspace-app:has(.main.chat-page-active) .chat-conversation{padding-top:calc(6px + env(safe-area-inset-top))!important;padding-bottom:calc(6px + env(safe-area-inset-bottom))!important}
+ #workspace-app:has(.main.chat-page-active) .chat-fullscreen-head #chat-exit{min-height:34px!important;white-space:nowrap!important}
+ #workspace-app:has(.main.chat-page-active) .chat-compose-box textarea{max-height:18dvh!important;min-height:48px!important}
+}
+
 
 </style>
 </head>
@@ -99,10 +353,27 @@
 <aside class="sidebar"><div class="side-label">WORKSPACE</div><button class="nav-btn active" data-page="home">⌂　Dashboard</button><button class="nav-btn" data-page="chat">💬　چت هوشمند</button><button class="nav-btn" data-page="prompt">✍️　Prompt Lab</button><button class="nav-btn" data-page="projects">▤　My Projects</button><button class="nav-btn" data-page="account">◉　Account & Wallet</button><div class="side-label">STUDIOS</div><button class="nav-btn" data-page="image">🎨　Image Studio</button><button class="nav-btn" data-page="video">🎬　Video Studio</button></aside>
 <main class="main">
 <section class="page active dashboard-home" id="page-home">
-<div class="dashboard-globe-wrap" aria-label="کره زمین سه‌بعدی LOKAL AI"><canvas id="lokal-dashboard-globe" role="img" aria-label="کره زمین با خطوط سبز و برجسته‌سازی ایران"></canvas><div class="dashboard-globe-caption">LOKAL AI · CREATE · IMAGINE · INNOVATE</div></div>
+<div class="dashboard-bot-wrap" role="img" aria-label="ربات سه‌بعدی هوشمند LOKAL AI">
+ <div class="bot-stage">
+  <div class="bot-shadow"></div>
+  <div class="bot-figure">
+   <div class="bot-antenna"><i></i></div>
+   <div class="bot-head">
+    <div class="bot-ear bot-ear-left"></div><div class="bot-ear bot-ear-right"></div>
+    <div class="bot-face"><i class="bot-eye bot-eye-left"></i><i class="bot-eye bot-eye-right"></i><b class="bot-smile"></b></div>
+    <div class="bot-head-highlight"></div>
+   </div>
+   <div class="bot-neck"></div>
+   <div class="bot-body"><div class="bot-chest"><i></i><b>LA</b><span></span></div><div class="bot-shoulder bot-shoulder-left"></div><div class="bot-shoulder bot-shoulder-right"></div></div>
+   <div class="bot-arm bot-arm-left"><i></i></div><div class="bot-arm bot-arm-right"><i></i></div>
+   <div class="bot-leg bot-leg-left"><i></i></div><div class="bot-leg bot-leg-right"><i></i></div>
+  </div>
+ </div>
+ <div class="dashboard-bot-label">LOKAL AI <span>YOUR CREATIVE COMPANION</span></div>
+</div>
 <div class="dashboard-intro"><div><div class="eyebrow">LOKAL AI · CREATIVE WORKSPACE</div><h1>داشبورد هوشمند تو</h1><p>همه ابزارهای خلاقانه و پروژه‌هایت، یک‌جا.</p></div><button class="btn" data-go="prompt">＋ شروع پروژه جدید</button></div>
 <div class="dashboard-overview"><div class="stats"><div class="stat"><span>اعتبار کیف پول</span><b id="walletStat">—</b></div><div class="stat"><span>پروژه‌های ذخیره‌شده</span><b id="projectCount">۰</b></div><div class="stat"><span>ابزارهای اصلی</span><b>۲</b></div></div><div class="dashboard-shortcuts"><button class="dashboard-shortcut" data-page="account"><span>◈</span><strong>کیف پول و حساب</strong><small>موجودی و تنظیمات حساب</small></button><button class="dashboard-shortcut" data-page="projects"><span>▤</span><strong>پروژه‌ها و گالری</strong><small>مشاهده و مدیریت آثار</small></button></div></div>
-<div class="panel dashboard-tools-panel"><div class="dashboard-section-head"><div><h3>ابزارهای فضای کاری</h3><p>برای شروع، یکی از استودیوها یا ابزارهای اصلی را انتخاب کن.</p></div><span class="tag">دسترسی سریع</span></div><div class="tools-grid"><button class="app-tool" data-go="prompt"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M11 35.5 31.8 14.7a5 5 0 0 1 7.1 7.1L18.1 42.6 9 45l2-9.5Z" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/><path d="m28 18 7 7M8 8h10M13 3v10M34 5l1.8 4.2L40 11l-4.2 1.8L34 17l-1.8-4.2L28 11l4.2-1.8L34 5Z" stroke="#69b8ff" stroke-width="1.8" stroke-linecap="round"/></svg></div><h4>Prompt Lab</h4><p>ساخت پرامپت محلی و هوشمند</p><span class="tag">فعال</span></button><button class="app-tool" data-page="image"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><rect x="6" y="8" width="36" height="32" rx="7" stroke="#67f0d0" stroke-width="2.2"/><circle cx="17" cy="19" r="3.5" stroke="#69b8ff" stroke-width="2"/><path d="m8 34 11-10 7 6 6-8 8 9" stroke="#67f0d0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m34 7 1.5-3L37 7l3 1.5L37 10l-1.5 3L34 10l-3-1.5L34 7Z" fill="#69b8ff"/></svg></div><h4>Image Studio</h4><p>تولید و ذخیره تصاویر با هوش مصنوعی</p><span class="tag">فعال</span></button><button class="app-tool" data-tool="video"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><rect x="5" y="11" width="38" height="28" rx="6" stroke="#67f0d0" stroke-width="2.2"/><path d="m20 18 12 7-12 7V18Z" stroke="#69b8ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m9 11 5-6h8l-5 6M26 11l5-6h8l-5 6" stroke="#67f0d0" stroke-width="2" stroke-linejoin="round"/></svg></div><h4>Video Prompt Lab</h4><p>ورود مستقیم به Prompt Lab با تنظیم نوع خروجی ویدئو</p><span class="tag">آماده‌سازی پرامپت</span></button><button class="app-tool" data-page="account"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="16" r="8" stroke="#69b8ff" stroke-width="2.2"/><path d="M8 41c1.8-8 7.5-12 16-12s14.2 4 16 12" stroke="#67f0d0" stroke-width="2.2" stroke-linecap="round"/><circle cx="38" cy="11" r="4" fill="#67f0d0" fill-opacity=".25" stroke="#67f0d0" stroke-width="1.6"/></svg></div><h4>Account & Wallet</h4><p>مشاهده حساب Google، موجودی و تنظیمات کیف پول</p><span class="tag">حساب کاربری</span></button><button class="app-tool" data-page="projects"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="m24 5 18 9-18 9-18-9 18-9Z" stroke="#69b8ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m6 23 18 9 18-9M6 32l18 9 18-9" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/></svg></div><h4>پروژه‌های من</h4><p>مدیریت پروژه‌های ذخیره‌شده در حساب</p><span class="tag">حساب کاربری</span></button></div></div>
+<div class="panel dashboard-tools-panel"><div class="dashboard-section-head"><div><h3>ابزارهای فضای کاری</h3><p>برای شروع، یکی از استودیوها یا ابزارهای اصلی را انتخاب کن.</p></div><span class="tag">دسترسی سریع</span></div><div class="tools-grid"><button class="app-tool" data-go="prompt"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M11 35.5 31.8 14.7a5 5 0 0 1 7.1 7.1L18.1 42.6 9 45l2-9.5Z" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/><path d="m28 18 7 7M8 8h10M13 3v10M34 5l1.8 4.2L40 11l-4.2 1.8L34 17l-1.8-4.2L28 11l4.2-1.8L34 5Z" stroke="#69b8ff" stroke-width="1.8" stroke-linecap="round"/></svg></div><h4>Prompt Lab</h4><p>ساخت پرامپت محلی و هوشمند</p><span class="tag">فعال</span></button><button class="app-tool" data-page="image"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="6" y="8" width="36" height="32" rx="7" stroke="#67f0d0" stroke-width="2.2"/><circle cx="17" cy="19" r="3.5" stroke="#69b8ff" stroke-width="2"/><path d="m8 34 11-10 7 6 6-8 8 9" stroke="#67f0d0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m34 7 1.5-3L37 7l3 1.5L37 10l-1.5 3L34 10l-3-1.5L34 7Z" fill="#69b8ff"/></svg></div><h4>Image Studio</h4><p>تولید و ذخیره تصاویر با هوش مصنوعی</p><span class="tag">فعال</span></button><button class="app-tool" data-tool="video"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="5" y="11" width="38" height="28" rx="6" stroke="#67f0d0" stroke-width="2.2"/><path d="m20 18 12 7-12 7V18Z" stroke="#69b8ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m9 11 5-6h8l-5 6M26 11l5-6h8l-5 6" stroke="#67f0d0" stroke-width="2" stroke-linejoin="round"/></svg></div><h4>Video Prompt Lab</h4><p>ورود مستقیم به Prompt Lab با تنظیم نوع خروجی ویدئو</p><span class="tag">آماده‌سازی پرامپت</span></button><button class="app-tool" data-page="account"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="24" cy="16" r="8" stroke="#69b8ff" stroke-width="2.2"/><path d="M8 41c1.8-8 7.5-12 16-12s14.2 4 16 12" stroke="#67f0d0" stroke-width="2.2" stroke-linecap="round"/><circle cx="38" cy="11" r="4" fill="#67f0d0" fill-opacity=".25" stroke="#67f0d0" stroke-width="1.6"/></svg></div><h4>Account & Wallet</h4><p>مشاهده حساب Google، موجودی و تنظیمات کیف پول</p><span class="tag">حساب کاربری</span></button><button class="app-tool" data-page="projects"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="m24 5 18 9-18 9-18-9 18-9Z" stroke="#69b8ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m6 23 18 9 18-9M6 32l18 9 18-9" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/></svg></div><h4>پروژه‌های من</h4><p>مدیریت پروژه‌های ذخیره‌شده در حساب</p><span class="tag">حساب کاربری</span></button></div></div>
 <div class="dashboard-lower-grid"><div class="panel dashboard-info-card"><div class="eyebrow">YOUR WORK</div><h3>پروژه‌ها و تاریخچه</h3><p>پروژه‌های ذخیره‌شده‌ات را از یک بخش مدیریت کن و هر زمان به آن‌ها برگرد.</p><button class="btn btn-ghost" data-page="projects">مشاهده پروژه‌ها ←</button></div><div class="panel dashboard-info-card"><div class="eyebrow">ACCOUNT</div><h3>حساب و اعتبار</h3><p>وضعیت کیف پول و اطلاعات حساب کاربری‌ات را بررسی کن.</p><button class="btn btn-ghost" data-page="account">ورود به حساب و کیف پول ←</button></div></div>
 </section>
 <section class="page" id="page-chat">
@@ -113,8 +384,8 @@
    <div class="chat-history-list" id="chat-history-list"><div class="empty">برای مشاهدهٔ گفتگوها وارد حساب شو.</div></div>
   </aside>
   <section class="panel chat-conversation">
-   <div class="chat-conversation-head"><div><b id="chat-title">گفتگوی جدید</b><div class="muted-copy">هر پیام · ۱ اعتبار</div></div><span class="tag">Smart Chat</span></div>
-   <div class="chat-transcript" id="chat-transcript" aria-live="polite"><div class="chat-empty-state"><b>سلام! من دستیار هوشمند LOKAL AI هستم.</b>سؤال یا ایده‌ات را بنویس تا شروع کنیم.</div></div>
+   <div class="chat-conversation-head chat-fullscreen-head"><button class="btn btn-ghost btn-small" id="chat-exit" type="button">← بازگشت به داشبورد</button><b id="chat-title">گفتگوی جدید</b></div>
+   <div class="chat-transcript" id="chat-transcript" aria-live="polite"></div>
    <div class="chat-compose-box"><textarea id="chat-input" maxlength="12000" placeholder="پیامت را اینجا بنویس… (Enter برای ارسال، Shift + Enter برای خط جدید)"></textarea><div class="chat-compose-actions"><span class="muted-copy">پاسخ‌ها و تاریخچه به‌صورت امن در حساب تو ذخیره می‌شوند.</span><button class="btn" id="chat-send" type="button">ارسال ←</button></div></div>
    <div class="chat-live-status" id="chat-status" role="status" aria-live="polite"></div>
   </section>
@@ -158,6 +429,7 @@
   const requestedTarget=name==='assistant'?'chat':name;
    const target=workspacePages.has(requestedTarget)?requestedTarget:'home';
   const current=$('.page.active')?.id.replace('page-','');
+  $('.main')?.classList.toggle('chat-page-active',target==='chat');
   if(target!=='home')window.lokalResetBackHome?.();
   if(current===target)return;
   $$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));
@@ -170,36 +442,18 @@
   if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'));
  }
 
- const globeCanvas=document.getElementById('lokal-dashboard-globe');
- if(globeCanvas){
-  const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const globeCtx=globeCanvas.getContext('2d',{alpha:true});
-  let globeAngle=0,globeFrame=0,lastGlobeTime=0,globeWidth=0,globeHeight=0;
-  const iranOutline=[[44,39],[46,38],[48,38],[50,37],[52,37],[54,36],[56,36],[58,35],[60,33],[61,29],[60,26],[57,25],[54,26],[51,27],[49,29],[47,30],[45,32],[44,35]];
-  const resizeGlobe=()=>{const rect=globeCanvas.getBoundingClientRect();const dpr=Math.min(window.devicePixelRatio||1,1.5);globeWidth=Math.max(1,rect.width);globeHeight=Math.max(1,rect.height);globeCanvas.width=Math.round(globeWidth*dpr);globeCanvas.height=Math.round(globeHeight*dpr);globeCtx.setTransform(dpr,0,0,dpr,0,0)};
-  const drawGlobe=(time=0)=>{
-   if(!globeCtx)return;
-   const w=globeWidth,h=globeHeight,cx=w/2,cy=h/2,r=Math.min(h*.39,w*.23,118);
-   globeCtx.clearRect(0,0,w,h);
-   const glow=globeCtx.createRadialGradient(cx,cy,r*.55,cx,cy,r*1.18);glow.addColorStop(0,'#28e2b40a');glow.addColorStop(.8,'#28e2b416');glow.addColorStop(1,'#28e2b400');
-   globeCtx.fillStyle=glow;globeCtx.beginPath();globeCtx.arc(cx,cy,r*1.2,0,Math.PI*2);globeCtx.fill();
-   globeCtx.save();globeCtx.beginPath();globeCtx.arc(cx,cy,r,0,Math.PI*2);globeCtx.clip();
-   const sphere=globeCtx.createRadialGradient(cx-r*.35,cy-r*.42,r*.08,cx,cy,r*1.12);sphere.addColorStop(0,'#0b211f');sphere.addColorStop(.7,'#061218');sphere.addColorStop(1,'#02080d');globeCtx.fillStyle=sphere;globeCtx.fillRect(cx-r,cy-r,r*2,r*2);
-   const project=(lon,lat)=>{const L=(lon+globeAngle*180/Math.PI)*Math.PI/180, P=lat*Math.PI/180;const x=Math.cos(P)*Math.sin(L),y=-Math.sin(P),z=Math.cos(P)*Math.cos(L);return {x:cx+x*r,y:cy+y*r,z,visible:z>-.02}};
-   globeCtx.strokeStyle='#28e2b43d';globeCtx.lineWidth=.7;
-   for(let lat=-60;lat<=60;lat+=20){globeCtx.beginPath();let open=false;for(let lon=-180;lon<=180;lon+=3){const p=project(lon,lat);if(p.visible){if(!open){globeCtx.moveTo(p.x,p.y);open=true}else globeCtx.lineTo(p.x,p.y)}else open=false}globeCtx.stroke()}
-   for(let lon=-160;lon<=180;lon+=20){globeCtx.beginPath();let open=false;for(let lat=-88;lat<=88;lat+=2){const p=project(lon,lat);if(p.visible){if(!open){globeCtx.moveTo(p.x,p.y);open=true}else globeCtx.lineTo(p.x,p.y)}else open=false}globeCtx.stroke()}
-   globeCtx.beginPath();iranOutline.forEach(([lon,lat],i)=>{const p=project(lon,lat);if(i===0)globeCtx.moveTo(p.x,p.y);else globeCtx.lineTo(p.x,p.y)});globeCtx.closePath();globeCtx.fillStyle='#3199ed35';globeCtx.strokeStyle='#65dfff';globeCtx.lineWidth=1.8;globeCtx.shadowColor='#3199ed';globeCtx.shadowBlur=12;globeCtx.fill();globeCtx.stroke();globeCtx.shadowBlur=0;
-   const brand=project(0,0);if(brand.visible){globeCtx.save();globeCtx.translate(brand.x,brand.y);globeCtx.rotate(-.035);globeCtx.font='900 '+Math.max(13,r*.19)+'px Arial,sans-serif';globeCtx.textAlign='center';globeCtx.textBaseline='middle';globeCtx.fillStyle='#a9ffe8';globeCtx.shadowColor='#28e2b4';globeCtx.shadowBlur=10;globeCtx.fillText('LOKAL AI',0,2);globeCtx.restore()}
-   globeCtx.restore();globeCtx.strokeStyle='#28e2b477';globeCtx.lineWidth=1.1;globeCtx.shadowColor='#28e2b4';globeCtx.shadowBlur=15;globeCtx.beginPath();globeCtx.arc(cx,cy,r,0,Math.PI*2);globeCtx.stroke();globeCtx.shadowBlur=0;
-   if(!reducedMotion&&document.visibilityState==='visible'){globeAngle+=Math.PI*2/(100*60);globeFrame=requestAnimationFrame(drawGlobe)}
-  };
-  resizeGlobe();drawGlobe();
-  if(!reducedMotion)globeFrame=requestAnimationFrame(drawGlobe);
-  window.addEventListener('resize',()=>{resizeGlobe();if(reducedMotion)drawGlobe()},{passive:true});
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){cancelAnimationFrame(globeFrame)}else if(!reducedMotion){cancelAnimationFrame(globeFrame);globeFrame=requestAnimationFrame(drawGlobe)}});
- }
  window.lokalShowPage=showPage;
+ // Track the visual viewport so Android's on-screen keyboard resizes the chat instead of scrolling it away.
+ const syncLokalVisualViewport=()=>{
+  const vv=window.visualViewport;
+  const top=vv?Math.max(0,vv.offsetTop):0;
+  const height=vv?vv.height:window.innerHeight;
+  document.documentElement.style.setProperty('--lokal-vv-top',top+'px');
+  document.documentElement.style.setProperty('--lokal-vv-height',height+'px');
+ };
+ syncLokalVisualViewport();
+ window.addEventListener('resize',syncLokalVisualViewport,{passive:true});
+ if(window.visualViewport){window.visualViewport.addEventListener('resize',syncLokalVisualViewport,{passive:true});window.visualViewport.addEventListener('scroll',syncLokalVisualViewport,{passive:true});}
  
  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
  $$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
@@ -507,6 +761,7 @@ else{
  document.getElementById("auth-signin").addEventListener("click",async()=>{const c=credentials();if(!c)return;captureAuthReturnContext();setMessage("در حال بررسی اطلاعات ورود...");const {data,error}=await supabase.auth.signInWithPassword(c);if(error)return setMessage("ورود ناموفق بود: "+translateError(error),true);renderSession(data.session)});
  document.getElementById("auth-google").addEventListener("click",async()=>{captureAuthReturnContext();setMessage("در حال انتقال امن به Google...");const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:authRedirectUrl()}});if(error)setMessage("ورود با Google انجام نشد: "+translateError(error),true)});
  document.getElementById("auth-reset").addEventListener("click",async()=>{const email=emailInput.value.trim();if(!email||!emailInput.checkValidity())return setMessage("ابتدا ایمیل معتبر را وارد کن.",true);setMessage("در حال ارسال لینک بازیابی...");const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:authRedirectUrl()});if(error)return setMessage(translateError(error),true);setMessage("اگر این ایمیل در سامانه ثبت شده باشد، لینک بازیابی برایش ارسال می‌شود.")});
+ document.getElementById("chat-exit")?.addEventListener("click",()=>document.getElementById("workspace-home")?.click());
  document.getElementById("workspace-home").addEventListener("click",()=>{backHomeConsumed=false;if(!activeSession){openWorkspaceHome();return;}previewMode=false;landingView=false;renderSession(activeSession);window.lokalShowPage?.('home',{history:false});history.replaceState({lokalRoute:'workspace',lokalWorkspacePage:'home',lokalWorkspaceRoot:true},'',location.pathname+location.search+'#workspace-home');window.scrollTo({top:0,behavior:'smooth'});});
  document.querySelectorAll('#public-site a[href^="#"]').forEach(link=>link.addEventListener("click",()=>{backHomeConsumed=false;}));
  document.querySelectorAll('#public-site a[href="#auth-section"]').forEach(link=>link.addEventListener("click",event=>{if(activeSession){event.preventDefault();openWorkspaceHome();}}));
