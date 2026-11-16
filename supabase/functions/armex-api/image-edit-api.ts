@@ -96,9 +96,13 @@ export async function handleImageEditApi(
     p_user_id: userId, p_request_id: requestId, p_prompt: prompt, p_input_storage_path: path,
   });
   if (error || !data) {
-    await db.storage.from(BUCKET).remove([path]);
+    // A transport error can be ambiguous: the transaction may have committed.
+    // Keep the source object unless Postgres definitively reports a missing schema/function.
+    if (error?.code === "PGRST202" || error?.code === "42P01" || error?.code === "42883") {
+      await db.storage.from(BUCKET).remove([path]);
+    }
     console.error("Image edit enqueue failed", { code: error?.code });
-    return fail("ثبت درخواست ویرایش انجام نشد. ابتدا migration مربوط به ویرایش تصویر باید روی Supabase اعمال شود.", 503, cors);
+    return fail("ثبت درخواست ویرایش انجام نشد. ابتدا migration مربوط به ویرایش تصویر باید روی Supabase اعمال شود یا وضعیت درخواست بررسی شود.", 503, cors);
   }
   if (data.success !== true) {
     await db.storage.from(BUCKET).remove([path]);
