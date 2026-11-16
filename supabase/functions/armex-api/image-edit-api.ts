@@ -72,6 +72,9 @@ export async function handleImageEditApi(
   const requestId = validUuid(body.request_id) ? body.request_id : "";
   const mime = typeof body.mime_type === "string" ? body.mime_type : "";
   const encoded = typeof body.image_base64 === "string" ? body.image_base64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "") : "";
+  if (encoded.length > Math.ceil(MAX_INPUT_BYTES * 4 / 3) + 8) {
+    return fail("حجم تصویر از سقف مجاز بیشتر است.", 400, cors);
+  }
   if (!prompt || prompt.length > 1600) return fail("پرامپت باید بین ۱ تا ۱۶۰۰ نویسه باشد.", 400, cors);
   if (!requestId) return fail("شناسه یکتای درخواست معتبر نیست.", 400, cors);
 
