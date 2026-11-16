@@ -121,6 +121,10 @@ export function initImageEditor({ supabase, callArmexApi }) {
   const prepareImage = async (file) => {
     if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("فرمت تصویر باید JPG، PNG یا WebP باشد.");
     const bitmap = await createImageBitmap(file);
+    if (bitmap.width * bitmap.height > 40000000) {
+      bitmap.close();
+      throw new Error("ابعاد تصویر اصلی بیش از حد بزرگ است؛ یک نسخه کوچک‌تر انتخاب کن.");
+    }
     const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
