@@ -39,12 +39,16 @@ const json = (data: Json, status = 200, headers: HeadersInit = {}) =>
     headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
   });
 
-const allowedOrigins = (): string[] =>
-  (Deno.env.get("ALLOWED_ORIGINS") ||
-    "https://lokal-ai.net,https://www.lokal-ai.net")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+const allowedOrigins = (): string[] => {
+  const configured = (Deno.env.get("ALLOWED_ORIGINS") || "")
+    .split(",").map((value) => value.trim()).filter(Boolean);
+  return [...new Set([
+    "https://lokal-ai.net",
+    "https://www.lokal-ai.net",
+    "https://design-purple-black-only-549.armex-ai-studio.pages.dev",
+    ...configured,
+  ])];
+};
 
 const corsFor = (origin: string | null): HeadersInit => {
   const allowed = allowedOrigins();
