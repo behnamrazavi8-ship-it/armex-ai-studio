@@ -727,6 +727,190 @@ body{
   #public-site .feature,#workspace-app .page,#workspace-app .app-tool,#workspace-app .dashboard-shortcut,#public-site .btn,#workspace-app .btn{animation:none!important;transition:none!important}
 }
 
+
+
+/* Balanced neon identity: deep black + electric blue + martini green + violet */
+:root{
+  --lokal-black:#05090d;
+  --lokal-blue:#3199ed;
+  --lokal-green:#28e2b4;
+  --lokal-violet:#a66bff;
+  --lokal-blue-soft:#70c4ff;
+  --lokal-violet-soft:#c39aff;
+}
+body{
+  background:
+    radial-gradient(ellipse at 12% 18%,#3199ed1c,transparent 34%),
+    radial-gradient(ellipse at 88% 5%,#28e2b41c,transparent 32%),
+    radial-gradient(ellipse at 78% 82%,#a66bff12,transparent 36%),
+    var(--lokal-black);
+}
+#public-site .topbar,#workspace-app .app-top{
+  border-bottom-color:#3199ed55;
+  box-shadow:0 8px 28px #0007,0 1px 18px #3199ed0c;
+}
+#public-site .brand-mark{
+  border-color:#58dfff;
+  background:linear-gradient(145deg,#12354a,#102b35 52%,#24143e);
+  color:#d9faff;
+  box-shadow:0 0 18px #3199ed55,0 0 25px #28e2b422,inset 0 0 14px #a66bff20;
+}
+#public-site .lokal-hero-logo{
+  border-color:#398fba88;
+  background:
+    radial-gradient(circle at 15% 15%,#3199ed20,transparent 48%),
+    radial-gradient(circle at 85% 85%,#a66bff20,transparent 48%),
+    linear-gradient(145deg,#101e29ed,#0c141bf2 65%,#05090d);
+  box-shadow:0 12px 38px #02090d99,0 0 26px #3199ed18,0 0 25px #a66bff12,inset 0 0 22px #28e2b50b;
+}
+#public-site .hero .eyebrow,
+#public-site .section-head .eyebrow{color:#64c7ff;text-shadow:0 0 14px #3199ed66}
+#public-site .gradient{
+  background:linear-gradient(95deg,#5cebc2 0%,#55c8ff 48%,#bd8cff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+#public-site .btn,#workspace-app .btn{
+  background:linear-gradient(105deg,#28e2b4 0%,#3199ed 58%,#8c62e8 100%);
+  color:#041018;
+  box-shadow:0 8px 24px #3199ed30,0 5px 22px #28e2b422;
+}
+#public-site .btn-ghost,#workspace-app .btn-ghost{
+  background:linear-gradient(110deg,#3199ed12,#28e2b40d,#a66bff12);
+  border-color:#548db388;color:#e5f6ff;
+}
+#public-site .feature,
+#public-site #studios .tool,
+#public-site .step,
+#public-site .auth-wrap,
+#public-site .cta{
+  border-color:#356d8580;
+  background:
+    radial-gradient(ellipse at 8% 0%,#3199ed15,transparent 52%),
+    radial-gradient(ellipse at 100% 100%,#a66bff12,transparent 48%),
+    linear-gradient(145deg,#101e29,#0c141b 66%,#05090d);
+  box-shadow:0 12px 30px #0008,inset 0 1px 0 #ffffff18;
+}
+#public-site .feature-icon{
+  border-color:#5c9fc2;
+  background:linear-gradient(135deg,#28e2b42b,#3199ed38 55%,#a66bff30);
+  box-shadow:0 0 16px #3199ed20,inset 0 1px 0 #ffffff24;
+}
+#public-site .feature-icon svg{filter:drop-shadow(0 0 7px #3199ed66)}
+#public-site #studios .tool:before{
+  content:"";position:absolute;inset:0 0 auto;height:2px;
+  background:linear-gradient(90deg,transparent,#28e2b4,#3199ed,#a66bff,transparent);
+}
+#public-site .tag{
+  border-color:#3c9c9a;color:#a9ffe7;
+  background:linear-gradient(100deg,#0c3028,#10263b 65%,#211638);
+}
+#public-site .auth-wrap{border-color:#398fba88}
+#public-site .input:focus,#public-site .textarea:focus,#public-site .select:focus,
+#workspace-app .input:focus,#workspace-app .textarea:focus,#workspace-app .select:focus{
+  border-color:#70c4ff;
+  box-shadow:0 0 0 3px #3199ed2b,0 0 16px #a66bff22;
+}
+#workspace-app{
+  background:
+    radial-gradient(ellipse at 8% 0%,#3199ed1b,transparent 34%),
+    radial-gradient(ellipse at 94% 18%,#28e2b416,transparent 34%),
+    radial-gradient(ellipse at 72% 95%,#a66bff12,transparent 38%),
+    var(--lokal-black);
+}
+#workspace-app .sidebar{
+  border-color:#356d8580;
+  background:
+    radial-gradient(ellipse at 0% 0%,#3199ed18,transparent 58%),
+    linear-gradient(165deg,#101e29,#0c141b 72%,#05090d);
+}
+#workspace-app .side-label{color:#70c4ff}
+#workspace-app .nav-btn:hover{
+  background:linear-gradient(100deg,#3199ed20,#28e2b414,#a66bff12);
+  border-color:#548db388;
+}
+#workspace-app .nav-btn.active{
+  background:linear-gradient(100deg,#28e2b42b 0%,#3199ed25 55%,#a66bff20 100%);
+  border-color:#579bb7aa;color:#effaff;
+  box-shadow:inset -3px 0 #28e2b4,0 0 18px #3199ed1d,0 0 18px #a66bff12;
+}
+#workspace-app .dashboard-home{
+  background:
+    radial-gradient(ellipse at 8% 0%,#3199ed1b,transparent 40%),
+    radial-gradient(ellipse at 92% 8%,#28e2b41a,transparent 38%),
+    radial-gradient(ellipse at 70% 100%,#a66bff12,transparent 42%);
+}
+#workspace-app .dashboard-intro{
+  border-color:#4b91b588;
+  background:
+    radial-gradient(ellipse at 8% 0%,#28e2b42a,transparent 46%),
+    radial-gradient(ellipse at 95% 100%,#a66bff25,transparent 44%),
+    linear-gradient(120deg,#102638,#0c1824 58%,#080d16);
+  box-shadow:0 17px 40px #0008,0 0 24px #3199ed12,inset 0 1px 0 #ffffff24;
+}
+#workspace-app .dashboard-home .stat,
+#workspace-app .dashboard-shortcut,
+#workspace-app .dashboard-tools-panel,
+#workspace-app .dashboard-info-card,
+#workspace-app .panel,
+#workspace-app .account-card{
+  border-color:#356d8580;
+  background:
+    radial-gradient(ellipse at 0% 0%,#3199ed13,transparent 55%),
+    radial-gradient(ellipse at 100% 100%,#a66bff0e,transparent 48%),
+    linear-gradient(145deg,#101e29,#0c141b 70%,#05090d);
+}
+#workspace-app .dashboard-home .stat span{color:#a8c7d2}
+#workspace-app .dashboard-home .stat b{color:#e9f8ff}
+#workspace-app .dashboard-shortcut:hover,
+#workspace-app .app-tool:hover{
+  border-color:#69b8ff;
+  box-shadow:0 16px 32px #0009,0 0 18px #3199ed33,0 0 16px #a66bff18;
+}
+#workspace-app .dashboard-shortcut>span{
+  color:#72d7ff;
+  text-shadow:0 0 12px #3199ed77,0 0 18px #a66bff33;
+}
+#workspace-app .app-tool{
+  border-color:#356d8580;
+  background:
+    radial-gradient(ellipse at 0% 0%,#3199ed18,transparent 56%),
+    radial-gradient(ellipse at 100% 100%,#a66bff14,transparent 48%),
+    linear-gradient(145deg,#101e29,#0c141b 68%,#05090d);
+}
+#workspace-app .app-tool:before{
+  background:linear-gradient(90deg,transparent,#28e2b4,#3199ed 55%,#a66bff,transparent);
+}
+#workspace-app .app-tool .feature-icon,
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon{
+  border:1px solid #79caff!important;
+  background:
+    radial-gradient(circle at 24% 15%,#ffffff70,transparent 38%),
+    linear-gradient(135deg,#28b995 0%,#176d91 48%,#563b91 100%)!important;
+  box-shadow:0 0 10px #28e2b466,0 0 20px #3199ed55,0 0 22px #a66bff28,inset 0 1px 0 #ffffffc9!important;
+}
+#workspace-app .app-tool .feature-icon svg,
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg{
+  filter:drop-shadow(0 0 6px #70c4ff99)!important;
+}
+#workspace-app .tag{
+  border-color:#478f9b;color:#b5ffe9;
+  background:linear-gradient(100deg,#0c3028,#10263b 62%,#211638);
+}
+#workspace-app .notice{
+  background:linear-gradient(100deg,#28e2b412,#3199ed12,#a66bff10);
+  border-right-color:#3199ed;
+}
+#workspace-app .mobile-nav{
+  background:#070d14f7;
+  border-top:1px solid #548db366;
+  box-shadow:0 -8px 24px #0007,0 0 18px #3199ed12;
+}
+#workspace-app .mobile-nav button.active{
+  color:#75d6ff;
+  text-shadow:0 0 10px #3199ed88,0 0 16px #a66bff44;
+}
+#public-site *,#workspace-app *{scrollbar-color:#327d9a #071117}
+
 </style>
 </head>
 <body>
