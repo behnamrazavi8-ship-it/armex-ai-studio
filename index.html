@@ -524,6 +524,144 @@ body{
 @media(prefers-reduced-motion:reduce){
   #public-site .feature,#workspace-app .page,#workspace-app .app-tool,#workspace-app .dashboard-shortcut,#public-site .btn,#workspace-app .btn{animation:none!important;transition:none!important}
 }
+
+/* Subtle readability polish — preserve the approved graphite/mint/blue/violet palette */
+:root{
+  --text:#F3F6FA;
+  --muted:#B5C0CC;
+}
+#public-site .hero p,#public-site .section-head p,#public-site .feature p,
+#public-site #studios .tool p,#public-site .step p,#public-site .cta p,
+#public-site .hero-desktop-panel p,
+#workspace-app .dashboard-intro p,#workspace-app .dashboard-section-head p,
+#workspace-app .dashboard-info-card p,#workspace-app .app-tool p,
+#workspace-app .muted-copy,#workspace-app .notice,
+#workspace-app .image-gallery-card p{
+  color:#B5C0CC;
+}
+#public-site .feature h3,#public-site #studios .tool h3,
+#public-site .step h3,#workspace-app .app-tool h4,
+#workspace-app .dashboard-section-head h3,
+#workspace-app .dashboard-info-card h3{
+  color:#F0F5FA;
+}
+#public-site .top-links a,#workspace-app .nav-btn,
+#workspace-app .mobile-nav button{color:#C0CBD7}
+#workspace-app .side-label,#public-site .hero-note,
+#workspace-app .dashboard-bot-label span{color:#9EADBC}
+#public-site .feature-icon svg,#workspace-app .feature-icon svg,
+#workspace-app .dashboard-tool-icon svg{
+  filter:drop-shadow(0 0 3px #43CFA455) drop-shadow(0 0 5px #6B9FE833);
+}
+#public-site .feature-icon,#workspace-app .feature-icon{
+  box-shadow:inset 0 1px 0 #FFFFFF16,0 0 12px #43CFA414;
+}
+#workspace-app .dashboard-shortcut>span{color:#B7D2F5;text-shadow:0 0 9px #6B9FE833}
+#workspace-app .nav-btn.active{color:#E5F8F1}
+#workspace-app .mobile-nav button.active{color:#67E2BA;text-shadow:0 0 8px #43CFA455}
+#public-site .eyebrow,#workspace-app .eyebrow{filter:brightness(1.08)}
+#public-site .tag,#workspace-app .tag{filter:brightness(1.06)}
+
+
+/* LOKAL AI dashboard refinement: calm typography, restrained icon accents, visible mascot */
+#workspace-app #page-home.dashboard-home{
+  --dash-ink:#F1F4F7;
+  --dash-copy:#C2CBD4;
+  --dash-muted:#91A0AE;
+  --dash-line:#344451;
+  --dash-mint:#67DDB8;
+  --dash-blue:#79AFCB;
+}
+#workspace-app #page-home.dashboard-home .dashboard-intro,
+#workspace-app #page-home.dashboard-home .dashboard-overview,
+#workspace-app #page-home.dashboard-home .dashboard-tools-panel,
+#workspace-app #page-home.dashboard-home .dashboard-lower-grid{position:relative;z-index:1}
+#workspace-app #page-home.dashboard-home .dashboard-bot-wrap{
+  z-index:3!important;top:2px;inset-inline-end:12px;width:min(34%,270px);
+  height:205px;opacity:1;overflow:visible;pointer-events:none;
+}
+#workspace-app #page-home.dashboard-home .bot-stage{transform:scale(.9);transform-origin:top center}
+#workspace-app #page-home.dashboard-home .bot-figure{filter:drop-shadow(0 12px 22px #0008)}
+#workspace-app #page-home.dashboard-home .bot-head{
+  background:linear-gradient(145deg,#527F89 0%,#263E4B 38%,#101B25 78%,#0B111B 100%);
+  border-color:#6BCDB2;
+  box-shadow:inset 5px 5px 12px #FFFFFF20,inset -7px -8px 13px #070B1299,0 8px 22px #0009,0 0 16px #43CFA422;
+}
+#workspace-app #page-home.dashboard-home .bot-shadow{background:radial-gradient(ellipse,#43CFA455,transparent 70%)}
+#workspace-app #page-home.dashboard-home .dashboard-bot-label{color:#8CE5C9;text-shadow:0 0 12px #43CFA433}
+#workspace-app #page-home.dashboard-home .dashboard-bot-label span{color:#A9B9C6}
+#workspace-app #page-home.dashboard-home .dashboard-intro{
+  min-height:174px;padding-inline-end:clamp(205px,25vw,285px);
+}
+#workspace-app #page-home.dashboard-home .dashboard-intro h1,
+#workspace-app #page-home.dashboard-home .dashboard-section-head h3,
+#workspace-app #page-home.dashboard-home .dashboard-info-card h3{color:var(--dash-ink)}
+#workspace-app #page-home.dashboard-home .dashboard-intro p,
+#workspace-app #page-home.dashboard-home .dashboard-section-head p,
+#workspace-app #page-home.dashboard-home .dashboard-info-card p,
+#workspace-app #page-home.dashboard-home .dashboard-home .stat span{color:var(--dash-copy)}
+#workspace-app #page-home.dashboard-home .dashboard-home .stat span,
+#workspace-app #page-home.dashboard-home .stat span{color:var(--dash-copy)!important}
+#workspace-app #page-home.dashboard-home .stat b{color:var(--dash-mint)}
+#workspace-app #page-home.dashboard-home .dashboard-shortcut{
+  color:var(--dash-ink);border-color:var(--dash-line);
+  background:linear-gradient(145deg,#14212A,#0D151E);
+}
+#workspace-app #page-home.dashboard-home .dashboard-shortcut>span{
+  color:var(--dash-mint)!important;text-shadow:0 0 8px #43CFA422;
+}
+#workspace-app #page-home.dashboard-home .dashboard-shortcut small{color:var(--dash-copy)}
+#workspace-app #page-home.dashboard-home .dashboard-tool-icon,
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon{
+  background:linear-gradient(145deg,#1B3535,#14232D)!important;
+  border:1px solid #4B8E82!important;
+  box-shadow:inset 0 1px 0 #FFFFFF12,0 5px 16px #0004!important;
+  border-radius:15px!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-tool-icon svg,
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon svg{
+  filter:drop-shadow(0 1px 3px #43CFA422)!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-tool-icon svg path,
+#workspace-app #page-home.dashboard-home .dashboard-tool-icon svg circle,
+#workspace-app #page-home.dashboard-home .dashboard-tool-icon svg rect,
+#workspace-app #page-home.dashboard-home .dashboard-tool-icon svg line,
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon svg path,
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon svg circle,
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon svg rect,
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon svg line{
+  stroke:#82DCC2!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-tool-icon svg [stroke="#69b8ff"],
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon svg [stroke="#69b8ff"]{stroke:#B5C7D2!important}
+#workspace-app #page-home.dashboard-home .app-tool{
+  border-color:var(--dash-line);background:linear-gradient(145deg,#111D27,#0B121A);
+}
+#workspace-app #page-home.dashboard-home .app-tool:hover{border-color:#5C9E8D}
+#workspace-app #page-home.dashboard-home .app-tool h4{color:var(--dash-ink)}
+#workspace-app #page-home.dashboard-home .app-tool p{color:var(--dash-copy)}
+#workspace-app #page-home.dashboard-home .dashboard-tools-panel,
+#workspace-app #page-home.dashboard-home .dashboard-info-card,
+#workspace-app #page-home.dashboard-home .stat{
+  border-color:var(--dash-line);background:linear-gradient(145deg,#111C26,#0B121A);
+}
+#workspace-app #page-home.dashboard-home .tag{border-color:#477C70;color:#9BE2C8;background:#142620}
+#workspace-app #page-home.dashboard-home .dashboard-intro .eyebrow{color:#8CE5C9}
+@media(max-width:760px){
+  #workspace-app #page-home.dashboard-home .dashboard-bot-wrap{
+    top:0;inset-inline-end:0;width:155px;height:165px;opacity:1;
+  }
+  #workspace-app #page-home.dashboard-home .bot-stage{transform:scale(.72);transform-origin:top center}
+  #workspace-app #page-home.dashboard-home .dashboard-intro{
+    min-height:0;padding:166px 12px 24px;gap:10px;
+  }
+}
+@media(max-width:390px){
+  #workspace-app #page-home.dashboard-home .dashboard-bot-wrap{width:138px;height:150px}
+  #workspace-app #page-home.dashboard-home .bot-stage{transform:scale(.64)}
+  #workspace-app #page-home.dashboard-home .dashboard-intro{padding-top:152px}
+}
+
 </style>
 </head>
 <body>
