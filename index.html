@@ -258,6 +258,21 @@
  }
 }
 
+
+/* Full-screen Smart Chat workspace: remove intro and centered assistant greeting */
+#workspace-app .main.chat-page-active #page-chat>.welcome,
+#workspace-app .main.chat-page-active #page-chat>.notice{display:none!important}
+#workspace-app .main.chat-page-active #page-chat{padding:0;min-height:0}
+#workspace-app .main.chat-page-active #page-chat .chat-workspace{width:100%;height:100%;min-height:0;margin:0}
+#workspace-app .main.chat-page-active #page-chat .chat-conversation{min-height:0}
+#workspace-app .main.chat-page-active #page-chat .chat-transcript{min-height:0}
+@media(max-width:760px){
+ #workspace-app .main.chat-page-active #page-chat .chat-workspace{grid-template-columns:minmax(0,1fr)}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-panel{padding:9px;max-height:94px;overflow:auto}
+ #workspace-app .main.chat-page-active #page-chat .chat-history-list{max-height:48px;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:6px}
+ #workspace-app .main.chat-page-active #page-chat .chat-conversation{height:100%;min-height:0}
+}
+
 </style>
 </head>
 <body>
@@ -327,7 +342,7 @@
   </aside>
   <section class="panel chat-conversation">
    <div class="chat-conversation-head"><div><b id="chat-title">گفتگوی جدید</b><div class="muted-copy">هر پیام · ۱ اعتبار</div></div><span class="tag">Smart Chat</span></div>
-   <div class="chat-transcript" id="chat-transcript" aria-live="polite"><div class="chat-empty-state"><b>سلام! من دستیار هوشمند LOKAL AI هستم.</b>سؤال یا ایده‌ات را بنویس تا شروع کنیم.</div></div>
+   <div class="chat-transcript" id="chat-transcript" aria-live="polite"></div>
    <div class="chat-compose-box"><textarea id="chat-input" maxlength="12000" placeholder="پیامت را اینجا بنویس… (Enter برای ارسال، Shift + Enter برای خط جدید)"></textarea><div class="chat-compose-actions"><span class="muted-copy">پاسخ‌ها و تاریخچه به‌صورت امن در حساب تو ذخیره می‌شوند.</span><button class="btn" id="chat-send" type="button">ارسال ←</button></div></div>
    <div class="chat-live-status" id="chat-status" role="status" aria-live="polite"></div>
   </section>
