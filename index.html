@@ -202,6 +202,28 @@
 @keyframes bot-eye-blink{0%,46%,50%,100%{transform:scaleY(1)}48%{transform:scaleY(.08)}}
 @keyframes bot-shadow-pulse{0%,100%{transform:scaleX(1);opacity:.7}50%{transform:scaleX(.75);opacity:.4}}
 @media(max-width:760px){.dashboard-bot-wrap{top:0;inset-inline-end:0;width:44%;height:190px}.bot-stage{transform:scale(.78);transform-origin:center}.dashboard-bot-label{font-size:8px}}
+
+/* Dashboard icon visibility guard: keep inline SVG artwork visible in all workspace routes */
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon{
+ display:grid!important;place-items:center!important;visibility:visible!important;opacity:1!important;
+ min-width:54px;min-height:54px;overflow:visible!important;
+}
+#workspace-app #page-home.dashboard-home .app-tool .feature-icon svg{
+ display:block!important;visibility:visible!important;opacity:1!important;
+ width:34px!important;height:34px!important;max-width:none!important;max-height:none!important;
+ overflow:visible!important;flex:none!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-shortcut>span{
+ display:inline-flex!important;align-items:center;justify-content:center;
+ min-width:28px;min-height:28px;visibility:visible!important;opacity:1!important;
+ color:#54e5c2!important;font-size:22px!important;line-height:1!important;
+}
+#workspace-app #page-home.dashboard-home .dashboard-bot-wrap{pointer-events:none;z-index:0}
+#workspace-app #page-home.dashboard-home .dashboard-intro,
+#workspace-app #page-home.dashboard-home .dashboard-overview,
+#workspace-app #page-home.dashboard-home .dashboard-tools-panel,
+#workspace-app #page-home.dashboard-home .dashboard-lower-grid{position:relative;z-index:1}
+
 </style>
 </head>
 <body>
