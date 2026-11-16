@@ -314,41 +314,6 @@
  #workspace-app:has(.main.chat-page-active) .chat-fullscreen-head #chat-exit{min-height:34px!important;white-space:nowrap!important}
  #workspace-app:has(.main.chat-page-active) .chat-compose-box textarea{max-height:18dvh!important;min-height:48px!important}
 }
-
-/* LOKAL AI visual identity refresh — hybrid face, luminous glass surfaces */
-:root{--bg:#070b14;--panel:#101a2a;--panel2:#14253a;--line:#29445b;--text:#f4fbff;--muted:#a4b8ca;--mint:#50f0cb;--blue:#49b8ff;--gold:#d9c6ff;--shadow:0 26px 75px #000b}
-body{background:radial-gradient(ellipse at 78% 2%,#20dcb52a,transparent 31%),radial-gradient(ellipse at 8% 35%,#338bff24,transparent 34%),radial-gradient(ellipse at 52% 100%,#9b67ff12,transparent 42%),var(--bg)}
-.brand-mark{border:1px solid #76ffe1;background:linear-gradient(145deg,#193b50,#101a32 52%,#183e49);color:#eaffff;box-shadow:0 0 26px #39eacb66,inset 0 1px 12px #cfffff55}
-.btn{background:linear-gradient(115deg,#73ffdb,#3bb9ff 58%,#a68aff);color:#06131b;box-shadow:0 9px 30px #39d8cb40,inset 0 1px 0 #fff9}
-.btn-ghost{background:linear-gradient(145deg,#ffffff12,#8ddcff08);border:1px solid #5a8da4;color:#e8faff;box-shadow:inset 0 1px 0 #ffffff16}
-.lokal-hero-logo{background:radial-gradient(ellipse at 50% 20%,#42e6d52b,transparent 60%),linear-gradient(145deg,#142c43e8,#0b1424f5 62%,#211a3be8);border:1px solid #5a9ca4;box-shadow:0 20px 65px #0009,0 0 45px #39d9c52a,inset 0 1px 0 #ffffff30}
-.lokal-hero-logo svg{width:clamp(145px,20vw,210px);height:auto;filter:drop-shadow(0 0 22px #43eacb66) drop-shadow(0 0 38px #398dff30)}
-.lokal-hero-wordmark{background:linear-gradient(100deg,#e6fff8,#62f4d1 35%,#55bfff 70%,#c5a0ff);-webkit-background-clip:text;background-clip:text;text-shadow:0 0 30px #58dfff45}
-.hero h1 .gradient{background:linear-gradient(90deg,#b9ffe9,#55f0cb 40%,#65bfff 75%,#c5a2ff);-webkit-background-clip:text;background-clip:text}
-.visual-card,.hero-desktop-panel,.panel,.dashboard-tools-panel{border-color:#31576b;background:linear-gradient(145deg,#12283ae8,#0b1524f0 68%,#171b34e8);box-shadow:0 22px 60px #0008,inset 0 1px 0 #ffffff12}
-.feature,.app-tool,.dashboard-shortcut,.stat{border-color:#34566c!important;background:linear-gradient(145deg,#14283be8,#0b1726ed 65%,#171b32e8)!important;box-shadow:0 12px 30px #0005,inset 0 1px 0 #ffffff16;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
-.feature:hover,.app-tool:hover,.dashboard-shortcut:hover{transform:translateY(-4px);border-color:#6bf3dc!important;box-shadow:0 18px 38px #0008,0 0 24px #39dfc52a,inset 0 1px 0 #ffffff2b}
-.feature-icon,.dashboard-tool-icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(145deg,#1c4253,#14223c 65%,#252044);border:1px solid #4c91a0;box-shadow:0 8px 22px #0005,inset 0 1px 0 #ffffff35,0 0 18px #39d9c51c}
-.feature-icon svg,.dashboard-tool-icon svg{width:34px;height:34px;filter:drop-shadow(0 0 5px #5af0d255)}
-.app-tool h4,.feature h3{color:#effcff}
-.dashboard-home .stat{border-color:#31576b!important;background:linear-gradient(145deg,#142b3de8,#0b1726ed)!important}
-.dashboard-shortcut>span{color:#79f6dc;text-shadow:0 0 14px #48e8d0}
-.hybrid-bot-wrap{width:min(48%,350px);height:285px;top:-12px;inset-inline-end:12px}
-.hybrid-avatar{position:relative;width:clamp(155px,22vw,245px);height:235px;display:grid;place-items:center;isolation:isolate;animation:hybrid-float 5s ease-in-out infinite}
-.hybrid-avatar:before{content:"";position:absolute;inset:10% 5% 5%;border-radius:50%;background:radial-gradient(circle,#3ee9cb35,transparent 66%);filter:blur(10px);z-index:-1}
-.hybrid-avatar:after{content:"";position:absolute;inset:6% 9% 3%;border:1px solid #69f3df40;border-radius:48% 52% 46% 54%;box-shadow:0 0 30px #35e2c52b,inset 0 0 28px #3b9bff12;z-index:-1}
-.hybrid-avatar svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 16px 24px #0009) drop-shadow(0 0 18px #39e6cb44)}
-@keyframes hybrid-float{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-7px) rotate(1deg)}}
-.dashboard-bot-label{color:#c9fff3;text-shadow:0 0 18px #39e6cb55;letter-spacing:1.4px}
-.dashboard-bot-label span{color:#8ebbd0}
-@media(max-width:680px){
- .hybrid-bot-wrap{width:42%;height:205px;top:-1px;inset-inline-end:0}
- .hybrid-avatar{width:clamp(130px,39vw,175px);height:178px}
- .dashboard-intro{padding-top:20px;min-height:145px}
- .lokal-hero-logo svg{width:clamp(150px,45vw,190px)}
- .feature-icon,.dashboard-tool-icon{width:52px;height:52px;border-radius:16px}
-}
-@media(prefers-reduced-motion:reduce){.hybrid-avatar{animation:none}}
 </style>
 </head>
 <body>
@@ -359,49 +324,7 @@ body{background:radial-gradient(ellipse at 78% 2%,#20dcb52a,transparent 31%),rad
 <div class="top-actions"><span class="tag" id="public-credit-badge" hidden>اعتبار <b id="publicCreditCount">—</b></span><button class="btn btn-ghost btn-small" id="return-workspace" type="button" hidden>ورود به ابزارها</button><a href="#auth-section" class="btn btn-ghost btn-small" id="public-login-link">ورود</a><a href="#auth-section" class="btn btn-small" id="public-signup-link">شروع رایگان</a></div>
 </header>
 <main id="top">
-<section class="hero"><div class="container"><div class="hero-copy"><div class="eyebrow">YOUR AI CREATIVE WORKSPACE</div><h1>ایده‌ات را به جهان<br><span class="gradient">نشان بده.</span></h1><div class="lokal-hero-logo" role="button" tabindex="0" aria-label="ورود به داشبورد LOKAL AI" title="ورود به داشبورد LOKAL AI"><svg viewBox="0 0 300 320" role="img" aria-label="چهره سه‌بعدی نیمه انسان و نیمه ربات LOKAL AI" xmlns="http://www.w3.org/2000/svg">
-<defs>
- <linearGradient id="hyHeroSkin" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe2c9"/><stop offset=".55" stop-color="#d99b79"/><stop offset="1" stop-color="#875b54"/></linearGradient>
- <linearGradient id="hyHeroMetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5ffff"/><stop offset=".28" stop-color="#8baebc"/><stop offset=".58" stop-color="#263f59"/><stop offset="1" stop-color="#b8f4ed"/></linearGradient>
- <linearGradient id="hyHeroHair" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#263d4a"/><stop offset=".55" stop-color="#070f1b"/><stop offset="1" stop-color="#176b70"/></linearGradient>
- <linearGradient id="hyHeroGlow" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4effd0"/><stop offset=".5" stop-color="#39baff"/><stop offset="1" stop-color="#b18aff"/></linearGradient>
- <filter id="hyHeroShadow" x="-40%" y="-30%" width="180%" height="180%"><feGaussianBlur stdDeviation="8"/></filter>
- <clipPath id="hyHeroFace"><path d="M150 66 C91 56 66 101 72 165 C77 229 108 265 150 273 C192 265 223 229 228 165 C234 101 209 56 150 66Z"/></clipPath>
-</defs>
-<ellipse cx="150" cy="297" rx="91" ry="12" fill="#21e6c5" opacity=".22" filter="url(#hyDashShadow)"/>
-<path d="M43 302 C48 251 76 236 111 225 L150 239 190 225 C226 237 252 257 258 302Z" fill="#122b3d" stroke="#4de8d0" stroke-opacity=".65" stroke-width="2"/>
-<path d="M77 300 98 252 150 271 202 252 224 300" fill="none" stroke="url(#hyDashGlow)" stroke-width="3" opacity=".8"/>
-<path d="M62 153 C45 72 96 22 155 25 C227 27 263 80 239 166 C230 119 210 92 184 81 C154 104 109 99 82 133Z" fill="url(#hyDashHair)" stroke="#55e8db" stroke-width="2"/>
-<path d="M150 66 C91 56 66 101 72 165 C77 229 108 265 150 273 C192 265 223 229 228 165 C234 101 209 56 150 66Z" fill="url(#hyDashSkin)" stroke="#b5fff0" stroke-width="2"/>
-<g clip-path="url(#hyDashFace)">
- <path d="M150 53 C211 47 243 90 231 169 C226 230 193 267 150 278Z" fill="url(#hyDashMetal)"/>
- <path d="M150 58V278" stroke="#e7ffff" stroke-width="2" opacity=".8"/>
- <path d="M157 69 194 74 222 104 226 157 208 196 219 232 190 269 151 277Z" fill="none" stroke="#e9ffff" stroke-width="2" opacity=".55"/>
- <path d="M171 88 211 100 224 130 198 145 169 135Z" fill="#294d65" stroke="#75f5e4" stroke-width="2"/>
- <path d="M177 97 207 107 216 128 195 137 174 129Z" fill="#0b1b2d"/>
- <path d="M178 111 201 114" stroke="#50f3df" stroke-width="3" stroke-linecap="round"/>
- <path d="M169 153 218 151 223 179 192 194 164 181Z" fill="#b9d4dd" stroke="#355a72" stroke-width="2"/>
- <path d="M171 198 211 188 221 218 193 247 160 239Z" fill="#25445b" stroke="#72e9dc" stroke-width="2"/>
- <path d="M165 211 192 205 207 216" fill="none" stroke="#c8ffff" stroke-width="2"/>
- <path d="M188 251 214 231" stroke="#5effdc" stroke-width="3"/>
-</g>
-<path d="M78 138 C95 122 121 121 139 135" fill="none" stroke="#50342f" stroke-width="8" stroke-linecap="round"/>
-<path d="M161 135 C178 119 205 119 222 135" fill="none" stroke="#dffefa" stroke-width="7" stroke-linecap="round"/>
-<path d="M88 153 Q111 139 134 153" fill="none" stroke="#3d2c2d" stroke-width="5" stroke-linecap="round"/>
-<path d="M165 153 Q190 138 214 151" fill="none" stroke="#11283c" stroke-width="5" stroke-linecap="round"/>
-<ellipse cx="111" cy="155" rx="8" ry="6" fill="#e9fff5"/><ellipse cx="111" cy="155" rx="4" ry="5" fill="#4b9d8c"/>
-<ellipse cx="190" cy="155" rx="8" ry="6" fill="#dfffff"/><ellipse cx="190" cy="155" rx="4" ry="5" fill="#42f4df"/>
-<circle cx="190" cy="155" r="9" fill="none" stroke="#51eede" stroke-width="1.5" opacity=".8"/>
-<path d="M149 157 140 190 151 196" fill="none" stroke="#986c61" stroke-width="3" stroke-linecap="round"/>
-<path d="M150 157 159 190 151 196" fill="none" stroke="#d8ffff" stroke-width="2" stroke-linecap="round"/>
-<path d="M120 220 Q137 231 150 220" fill="none" stroke="#7c3d49" stroke-width="4" stroke-linecap="round"/>
-<path d="M150 220 Q170 231 185 213" fill="none" stroke="#14394c" stroke-width="4" stroke-linecap="round"/>
-<path d="M72 166 55 178 66 214 83 224" fill="none" stroke="#55f3dc" stroke-width="4" opacity=".8"/>
-<path d="M228 166 246 178 235 214 218 224" fill="none" stroke="#55bfff" stroke-width="4" opacity=".8"/>
-<path d="M60 95 C77 37 125 9 177 25 C205 33 224 53 234 79 C210 58 189 53 171 57 C132 68 106 54 83 88Z" fill="url(#hyDashHair)" stroke="#3adfc8" stroke-width="2"/>
-<path d="M45 110 Q29 153 52 205" fill="none" stroke="#2de6c6" stroke-width="3" opacity=".7"/>
-<path d="M255 110 Q273 153 249 205" fill="none" stroke="#42baff" stroke-width="3" opacity=".7"/>
-</svg><div><div class="lokal-hero-wordmark">LOKAL AI</div><span class="lokal-hero-caption">CREATE · IMAGINE · INNOVATE</span></div></div><div class="hero-desktop-panel"><span class="hero-panel-kicker">LOKAL AI WORKSPACE</span><h2>فضای خلاقیت تو، یک‌جا</h2><p>از ایده‌پردازی و ساخت پرامپت تا مدیریت پروژه‌ها؛ با ورود به حساب کاربری، ابزارهای در دسترس را در داشبورد خودت دنبال کن.</p><a class="btn btn-ghost" href="#auth-section">ورود به فضای کار ←</a><div class="hero-panel-foot"><span>حساب شخصی</span><span>ابزارهای یکپارچه</span><span>پروژه‌ها و اعتبار</span></div></div><p>ابزارهای هوش مصنوعی برای ساخت پرامپت و خلق تصویر، در یک فضای ساده و یکپارچه.</p><div class="hero-actions"><a href="#auth-section" class="btn">شروع تجربه رایگان ←</a><a href="#studios" class="btn btn-ghost">مشاهده ابزارها</a></div><div class="hero-note">برای استفاده از ابزارها وارد حساب کاربری شو.</div></div></div></section>
+<section class="hero"><div class="container"><div class="hero-copy"><div class="eyebrow">YOUR AI CREATIVE WORKSPACE</div><h1>ایده‌ات را به جهان<br><span class="gradient">نشان بده.</span></h1><div class="lokal-hero-logo" role="button" tabindex="0" aria-label="ورود به داشبورد LOKAL AI" title="ورود به داشبورد LOKAL AI"><svg viewBox="0 0 160 160" role="img" aria-hidden="true"><defs><linearGradient id="lokalHeroMarkGradient" x1="18" y1="14" x2="143" y2="148" gradientUnits="userSpaceOnUse"><stop stop-color="#54ffd0"/><stop offset=".52" stop-color="#3199ed"/><stop offset="1" stop-color="#b05cff"/></linearGradient><linearGradient id="lokalHeroLettersGradient" x1="39" y1="43" x2="119" y2="119" gradientUnits="userSpaceOnUse"><stop stop-color="#c4fff0"/><stop offset=".55" stop-color="#70d8ff"/><stop offset="1" stop-color="#c39aff"/></linearGradient><filter id="lokalHeroGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><circle cx="80" cy="80" r="67" fill="#07141d" stroke="url(#lokalHeroMarkGradient)" stroke-width="4" filter="url(#lokalHeroGlow)"/><circle cx="80" cy="80" r="58" fill="none" stroke="#b8fff0" stroke-opacity=".25" stroke-width="1.4"/><path d="M27 53A59 59 0 0 1 58 26M102 26a59 59 0 0 1 31 27M133 107a59 59 0 0 1-31 27M58 134a59 59 0 0 1-31-27" fill="none" stroke="url(#lokalHeroMarkGradient)" stroke-width="3" stroke-linecap="round"/><path d="M48 49V108H76M87 108 108 49 130 108M96 84H120" fill="none" stroke="url(#lokalHeroLettersGradient)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" filter="url(#lokalHeroGlow)"/><path d="m27 37 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7ZM128 29l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5 2.5-6Z" fill="#9affeb"/><circle cx="132" cy="124" r="3" fill="#b78cff"/></svg><div><div class="lokal-hero-wordmark">LOKAL AI</div><span class="lokal-hero-caption">CREATE · IMAGINE · INNOVATE</span></div></div><div class="hero-desktop-panel"><span class="hero-panel-kicker">LOKAL AI WORKSPACE</span><h2>فضای خلاقیت تو، یک‌جا</h2><p>از ایده‌پردازی و ساخت پرامپت تا مدیریت پروژه‌ها؛ با ورود به حساب کاربری، ابزارهای در دسترس را در داشبورد خودت دنبال کن.</p><a class="btn btn-ghost" href="#auth-section">ورود به فضای کار ←</a><div class="hero-panel-foot"><span>حساب شخصی</span><span>ابزارهای یکپارچه</span><span>پروژه‌ها و اعتبار</span></div></div><p>ابزارهای هوش مصنوعی برای ساخت پرامپت و خلق تصویر، در یک فضای ساده و یکپارچه.</p><div class="hero-actions"><a href="#auth-section" class="btn">شروع تجربه رایگان ←</a><a href="#studios" class="btn btn-ghost">مشاهده ابزارها</a></div><div class="hero-note">برای استفاده از ابزارها وارد حساب کاربری شو.</div></div></div></section>
 <section class="section" id="features"><div class="container"><div class="features">
 <article class="feature" role="button" tabindex="0" data-public-destination="core"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 5 28 19 42 24 28 29 24 43 20 29 6 24 20 19 24 5Z" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/><circle cx="36" cy="10" r="3" stroke="#69b8ff" stroke-width="2"/></svg></div><h3>AI Core</h3><p>هسته مرکزی متصل به مدل‌های هوش مصنوعی برای انجام درخواست‌های متنی و خلاقانه.</p></article>
 <article class="feature" role="button" tabindex="0" data-public-destination="assistant"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M7 10a5 5 0 0 1 5-5h24a5 5 0 0 1 5 5v20a5 5 0 0 1-5 5H22l-10 8v-8a5 5 0 0 1-5-5V10Z" stroke="#67f0d0" stroke-width="2.2" stroke-linejoin="round"/><path d="M15 17h18M15 24h13" stroke="#69b8ff" stroke-width="2.2" stroke-linecap="round"/></svg></div><h3>AI Assistant</h3><p>فضای گفتگو برای فکر کردن، پرسیدن، نوشتن و توسعه ایده‌ها با کمک هوش مصنوعی.</p></article>
@@ -428,50 +351,22 @@ body{background:radial-gradient(ellipse at 78% 2%,#20dcb52a,transparent 31%),rad
 <aside class="sidebar"><div class="side-label">WORKSPACE</div><button class="nav-btn active" data-page="home">⌂　Dashboard</button><button class="nav-btn" data-page="chat">💬　چت هوشمند</button><button class="nav-btn" data-page="prompt">✍️　Prompt Lab</button><button class="nav-btn" data-page="projects">▤　My Projects</button><button class="nav-btn" data-page="account">◉　Account & Wallet</button><div class="side-label">STUDIOS</div><button class="nav-btn" data-page="image">🎨　Image Studio</button><button class="nav-btn" data-page="video">🎬　Video Studio</button></aside>
 <main class="main">
 <section class="page active dashboard-home" id="page-home">
-<div class="dashboard-bot-wrap hybrid-bot-wrap" role="img" aria-label="چهره سه‌بعدی نیمه انسان و نیمه ربات LOKAL AI">
- <div class="hybrid-avatar"><svg viewBox="0 0 300 320" role="img" aria-label="چهره سه‌بعدی نیمه انسان و نیمه ربات LOKAL AI" xmlns="http://www.w3.org/2000/svg">
-<defs>
- <linearGradient id="hyDashSkin" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe2c9"/><stop offset=".55" stop-color="#d99b79"/><stop offset="1" stop-color="#875b54"/></linearGradient>
- <linearGradient id="hyDashMetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5ffff"/><stop offset=".28" stop-color="#8baebc"/><stop offset=".58" stop-color="#263f59"/><stop offset="1" stop-color="#b8f4ed"/></linearGradient>
- <linearGradient id="hyDashHair" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#263d4a"/><stop offset=".55" stop-color="#070f1b"/><stop offset="1" stop-color="#176b70"/></linearGradient>
- <linearGradient id="hyDashGlow" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4effd0"/><stop offset=".5" stop-color="#39baff"/><stop offset="1" stop-color="#b18aff"/></linearGradient>
- <filter id="hyDashShadow" x="-40%" y="-30%" width="180%" height="180%"><feGaussianBlur stdDeviation="8"/></filter>
- <clipPath id="hyDashFace"><path d="M150 66 C91 56 66 101 72 165 C77 229 108 265 150 273 C192 265 223 229 228 165 C234 101 209 56 150 66Z"/></clipPath>
-</defs>
-<ellipse cx="150" cy="297" rx="91" ry="12" fill="#21e6c5" opacity=".22" filter="url(#hyDashShadow)"/>
-<path d="M43 302 C48 251 76 236 111 225 L150 239 190 225 C226 237 252 257 258 302Z" fill="#122b3d" stroke="#4de8d0" stroke-opacity=".65" stroke-width="2"/>
-<path d="M77 300 98 252 150 271 202 252 224 300" fill="none" stroke="url(#hyDashGlow)" stroke-width="3" opacity=".8"/>
-<path d="M62 153 C45 72 96 22 155 25 C227 27 263 80 239 166 C230 119 210 92 184 81 C154 104 109 99 82 133Z" fill="url(#hyDashHair)" stroke="#55e8db" stroke-width="2"/>
-<path d="M150 66 C91 56 66 101 72 165 C77 229 108 265 150 273 C192 265 223 229 228 165 C234 101 209 56 150 66Z" fill="url(#hyDashSkin)" stroke="#b5fff0" stroke-width="2"/>
-<g clip-path="url(#hyDashFace)">
- <path d="M150 53 C211 47 243 90 231 169 C226 230 193 267 150 278Z" fill="url(#hyDashMetal)"/>
- <path d="M150 58V278" stroke="#e7ffff" stroke-width="2" opacity=".8"/>
- <path d="M157 69 194 74 222 104 226 157 208 196 219 232 190 269 151 277Z" fill="none" stroke="#e9ffff" stroke-width="2" opacity=".55"/>
- <path d="M171 88 211 100 224 130 198 145 169 135Z" fill="#294d65" stroke="#75f5e4" stroke-width="2"/>
- <path d="M177 97 207 107 216 128 195 137 174 129Z" fill="#0b1b2d"/>
- <path d="M178 111 201 114" stroke="#50f3df" stroke-width="3" stroke-linecap="round"/>
- <path d="M169 153 218 151 223 179 192 194 164 181Z" fill="#b9d4dd" stroke="#355a72" stroke-width="2"/>
- <path d="M171 198 211 188 221 218 193 247 160 239Z" fill="#25445b" stroke="#72e9dc" stroke-width="2"/>
- <path d="M165 211 192 205 207 216" fill="none" stroke="#c8ffff" stroke-width="2"/>
- <path d="M188 251 214 231" stroke="#5effdc" stroke-width="3"/>
-</g>
-<path d="M78 138 C95 122 121 121 139 135" fill="none" stroke="#50342f" stroke-width="8" stroke-linecap="round"/>
-<path d="M161 135 C178 119 205 119 222 135" fill="none" stroke="#dffefa" stroke-width="7" stroke-linecap="round"/>
-<path d="M88 153 Q111 139 134 153" fill="none" stroke="#3d2c2d" stroke-width="5" stroke-linecap="round"/>
-<path d="M165 153 Q190 138 214 151" fill="none" stroke="#11283c" stroke-width="5" stroke-linecap="round"/>
-<ellipse cx="111" cy="155" rx="8" ry="6" fill="#e9fff5"/><ellipse cx="111" cy="155" rx="4" ry="5" fill="#4b9d8c"/>
-<ellipse cx="190" cy="155" rx="8" ry="6" fill="#dfffff"/><ellipse cx="190" cy="155" rx="4" ry="5" fill="#42f4df"/>
-<circle cx="190" cy="155" r="9" fill="none" stroke="#51eede" stroke-width="1.5" opacity=".8"/>
-<path d="M149 157 140 190 151 196" fill="none" stroke="#986c61" stroke-width="3" stroke-linecap="round"/>
-<path d="M150 157 159 190 151 196" fill="none" stroke="#d8ffff" stroke-width="2" stroke-linecap="round"/>
-<path d="M120 220 Q137 231 150 220" fill="none" stroke="#7c3d49" stroke-width="4" stroke-linecap="round"/>
-<path d="M150 220 Q170 231 185 213" fill="none" stroke="#14394c" stroke-width="4" stroke-linecap="round"/>
-<path d="M72 166 55 178 66 214 83 224" fill="none" stroke="#55f3dc" stroke-width="4" opacity=".8"/>
-<path d="M228 166 246 178 235 214 218 224" fill="none" stroke="#55bfff" stroke-width="4" opacity=".8"/>
-<path d="M60 95 C77 37 125 9 177 25 C205 33 224 53 234 79 C210 58 189 53 171 57 C132 68 106 54 83 88Z" fill="url(#hyDashHair)" stroke="#3adfc8" stroke-width="2"/>
-<path d="M45 110 Q29 153 52 205" fill="none" stroke="#2de6c6" stroke-width="3" opacity=".7"/>
-<path d="M255 110 Q273 153 249 205" fill="none" stroke="#42baff" stroke-width="3" opacity=".7"/>
-</svg></div>
+<div class="dashboard-bot-wrap" role="img" aria-label="ربات سه‌بعدی هوشمند LOKAL AI">
+ <div class="bot-stage">
+  <div class="bot-shadow"></div>
+  <div class="bot-figure">
+   <div class="bot-antenna"><i></i></div>
+   <div class="bot-head">
+    <div class="bot-ear bot-ear-left"></div><div class="bot-ear bot-ear-right"></div>
+    <div class="bot-face"><i class="bot-eye bot-eye-left"></i><i class="bot-eye bot-eye-right"></i><b class="bot-smile"></b></div>
+    <div class="bot-head-highlight"></div>
+   </div>
+   <div class="bot-neck"></div>
+   <div class="bot-body"><div class="bot-chest"><i></i><b>LA</b><span></span></div><div class="bot-shoulder bot-shoulder-left"></div><div class="bot-shoulder bot-shoulder-right"></div></div>
+   <div class="bot-arm bot-arm-left"><i></i></div><div class="bot-arm bot-arm-right"><i></i></div>
+   <div class="bot-leg bot-leg-left"><i></i></div><div class="bot-leg bot-leg-right"><i></i></div>
+  </div>
+ </div>
  <div class="dashboard-bot-label">LOKAL AI <span>YOUR CREATIVE COMPANION</span></div>
 </div>
 <div class="dashboard-intro"><div><div class="eyebrow">LOKAL AI · CREATIVE WORKSPACE</div><h1>داشبورد هوشمند تو</h1><p>همه ابزارهای خلاقانه و پروژه‌هایت، یک‌جا.</p></div><button class="btn" data-go="prompt">＋ شروع پروژه جدید</button></div>
