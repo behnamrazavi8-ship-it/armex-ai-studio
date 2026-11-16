@@ -273,6 +273,31 @@
  #workspace-app .main.chat-page-active #page-chat .chat-conversation{height:100%;min-height:0}
 }
 
+
+/* Smart Chat: true immersive full-screen mode */
+#workspace-app:has(.main.chat-page-active) .app-top{display:none!important}
+#workspace-app:has(.main.chat-page-active) .app-layout{display:flex!important;flex:1 1 auto!important;min-height:0!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;gap:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) .sidebar,
+#workspace-app:has(.main.chat-page-active) .mobile-nav{display:none!important}
+#workspace-app:has(.main.chat-page-active) .main.chat-page-active{display:flex!important;flex:1 1 auto!important;width:100%!important;max-width:none!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) #page-chat.active{display:flex!important;flex:1 1 auto!important;min-height:0!important;width:100%!important;margin:0!important;padding:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) #page-chat>.welcome,
+#workspace-app:has(.main.chat-page-active) #page-chat>.notice,
+#workspace-app:has(.main.chat-page-active) .chat-history-panel{display:none!important}
+#workspace-app:has(.main.chat-page-active) .chat-workspace{display:flex!important;flex:1 1 auto!important;min-height:0!important;width:100%!important;margin:0!important;padding:0!important;gap:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) .chat-conversation{display:flex!important;flex:1 1 auto!important;width:100%!important;height:100%!important;min-height:0!important;margin:0!important;padding:12px!important;border:0!important;border-radius:0!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) .chat-fullscreen-head{flex:0 0 auto!important;justify-content:space-between!important;align-items:center!important;padding:0 0 10px!important}
+#workspace-app:has(.main.chat-page-active) .chat-fullscreen-head #chat-title{font-size:12px!important;color:#91a8ad!important}
+#workspace-app:has(.main.chat-page-active) .chat-transcript{flex:1 1 auto!important;min-height:0!important;max-height:none!important;padding:12px 2px!important;overflow-y:auto!important}
+#workspace-app:has(.main.chat-page-active) .chat-compose-box{flex:0 0 auto!important;margin-top:8px!important}
+#workspace-app:has(.main.chat-page-active) .chat-compose-box textarea{min-height:64px!important;max-height:24dvh!important}
+#workspace-app:has(.main.chat-page-active) .chat-live-status{flex:0 0 auto!important;min-height:0!important;margin-top:4px!important}
+@media(max-width:760px){
+ #workspace-app:has(.main.chat-page-active) .chat-conversation{padding:calc(8px + env(safe-area-inset-top)) 9px calc(8px + env(safe-area-inset-bottom))!important}
+ #workspace-app:has(.main.chat-page-active) .chat-fullscreen-head{padding-bottom:7px!important}
+ #workspace-app:has(.main.chat-page-active) .chat-compose-box textarea{min-height:56px!important;max-height:20dvh!important}
+ #workspace-app:has(.main.chat-page-active) .chat-compose-actions .muted-copy{display:none!important}
+}
 </style>
 </head>
 <body>
@@ -341,7 +366,7 @@
    <div class="chat-history-list" id="chat-history-list"><div class="empty">برای مشاهدهٔ گفتگوها وارد حساب شو.</div></div>
   </aside>
   <section class="panel chat-conversation">
-   <div class="chat-conversation-head"><div><b id="chat-title">گفتگوی جدید</b><div class="muted-copy">هر پیام · ۱ اعتبار</div></div><span class="tag">Smart Chat</span></div>
+   <div class="chat-conversation-head chat-fullscreen-head"><button class="btn btn-ghost btn-small" id="chat-exit" type="button">← بازگشت به داشبورد</button><b id="chat-title">گفتگوی جدید</b></div>
    <div class="chat-transcript" id="chat-transcript" aria-live="polite"></div>
    <div class="chat-compose-box"><textarea id="chat-input" maxlength="12000" placeholder="پیامت را اینجا بنویس… (Enter برای ارسال، Shift + Enter برای خط جدید)"></textarea><div class="chat-compose-actions"><span class="muted-copy">پاسخ‌ها و تاریخچه به‌صورت امن در حساب تو ذخیره می‌شوند.</span><button class="btn" id="chat-send" type="button">ارسال ←</button></div></div>
    <div class="chat-live-status" id="chat-status" role="status" aria-live="polite"></div>
@@ -707,6 +732,7 @@ else{
  document.getElementById("auth-signin").addEventListener("click",async()=>{const c=credentials();if(!c)return;captureAuthReturnContext();setMessage("در حال بررسی اطلاعات ورود...");const {data,error}=await supabase.auth.signInWithPassword(c);if(error)return setMessage("ورود ناموفق بود: "+translateError(error),true);renderSession(data.session)});
  document.getElementById("auth-google").addEventListener("click",async()=>{captureAuthReturnContext();setMessage("در حال انتقال امن به Google...");const {error}=await supabase.auth.signInWithOAuth({provider:"google",options:{redirectTo:authRedirectUrl()}});if(error)setMessage("ورود با Google انجام نشد: "+translateError(error),true)});
  document.getElementById("auth-reset").addEventListener("click",async()=>{const email=emailInput.value.trim();if(!email||!emailInput.checkValidity())return setMessage("ابتدا ایمیل معتبر را وارد کن.",true);setMessage("در حال ارسال لینک بازیابی...");const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:authRedirectUrl()});if(error)return setMessage(translateError(error),true);setMessage("اگر این ایمیل در سامانه ثبت شده باشد، لینک بازیابی برایش ارسال می‌شود.")});
+ document.getElementById("chat-exit")?.addEventListener("click",()=>document.getElementById("workspace-home")?.click());
  document.getElementById("workspace-home").addEventListener("click",()=>{backHomeConsumed=false;if(!activeSession){openWorkspaceHome();return;}previewMode=false;landingView=false;renderSession(activeSession);window.lokalShowPage?.('home',{history:false});history.replaceState({lokalRoute:'workspace',lokalWorkspacePage:'home',lokalWorkspaceRoot:true},'',location.pathname+location.search+'#workspace-home');window.scrollTo({top:0,behavior:'smooth'});});
  document.querySelectorAll('#public-site a[href^="#"]').forEach(link=>link.addEventListener("click",()=>{backHomeConsumed=false;}));
  document.querySelectorAll('#public-site a[href="#auth-section"]').forEach(link=>link.addEventListener("click",event=>{if(activeSession){event.preventDefault();openWorkspaceHome();}}));
