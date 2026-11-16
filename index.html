@@ -298,6 +298,22 @@
  #workspace-app:has(.main.chat-page-active) .chat-compose-box textarea{min-height:56px!important;max-height:20dvh!important}
  #workspace-app:has(.main.chat-page-active) .chat-compose-actions .muted-copy{display:none!important}
 }
+
+/* Keep immersive chat aligned to Android's visible viewport while the keyboard is open */
+#workspace-app:has(.main.chat-page-active){position:fixed!important;inset-inline:0!important;top:var(--lokal-vv-top,0px)!important;bottom:auto!important;height:var(--lokal-vv-height,100dvh)!important;min-height:0!important;width:100%!important;z-index:40!important;overflow:hidden!important}
+#workspace-app:has(.main.chat-page-active) .app-layout,
+#workspace-app:has(.main.chat-page-active) .main.chat-page-active,
+#workspace-app:has(.main.chat-page-active) #page-chat.active,
+#workspace-app:has(.main.chat-page-active) .chat-workspace,
+#workspace-app:has(.main.chat-page-active) .chat-conversation{min-height:0!important;max-height:100%!important}
+#workspace-app:has(.main.chat-page-active) .chat-fullscreen-head{position:relative!important;z-index:3!important;flex-shrink:0!important;min-height:38px!important;visibility:visible!important;opacity:1!important}
+#workspace-app:has(.main.chat-page-active) .chat-transcript{min-height:0!important;overscroll-behavior:contain!important;overflow-y:auto!important}
+#workspace-app:has(.main.chat-page-active) .chat-compose-box{position:relative!important;z-index:2!important;flex-shrink:0!important}
+@media(max-width:760px){
+ #workspace-app:has(.main.chat-page-active) .chat-conversation{padding-top:calc(6px + env(safe-area-inset-top))!important;padding-bottom:calc(6px + env(safe-area-inset-bottom))!important}
+ #workspace-app:has(.main.chat-page-active) .chat-fullscreen-head #chat-exit{min-height:34px!important;white-space:nowrap!important}
+ #workspace-app:has(.main.chat-page-active) .chat-compose-box textarea{max-height:18dvh!important;min-height:48px!important}
+}
 </style>
 </head>
 <body>
@@ -425,6 +441,17 @@
  }
 
  window.lokalShowPage=showPage;
+ // Track the visual viewport so Android's on-screen keyboard resizes the chat instead of scrolling it away.
+ const syncLokalVisualViewport=()=>{
+  const vv=window.visualViewport;
+  const top=vv?Math.max(0,vv.offsetTop):0;
+  const height=vv?vv.height:window.innerHeight;
+  document.documentElement.style.setProperty('--lokal-vv-top',top+'px');
+  document.documentElement.style.setProperty('--lokal-vv-height',height+'px');
+ };
+ syncLokalVisualViewport();
+ window.addEventListener('resize',syncLokalVisualViewport,{passive:true});
+ if(window.visualViewport){window.visualViewport.addEventListener('resize',syncLokalVisualViewport,{passive:true});window.visualViewport.addEventListener('scroll',syncLokalVisualViewport,{passive:true});}
  
  $$('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
  $$('[data-go]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.go)));
