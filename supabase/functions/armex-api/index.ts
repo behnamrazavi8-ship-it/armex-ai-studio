@@ -16,6 +16,7 @@ import { isMatchingCreditDebit, isMatchingCreditRefund } from "./credit-ledger-p
 import { resolveVideoDebitOutcome } from "./video-debit-policy.ts";
 import { assessVideoRecovery } from "./video-recovery-policy.ts";
 import { validateRunpodVideoOutput, wanSizeForAspectRatio } from "./video-output-policy.ts";
+import { handleImageEditApi } from "./image-edit-api.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -1500,6 +1501,10 @@ const handle = async (request: Request): Promise<Response> => {
   if (request.method === "GET" && url.searchParams.get("action") === "image_status") {
     return await getImageJobStatus(db, userId, url.searchParams.get("job_id") || "", cors);
   }
+  const imageEditGetAction = url.searchParams.get("action") || "";
+  if (request.method === "GET" && ["image_edit_quota", "image_edit_status", "image_edits"].includes(imageEditGetAction)) {
+    return await handleImageEditApi(db, userId, imageEditGetAction, null, url.searchParams.get("job_id") || "", cors);
+  }
 
   if (request.method === "GET") {
     return json({ success: true, service: "LOKAL AI", status: "online" }, 200, cors);
@@ -1516,6 +1521,9 @@ const handle = async (request: Request): Promise<Response> => {
     return fail("Invalid JSON", 400, cors);
   }
 
+  if (body.action === "edit_image") {
+    return await handleImageEditApi(db, userId, "edit_image", body, "", cors);
+  }
   if (body.action === "generate_image") {
     return await generateImage(db, userId, body, cors);
   }
