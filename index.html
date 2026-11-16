@@ -852,94 +852,74 @@ body{
 }
 
 
-/* LOKAL AI palette override: purple + black only */
+/* LOKAL AI — controlled graphite palette */
 :root{
  color-scheme:dark;
- --bg:#050309;--panel:#09090c;--panel2:#0f0f12;--line:#39234f;
- --text:#f8f1ff;--muted:#aa9bb9;--mint:#b56aff;--blue:#ae5cff;--gold:#d2a5ff;
+ --bg:#05080b;
+ --panel:#0b1015;
+ --panel2:#111820;
+ --line:#202d37;
+ --text:#edf4f8;
+ --muted:#91a0aa;
+ --mint:#36bff2;
+ --blue:#36bff2;
+ --gold:#a8bac5;
  --shadow:0 24px 70px #000000bb;
 }
-body{background:radial-gradient(ellipse at 85% 0%,#6d34a52b,transparent 36%),radial-gradient(ellipse at 5% 35%,#56218a22,transparent 38%),#050309}
-.topbar,.app-top{background:#060609ef;border-color:#39234f}
-.brand-mark{background:linear-gradient(145deg,#17171a,#07070a);border-color:#ad5aff;color:#e2c5ff;box-shadow:0 0 24px #ae5cff44,inset 0 0 14px #ae5cff20}
-.brand small,.top-links a,.visual-top,.hero-note,.lokal-hero-caption,.mini-stat span,.feature p,.tool p,.step p,.public-footer,.side-label,.nav-btn,.mobile-nav button,.muted-copy{color:#aa9bb9}
-.top-links a:hover,.eyebrow,.hero-panel-kicker,.mobile-nav button.active{color:#c48aff}
-.btn{background:linear-gradient(120deg,#c48aff,#7535b5);color:#09090c;box-shadow:0 8px 26px #ae5cff35}
-.btn-ghost{background:#ffffff08;border-color:#48305f;color:#eedcff;box-shadow:none}
-.lokal-hero-logo{border-color:#553476;background:linear-gradient(145deg,#131316cc,#060609dd);box-shadow:0 12px 38px #000000aa,inset 0 0 22px #ae5cff12}
-.lokal-hero-logo:before{background:radial-gradient(ellipse at 50% 0%,#ad5aff24,transparent 62%)}
-.lokal-hero-logo svg{filter:drop-shadow(0 0 16px #ad5aff77)}
-.lokal-hero-wordmark{background:linear-gradient(100deg,#e6ccff,#bc79ff 55%,#7f40bd);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
-.gradient{background:linear-gradient(90deg,#e8d0ff,#bc79ff 55%,#7f40bd);-webkit-background-clip:text;background-clip:text;color:transparent}
-.visual-card{border-color:#553476;background:radial-gradient(circle at 70% 18%,#ae5cff26,transparent 38%),linear-gradient(145deg,#131316,#060609 72%)}
-.visual-card:before{border-color:#c48aff44;box-shadow:0 0 0 32px #ae5cff0c,0 0 0 66px #ae5cff08}
-.orb{background:radial-gradient(circle at 35% 28%,#f1e2ff 0,#c48aff 12%,#7535b5 43%,#19191c 70%,#060609 78%);box-shadow:0 0 45px #ae5cff77,0 0 110px #7535b544}
-.live-dot{background:#c48aff;box-shadow:0 0 12px #c48aff}
-.feature,.step,.tool,.stat,.panel,.sidebar,.app-tool,.account-card,.auth-wrap,.signup-dialog{background:linear-gradient(145deg,#101013,#07070a);border-color:#39234f}
-.feature-icon{background:linear-gradient(145deg,#ae5cff30,#56218a35);border-color:#7244a0}
-.feature-icon svg,.app-tool .feature-icon svg{filter:drop-shadow(0 0 7px #bc79ff66)}
-.tag{border-color:#70469a;color:#e2c5ff;background:#151518}
-.tag.soon{border-color:#5f427b;background:#17171a;color:#ddbaff}
-.cta,.dash-hero{border-color:#553476;background:radial-gradient(ellipse at 10% 100%,#ae5cff26,transparent 45%),linear-gradient(110deg,#131316,#08080b)}
-.auth-wrap{border-color:#553476}
-.input,.textarea,.select{background:#060609;border-color:#48305f;color:#f8f1ff}
-.input:focus,.textarea:focus,.select:focus{border-color:#bc79ff;box-shadow:0 0 0 3px #ae5cff24}
-.message,.result,.image-cost-note{border-color:#66418b;background:#121215;color:#e5d3f7}
-.nav-btn:hover,.nav-btn.active{background:#ae5cff20;color:#f3e6ff}
-.nav-btn.active{box-shadow:inset -2px 0 #c48aff}
-.app-tool{border-color:#39234f;background:#0b0b0e}
-.app-tool:hover,.feature[role=button]:hover,#studios .tool[role=button]:hover{border-color:#bc79ff}
-.dash-hero p,.cta p{color:#c3b2d5}
-.notice{border-right-color:#bc79ff;background:#ae5cff18;color:#d7c5e8}
-.image-studio-panel,.image-preview,.download-progress{border-color:#553476;background:#07070a}
-.image-gallery-card{background:#0b0b0e;border-color:#39234f}
-.image-gallery-card a{color:#c48aff}
-.image-status{color:#d2c2e2}
-.compiler-review{border-color:#66418b;background:#0b0b0e}
-.compiler-review h4{color:#ddbaff}
-.compiler-review .compiled-prompt{border-color:#553476;background:#060609;color:#f2e5ff}
-.download-progress-track{background:#1e1e21}
-.download-progress-fill{background:linear-gradient(90deg,#c48aff,#7535b5)}
-.account-details>div{background:#060609}
-.account-profile img{border-color:#ae5cff}
-.toast{background:#101013;border-color:#553476;color:#f3e6ff}
-.signup-dialog{border-color:#553476;background:linear-gradient(145deg,#101013,#060609)}
-.signup-dialog-message{color:#c3b2d5}
-.signup-dialog-message.error{color:#dcb8ff}
-.signup-dialog::backdrop{background:#020006e8}
-.lokal-hero-logo:hover,.lokal-hero-logo:focus-visible{border-color:#d3a7ff;outline-color:#bc79ff55}
-
-
-/* LOKAL AI graphite + restrained neon-blue edge light */
-body{background:radial-gradient(ellipse at 85% 0%,#142b3b18,transparent 34%),radial-gradient(ellipse at 5% 35%,#101b2512,transparent 36%),var(--bg);color:var(--text)}
-.topbar,.app-top{background:#05070af2;border-color:#1b252e}
-.brand-mark{background:linear-gradient(145deg,#111820,#070a0e);border-color:#263e50;color:#b9eaff;box-shadow:0 0 12px #20bfff22,inset 0 0 10px #20bfff0c}
-.brand small,.lokal-hero-caption{color:#8395a3}
-.lokal-hero-logo,.visual-card,.feature,.tool,.step,.auth-wrap,.stat,.panel,.sidebar,.app-tool{background:linear-gradient(145deg,#101419,#080b0f 76%);border-color:#202b35}
-.lokal-hero-logo{box-shadow:0 12px 38px #0009,inset 0 0 18px #20bfff08}
-.lokal-hero-logo svg{filter:drop-shadow(0 0 5px #20bfff38)}
-.lokal-hero-wordmark{background:linear-gradient(100deg,#d9e6f0,#b7c8d7 62%,#8fdcff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 18px #20bfff20}
-.gradient{background:linear-gradient(90deg,#e2edf5,#a9c4d7 55%,#77d9ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 16px #20bfff20}
-.eyebrow,.side-label{color:#78cfff}
-.btn{background:linear-gradient(120deg,#91a8ba,#54748b);color:#05090d;box-shadow:0 6px 20px #20bfff18}
-.btn-ghost{background:#ffffff07;border-color:#26333e;color:#d8e4ec}
-.visual-card{background:radial-gradient(circle at 70% 18%,#12324720,transparent 35%),linear-gradient(145deg,#11171d,#080b0f 72%)}
-.visual-card:before{border-color:#35bfff24;box-shadow:0 0 0 32px #35bfff06,0 0 0 66px #35bfff03}
-.orb{background:radial-gradient(circle at 35% 28%,#b9eaff 0,#387da0 9%,#17394c 40%,#11171c 68%,#080b0e 75%);box-shadow:0 0 30px #20bfff30,0 0 75px #20bfff12}
-.live-dot{background:#35caff;box-shadow:0 0 9px #35caff66}
-.feature-icon{background:linear-gradient(145deg,#14232d,#0b1117);border-color:#254356}
-.feature-icon svg,.app-tool .feature-icon svg{filter:drop-shadow(0 0 5px #20bfff45)}
-.tag,.tag.soon{border-color:#29485a;color:#a9e4ff;background:#0c151c}
+body{
+ background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05080b;
+ color:var(--text);
+}
+.topbar,.app-top{background:#070b0ff2;border-color:#1c2932}
+.brand,.brand-mark{color:#e6f4fb}
+.brand-mark{background:linear-gradient(145deg,#111a21,#080d12);border:1px solid #28516a;box-shadow:0 0 12px #28bfff20}
+.brand small,.lokal-hero-caption,.hero-note,.mini-stat span,.public-footer{color:#8496a2}
+.top-links a{color:#a9b8c2}
+.top-links a:hover,.eyebrow,.hero-panel-kicker,.side-label{color:#63cef7}
+.btn{background:linear-gradient(120deg,#58c9f2,#287da2);color:#041017;box-shadow:0 6px 20px #20bfff20}
+.btn-ghost{background:#ffffff07;border:1px solid #2a3b47;color:#dce9ef;box-shadow:none}
+.lokal-hero-logo,.visual-card,.feature,.tool,.step,.auth-wrap,.stat,.panel,.sidebar,.app-tool,.account-card{
+ background:linear-gradient(145deg,#111820,#090e13 78%);
+ border-color:#22323d;
+}
+.lokal-hero-logo{box-shadow:0 12px 38px #0009,inset 0 0 18px #20bfff07}
+.lokal-hero-logo:before{background:radial-gradient(ellipse at 50% 0%,#20bfff0b,transparent 62%)}
+.lokal-hero-logo svg,.feature-icon svg,.app-tool .feature-icon svg{filter:drop-shadow(0 0 4px #20bfff35)}
+.lokal-hero-wordmark{background:linear-gradient(100deg,#eaf5fb,#b8d9e8 62%,#75d5fa);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 14px #20bfff12}
+.gradient{background:linear-gradient(90deg,#eaf5fb,#b8d9e8 55%,#75d5fa);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+.hero p,.dash-hero p,.cta p{color:#aebdc6}
+.visual-card{background:radial-gradient(circle at 70% 18%,#12324720,transparent 35%),linear-gradient(145deg,#111820,#090e13 72%)}
+.visual-card:before{border-color:#35bfff20;box-shadow:0 0 0 32px #35bfff05,0 0 0 66px #35bfff02}
+.orb{background:radial-gradient(circle at 35% 28%,#c5edff 0,#4389a7 10%,#1b465a 42%,#141b20 70%,#090e12 78%);box-shadow:0 0 28px #20bfff25,0 0 65px #20bfff0d}
+.live-dot{background:#35caff;box-shadow:0 0 8px #35caff55}
+.feature-icon{background:linear-gradient(145deg,#172832,#0c151b);border:1px solid #29495a}
+.tag,.tag.soon{border-color:#294654;color:#a9dff3;background:#101a20}
+.cta,.dash-hero{border-color:#29414e;background:radial-gradient(ellipse at 10% 100%,#12384a20,transparent 45%),linear-gradient(110deg,#111820,#0a1015)}
+.auth-wrap,.signup-dialog{border-color:#263c49}
+.input,.textarea,.select{background:#080d12;border-color:#2a3a45;color:#edf4f8}
+.input:focus,.textarea:focus,.select:focus{border-color:#38bff0;box-shadow:0 0 0 3px #20bfff16}
+.message,.result,.image-cost-note{border-color:#294654;background:#0e171d;color:#d6edf7}
+.nav-btn{color:#a9b8c2}
 .nav-btn:hover,.nav-btn.active{background:#20bfff0c;color:#e8f7ff}
 .nav-btn.active{box-shadow:inset -2px 0 #37caff}
-.app-tool:hover{border-color:#34718f}
-.cta,.dash-hero{border-color:#263e4c;background:radial-gradient(ellipse at 10% 100%,#14384a24,transparent 45%),linear-gradient(110deg,#10161b,#0a0e12)}
-.auth-wrap{border-color:#263e4c}
-.input:focus,.textarea:focus,.select:focus{border-color:#35bfff;box-shadow:0 0 0 3px #20bfff18}
-.message,.result{border-color:#28485a;background:#0c141a;color:#d4efff}
-h1,h2,h3,h4,.brand,.app-tool,.feature{ text-shadow:0 0 10px #20bfff0a }
-h1 .gradient,h2 .gradient,.brand-mark,.feature-icon,.feature-icon svg{filter:drop-shadow(0 0 4px #20bfff20)}
-
+.app-tool{border-color:#22323d;background:#0d141a}
+.app-tool:hover,.feature[role=button]:hover,#studios .tool[role=button]:hover{border-color:#34718f}
+.notice{border-right-color:#38bff0;background:#20bfff0a;color:#c5d7e0}
+.image-studio-panel,.image-preview,.download-progress,.image-gallery-card,.compiler-review{border-color:#263d4a;background:#0a1015}
+.image-gallery-card a{color:#69cff4}
+.compiler-review h4{color:#9eddf5}
+.compiler-review .compiled-prompt{border-color:#263d4a;background:#070c10;color:#e5f4fa}
+.download-progress-fill{background:linear-gradient(90deg,#58c9f2,#287da2)}
+.account-details>div{background:#080d12}
+.account-profile img{border-color:#2c7898}
+.toast{background:#101820;border-color:#294654;color:#e6f4fb}
+.signup-dialog{background:linear-gradient(145deg,#111820,#090e13)}
+.signup-dialog::backdrop{background:#03080bdc}
+.signup-dialog-message{color:#b4c5cf}
+.signup-dialog-message.error{color:#f0b6b6}
+#public-site .feature-icon svg,#workspace-app .feature-icon svg{filter:drop-shadow(0 0 4px #20bfff30)}
+#public-site .lokal-hero-wordmark,#public-site .gradient{filter:drop-shadow(0 0 5px #20bfff16)}
+@media(prefers-reduced-motion:reduce){#public-site *,#workspace-app *{scroll-behavior:auto}}
 </style>
 </head>
 <body>
