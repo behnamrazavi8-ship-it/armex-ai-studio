@@ -524,6 +524,44 @@ body{
 @media(prefers-reduced-motion:reduce){
   #public-site .feature,#workspace-app .page,#workspace-app .app-tool,#workspace-app .dashboard-shortcut,#public-site .btn,#workspace-app .btn{animation:none!important;transition:none!important}
 }
+
+/* Subtle readability polish — preserve the approved graphite/mint/blue/violet palette */
+:root{
+  --text:#F3F6FA;
+  --muted:#B5C0CC;
+}
+#public-site .hero p,#public-site .section-head p,#public-site .feature p,
+#public-site #studios .tool p,#public-site .step p,#public-site .cta p,
+#public-site .hero-desktop-panel p,
+#workspace-app .dashboard-intro p,#workspace-app .dashboard-section-head p,
+#workspace-app .dashboard-info-card p,#workspace-app .app-tool p,
+#workspace-app .muted-copy,#workspace-app .notice,
+#workspace-app .image-gallery-card p{
+  color:#B5C0CC;
+}
+#public-site .feature h3,#public-site #studios .tool h3,
+#public-site .step h3,#workspace-app .app-tool h4,
+#workspace-app .dashboard-section-head h3,
+#workspace-app .dashboard-info-card h3{
+  color:#F0F5FA;
+}
+#public-site .top-links a,#workspace-app .nav-btn,
+#workspace-app .mobile-nav button{color:#C0CBD7}
+#workspace-app .side-label,#public-site .hero-note,
+#workspace-app .dashboard-bot-label span{color:#9EADBC}
+#public-site .feature-icon svg,#workspace-app .feature-icon svg,
+#workspace-app .dashboard-tool-icon svg{
+  filter:drop-shadow(0 0 3px #43CFA455) drop-shadow(0 0 5px #6B9FE833);
+}
+#public-site .feature-icon,#workspace-app .feature-icon{
+  box-shadow:inset 0 1px 0 #FFFFFF16,0 0 12px #43CFA414;
+}
+#workspace-app .dashboard-shortcut>span{color:#B7D2F5;text-shadow:0 0 9px #6B9FE833}
+#workspace-app .nav-btn.active{color:#E5F8F1}
+#workspace-app .mobile-nav button.active{color:#67E2BA;text-shadow:0 0 8px #43CFA455}
+#public-site .eyebrow,#workspace-app .eyebrow{filter:brightness(1.08)}
+#public-site .tag,#workspace-app .tag{filter:brightness(1.06)}
+
 </style>
 </head>
 <body>
