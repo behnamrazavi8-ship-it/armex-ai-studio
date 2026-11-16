@@ -201,7 +201,15 @@ export function initImageEditor({ supabase, callArmexApi }) {
       if (!result.success || !result.job?.id) throw new Error(result.error || "ثبت درخواست ویرایش ناموفق بود.");
       quotaRemaining = Math.max(0, quotaRemaining - (result.duplicate ? 0 : 1)); refreshButton();
       await pollJob(session, result.job.id, currentInputUrl);
-    } catch (error) { say(error.message || "ویرایش تصویر ناموفق بود.", true); await updateQuota(); }
+    } catch (error) {
+      const raw = String(error?.message || "");
+      const friendly = raw.includes("IMAGE_EDIT_PROVIDER_HTTP_429")
+        ? "ظرفیت یا سهمیه رایگان Cloudflare فعلاً در دسترس نیست. هیچ سرویس پولی جایگزین نمی‌شود؛ بعداً دوباره تلاش کن."
+        : raw.includes("IMAGE_EDIT_PROVIDER_HTTP_5")
+        ? "سرویس رایگان ویرایش تصویر موقتاً پاسخ نمی‌دهد؛ بعداً دوباره تلاش کن."
+        : raw || "ویرایش تصویر ناموفق بود.";
+      say(friendly, true); await updateQuota();
+    }
     finally { activeJob = false; fileInput.disabled = false; promptInput.disabled = false; refreshButton(); }
   });
   $("ie-download").addEventListener("click", async () => {
