@@ -38,12 +38,15 @@ const json = (data: Json, status = 200, headers: HeadersInit = {}) =>
     headers: { "Content-Type": "application/json; charset=utf-8", ...headers },
   });
 
-const allowedOrigins = (): string[] =>
-  (Deno.env.get("ALLOWED_ORIGINS") ||
+const allowedOrigins = (): string[] => {
+  const configured = (Deno.env.get("ALLOWED_ORIGINS") ||
     "https://lokal-ai.net,https://www.lokal-ai.net")
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
+  // Explicitly allow the user-designated full-app Pages preview for authenticated testing.
+  return [...new Set([...configured, "https://feat-prompt-intelligence-pro.armex-ai-studio.pages.dev"])];
+};
 
 const corsFor = (origin: string | null): HeadersInit => {
   const allowed = allowedOrigins();
