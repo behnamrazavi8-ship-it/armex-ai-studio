@@ -828,55 +828,73 @@ body{background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05
  border-color:#347b9c!important;
 }
 
-/* Dashboard welcome: reduce the panel only; keep text layout and mascot behind content */
-#workspace-app #page-home.dashboard-home{overflow:visible!important;padding-top:8px!important}
-#workspace-app #page-home.dashboard-home .dashboard-bot-wrap{
- position:absolute!important;top:-8px!important;inset-inline-end:8px!important;
- width:min(28%,220px)!important;height:165px!important;z-index:0!important;
- opacity:1!important;overflow:visible!important;pointer-events:none!important;
-}
-#workspace-app #page-home.dashboard-home .bot-stage{
- transform:scale(.70)!important;transform-origin:center center!important;
-}
-#workspace-app #page-home.dashboard-home .dashboard-bot-label{
- color:#a9eaff!important;text-shadow:0 0 10px #20bfff80,0 0 22px #20bfff55!important;
-}
-#workspace-app #page-home.dashboard-home .dashboard-intro{
- min-height:88px!important;height:auto!important;padding:10px 18px!important;
- margin:0 0 16px!important;align-items:center!important;justify-content:space-between!important;
- gap:14px!important;flex-direction:row!important;flex-wrap:nowrap!important;
- position:relative!important;z-index:1!important;
- border:1px solid #263d4a!important;border-radius:18px!important;
- background:linear-gradient(110deg,#0b1117fa,#101b24f7)!important;
- box-shadow:0 12px 34px #0007,inset 0 0 24px #20bfff08!important;
-}
-#workspace-app #page-home.dashboard-home .dashboard-intro>div{
- max-width:none!important;flex:1 1 auto!important;min-width:0!important;
- position:relative!important;z-index:1!important;
-}
-#workspace-app #page-home.dashboard-home .dashboard-intro h1{
- margin:5px 0 4px!important;
-}
-#workspace-app #page-home.dashboard-home .dashboard-intro>.btn{
- position:relative!important;z-index:1!important;white-space:nowrap!important;
- flex:0 0 auto!important;
-}
-@media(max-width:760px){
- #workspace-app #page-home.dashboard-home .dashboard-bot-wrap{
-  top:-8px!important;inset-inline-end:0!important;width:30%!important;height:135px!important;
+/* Dashboard hero: compact panel and a separate, fully visible mascot column */
+ #workspace-app #page-home.dashboard-home{overflow:visible!important;padding-top:8px!important}
+ #workspace-app #page-home.dashboard-home .dashboard-hero-row{
+  display:grid!important;grid-template-columns:190px minmax(0,1fr)!important;
+  align-items:center!important;gap:16px!important;width:100%!important;
+  max-width:920px!important;margin:0 0 18px!important;
  }
- #workspace-app #page-home.dashboard-home .bot-stage{transform:scale(.56)!important}
  #workspace-app #page-home.dashboard-home .dashboard-intro{
-  min-height:88px!important;padding:9px 12px!important;gap:8px!important;
+  position:relative!important;z-index:auto!important;display:flex!important;
+  flex-direction:row!important;align-items:center!important;justify-content:space-between!important;
+  flex-wrap:nowrap!important;gap:14px!important;min-width:0!important;width:100%!important;
+  min-height:112px!important;height:auto!important;padding:14px 18px!important;margin:0!important;
+  border:1px solid #263d4a!important;border-radius:18px!important;
+  background:linear-gradient(110deg,#0b1117fa,#101b24f7)!important;
+  box-shadow:0 12px 28px #0006,inset 0 0 20px #20bfff08!important;
  }
- #workspace-app #page-home.dashboard-home .dashboard-intro>div{max-width:none!important;flex:1 1 auto!important}
- #workspace-app #page-home.dashboard-home .dashboard-intro>.btn{max-width:none!important;padding:9px 10px!important}
- #workspace-app #page-home.dashboard-home .dashboard-bot-label{font-size:7px!important}
-}
-@media(max-width:390px){
- #workspace-app #page-home.dashboard-home .dashboard-intro{gap:6px!important;padding-inline:9px!important}
- #workspace-app #page-home.dashboard-home .dashboard-intro>.btn{font-size:9px!important;padding:8px!important}
-}
+ #workspace-app #page-home.dashboard-home .dashboard-intro>div{
+  flex:1 1 auto!important;min-width:0!important;max-width:none!important;
+ }
+ #workspace-app #page-home.dashboard-home .dashboard-intro h1{margin:6px 0 5px!important}
+ #workspace-app #page-home.dashboard-home .dashboard-intro p{line-height:1.9!important}
+ #workspace-app #page-home.dashboard-home .dashboard-intro>.btn{
+  flex:0 0 auto!important;align-self:center!important;white-space:nowrap!important;
+  width:auto!important;max-width:none!important;
+ }
+ #workspace-app #page-home.dashboard-home .dashboard-bot-wrap{
+  position:relative!important;inset:auto!important;top:auto!important;right:auto!important;left:auto!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:100%!important;height:170px!important;min-width:0!important;
+  z-index:auto!important;opacity:1!important;overflow:visible!important;
+  pointer-events:none!important;
+ }
+ #workspace-app #page-home.dashboard-home .bot-stage{
+  transform:scale(.70)!important;transform-origin:center center!important;
+  flex:0 0 auto!important;
+ }
+ #workspace-app #page-home.dashboard-home .dashboard-bot-label{
+  color:#a9eaff!important;text-shadow:0 0 10px #20bfff80,0 0 22px #20bfff55!important;
+ }
+ @media(max-width:760px){
+  #workspace-app #page-home.dashboard-home .dashboard-hero-row{
+   grid-template-columns:126px minmax(0,1fr)!important;gap:8px!important;
+   max-width:100%!important;margin-bottom:15px!important;
+  }
+  #workspace-app #page-home.dashboard-home .dashboard-intro{
+   min-height:120px!important;padding:12px 11px!important;
+   flex-direction:column!important;align-items:flex-start!important;
+   justify-content:center!important;gap:7px!important;
+  }
+  #workspace-app #page-home.dashboard-home .dashboard-intro>div{width:100%!important;flex:0 0 auto!important}
+  #workspace-app #page-home.dashboard-home .dashboard-intro>.btn{
+   align-self:flex-start!important;padding:8px 10px!important;font-size:10px!important;
+  }
+  #workspace-app #page-home.dashboard-home .dashboard-bot-wrap{height:150px!important}
+  #workspace-app #page-home.dashboard-home .bot-stage{transform:scale(.58)!important}
+  #workspace-app #page-home.dashboard-home .dashboard-bot-label{font-size:7px!important}
+ }
+ @media(max-width:390px){
+  #workspace-app #page-home.dashboard-home .dashboard-hero-row{
+   grid-template-columns:108px minmax(0,1fr)!important;gap:5px!important;
+  }
+  #workspace-app #page-home.dashboard-home .dashboard-intro{
+   min-height:124px!important;padding:10px 9px!important;
+  }
+  #workspace-app #page-home.dashboard-home .dashboard-intro>.btn{font-size:9px!important;padding:7px 8px!important}
+  #workspace-app #page-home.dashboard-home .bot-stage{transform:scale(.52)!important}
+ }
 
 </style>
 </head>
@@ -915,6 +933,7 @@ body{background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05
 <aside class="sidebar"><div class="side-label">WORKSPACE</div><button class="nav-btn active" data-page="home">⌂　Dashboard</button><button class="nav-btn" data-page="chat">💬　چت هوشمند</button><button class="nav-btn" data-page="prompt">✍️　Prompt Lab</button><button class="nav-btn" data-page="projects">▤　My Projects</button><button class="nav-btn" data-page="account">◉　Account & Wallet</button><div class="side-label">STUDIOS</div><button class="nav-btn" data-page="image">🎨　Image Studio</button><button class="nav-btn" data-page="video">🎬　Video Studio</button></aside>
 <main class="main">
 <section class="page active dashboard-home" id="page-home">
+<div class="dashboard-hero-row">
 <div class="dashboard-bot-wrap" role="img" aria-label="ربات سه‌بعدی هوشمند LOKAL AI">
  <div class="bot-stage">
   <div class="bot-shadow"></div>
@@ -934,6 +953,7 @@ body{background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05
  <div class="dashboard-bot-label">LOKAL AI <span>YOUR CREATIVE COMPANION</span></div>
 </div>
 <div class="dashboard-intro"><div><div class="eyebrow">LOKAL AI · CREATIVE WORKSPACE</div><h1>داشبورد هوشمند تو</h1><p>همه ابزارهای خلاقانه و پروژه‌هایت، یک‌جا.</p></div><button class="btn" data-go="prompt">＋ شروع پروژه جدید</button></div>
+</div>
 <div class="dashboard-overview"><div class="stats"><div class="stat"><span>اعتبار کیف پول</span><b id="walletStat">—</b></div><div class="stat"><span>پروژه‌های ذخیره‌شده</span><b id="projectCount">۰</b></div><div class="stat"><span>ابزارهای اصلی</span><b>۲</b></div></div><div class="dashboard-shortcuts"><button class="dashboard-shortcut" data-page="account"><span>◈</span><strong>کیف پول و حساب</strong><small>موجودی و تنظیمات حساب</small></button><button class="dashboard-shortcut" data-page="projects"><span>▤</span><strong>پروژه‌ها و گالری</strong><small>مشاهده و مدیریت آثار</small></button></div></div>
 <div class="panel dashboard-tools-panel"><div class="dashboard-section-head"><div><h3>ابزارهای فضای کاری</h3><p>برای شروع، یکی از استودیوها یا ابزارهای اصلی را انتخاب کن.</p></div><span class="tag">دسترسی سریع</span></div><div class="tools-grid"><button class="app-tool" data-go="prompt"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M11 35.5 31.8 14.7a5 5 0 0 1 7.1 7.1L18.1 42.6 9 45l2-9.5Z" stroke="#ac67f0" stroke-width="2.2" stroke-linejoin="round"/><path d="m28 18 7 7M8 8h10M13 3v10M34 5l1.8 4.2L40 11l-4.2 1.8L34 17l-1.8-4.2L28 11l4.2-1.8L34 5Z" stroke="#b469ff" stroke-width="1.8" stroke-linecap="round"/></svg></div><h4>Prompt Lab</h4><p>ساخت پرامپت محلی و هوشمند</p><span class="tag">فعال</span></button><button class="app-tool" data-page="image"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="6" y="8" width="36" height="32" rx="7" stroke="#ac67f0" stroke-width="2.2"/><circle cx="17" cy="19" r="3.5" stroke="#b469ff" stroke-width="2"/><path d="m8 34 11-10 7 6 6-8 8 9" stroke="#ac67f0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="m34 7 1.5-3L37 7l3 1.5L37 10l-1.5 3L34 10l-3-1.5L34 7Z" fill="#b469ff"/></svg></div><h4>Image Studio</h4><p>تولید و ذخیره تصاویر با هوش مصنوعی</p><span class="tag">فعال</span></button><button class="app-tool" data-tool="video"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="5" y="11" width="38" height="28" rx="6" stroke="#ac67f0" stroke-width="2.2"/><path d="m20 18 12 7-12 7V18Z" stroke="#b469ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m9 11 5-6h8l-5 6M26 11l5-6h8l-5 6" stroke="#ac67f0" stroke-width="2" stroke-linejoin="round"/></svg></div><h4>Video Prompt Lab</h4><p>ورود مستقیم به Prompt Lab با تنظیم نوع خروجی ویدئو</p><span class="tag">آماده‌سازی پرامپت</span></button><button class="app-tool" data-page="account"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="24" cy="16" r="8" stroke="#b469ff" stroke-width="2.2"/><path d="M8 41c1.8-8 7.5-12 16-12s14.2 4 16 12" stroke="#ac67f0" stroke-width="2.2" stroke-linecap="round"/><circle cx="38" cy="11" r="4" fill="#ac67f0" fill-opacity=".25" stroke="#ac67f0" stroke-width="1.6"/></svg></div><h4>Account & Wallet</h4><p>مشاهده حساب Google، موجودی و تنظیمات کیف پول</p><span class="tag">حساب کاربری</span></button><button class="app-tool" data-page="projects"><div class="feature-icon dashboard-tool-icon" aria-hidden="true"><svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="m24 5 18 9-18 9-18-9 18-9Z" stroke="#b469ff" stroke-width="2.2" stroke-linejoin="round"/><path d="m6 23 18 9 18-9M6 32l18 9 18-9" stroke="#ac67f0" stroke-width="2.2" stroke-linejoin="round"/></svg></div><h4>پروژه‌های من</h4><p>مدیریت پروژه‌های ذخیره‌شده در حساب</p><span class="tag">حساب کاربری</span></button></div></div>
 <div class="dashboard-lower-grid"><div class="panel dashboard-info-card"><div class="eyebrow">YOUR WORK</div><h3>پروژه‌ها و تاریخچه</h3><p>پروژه‌های ذخیره‌شده‌ات را از یک بخش مدیریت کن و هر زمان به آن‌ها برگرد.</p><button class="btn btn-ghost" data-page="projects">مشاهده پروژه‌ها ←</button></div><div class="panel dashboard-info-card"><div class="eyebrow">ACCOUNT</div><h3>حساب و اعتبار</h3><p>وضعیت کیف پول و اطلاعات حساب کاربری‌ات را بررسی کن.</p><button class="btn btn-ghost" data-page="account">ورود به حساب و کیف پول ←</button></div></div>
