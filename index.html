@@ -727,6 +727,130 @@ body{
   #public-site .feature,#workspace-app .page,#workspace-app .app-tool,#workspace-app .dashboard-shortcut,#public-site .btn,#workspace-app .btn{animation:none!important;transition:none!important}
 }
 
+
+/* LOKAL AI — balanced electric blue + violet accents; based on approved 5492bea */
+:root{
+  --blue:#55b7ff;
+  --purple:#b58cff;
+}
+body{
+  background:
+    radial-gradient(ellipse at 88% 8%,#8e62ff20,transparent 31%),
+    radial-gradient(ellipse at 4% 38%,#3199ed1c,transparent 34%),
+    radial-gradient(ellipse at 58% 100%,#28e2b40a,transparent 42%),
+    var(--bg);
+}
+#public-site .lokal-hero-logo,
+#workspace-app .dashboard-intro{
+  background-image:
+    radial-gradient(ellipse at 82% 12%,#a77bff22,transparent 42%),
+    radial-gradient(ellipse at 12% 88%,#3199ed1c,transparent 46%),
+    linear-gradient(135deg,#10231f 0%,#0c1b29 58%,#17152a 100%);
+  border-color:#668bd080;
+}
+#public-site .lokal-hero-wordmark{
+  background:linear-gradient(100deg,#d9fff4 0%,#69e8d0 28%,#63bdff 58%,#bd91ff 84%,#e4d2ff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 24px #55b7ff2b,0 0 34px #b58cff22;
+}
+#public-site .gradient{
+  background:linear-gradient(90deg,#dffff3 0%,#55c8ff 52%,#b58cff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+#public-site .eyebrow,
+#workspace-app .side-label{color:#8ccfff}
+#public-site .feature-icon,
+#public-site #studios .tool .feature-icon,
+#workspace-app .app-tool .feature-icon,
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon{
+  border-color:#82baff!important;
+  background:
+    radial-gradient(circle at 25% 18%,#ffffff55,transparent 42%),
+    linear-gradient(145deg,#285a83 0%,#49366f 100%)!important;
+  box-shadow:0 0 12px #55b7ff66,0 0 23px #a879ff30,inset 0 1px 0 #ffffffb5,inset 0 0 14px #8b78ff38!important;
+}
+#public-site .feature-icon svg,
+#public-site #studios .tool .feature-icon svg,
+#workspace-app .app-tool .feature-icon svg,
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg{
+  filter:drop-shadow(0 0 5px #8dcaffaa) drop-shadow(0 0 9px #a879ff66)!important;
+}
+#public-site .feature:nth-child(3n+2) .feature-icon,
+#workspace-app .app-tool:nth-child(3n+2) .feature-icon{
+  border-color:#c2a0ff!important;
+  background:linear-gradient(145deg,#55417f,#243b61)!important;
+  box-shadow:0 0 12px #a879ff66,0 0 22px #55b7ff2b,inset 0 1px 0 #ffffffaa!important;
+}
+#public-site .feature:nth-child(3n+2) .feature-icon svg,
+#workspace-app .app-tool:nth-child(3n+2) .feature-icon svg{
+  filter:drop-shadow(0 0 6px #c5a4ffb0)!important;
+}
+#public-site .feature,
+#public-site #studios .tool,
+#workspace-app .app-tool,
+#workspace-app .dashboard-shortcut{
+  border-color:#42618a;
+  background:
+    radial-gradient(ellipse at 92% 0%,#a879ff12,transparent 46%),
+    linear-gradient(145deg,#11231f 0%,#0c1c29 70%,#111526 100%);
+}
+#public-site .feature:hover,
+#public-site #studios .tool:hover,
+#workspace-app .app-tool:hover,
+#workspace-app .dashboard-shortcut:hover{
+  border-color:#82baff;
+  box-shadow:0 16px 34px #0008,0 0 18px #55b7ff2a,0 0 25px #a879ff18,inset 0 1px 0 #ffffff2b;
+}
+#workspace-app .nav-btn:hover{
+  background:linear-gradient(100deg,#55b7ff18,#b58cff18);
+  border-color:#7b91c85c;
+  color:#e7e1ff;
+}
+#workspace-app .nav-btn.active{
+  background:linear-gradient(100deg,#55b7ff24,#b58cff1c);
+  border-color:#8d9ce66b;
+  color:#e9e2ff;
+  box-shadow:inset -3px 0 #8cbbff,0 0 18px #a879ff18;
+}
+#workspace-app .mobile-nav button.active{
+  color:#bda2ff;
+  text-shadow:0 0 12px #a879ff66;
+}
+#public-site .tag,
+#workspace-app .tag{
+  border-color:#6489c7;
+  color:#c5d9ff;
+  background:linear-gradient(100deg,#17364b,#2a2145);
+}
+#public-site .btn-ghost,
+#workspace-app .btn-ghost{
+  border-color:#6d83b0;
+  background:linear-gradient(120deg,#142b38,#211d36);
+  color:#dce9ff;
+}
+#public-site .input:focus,
+#public-site .textarea:focus,
+#public-site .select:focus,
+#workspace-app .input:focus,
+#workspace-app .textarea:focus,
+#workspace-app .select:focus{
+  border-color:#79bfff;
+  box-shadow:0 0 0 3px #55b7ff20,0 0 18px #a879ff20;
+}
+#public-site .visual-card{
+  border-color:#536e9b;
+  background:
+    radial-gradient(circle at 70% 18%,#a879ff28,transparent 38%),
+    radial-gradient(circle at 12% 88%,#3199ed20,transparent 44%),
+    linear-gradient(145deg,#102630,#11172b 72%);
+}
+#public-site .orb{
+  box-shadow:0 0 40px #21dcb666,0 0 80px #3199ed55,0 0 110px #a879ff35;
+}
+@media(prefers-reduced-motion:reduce){
+  #public-site *,#workspace-app *{scroll-behavior:auto}
+}
+
 </style>
 </head>
 <body>
