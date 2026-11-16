@@ -193,7 +193,8 @@ export function initImageEditor({ supabase, callArmexApi }) {
     if (!session) { say("برای استفاده از ویرایشگر ابتدا وارد حساب شو.", true); return; }
     const prompt = promptInput.value.trim();
     if (!selectedFile || !prompt) return;
-    activeJob = true; refreshButton(); actions.hidden = true; say("در حال آماده‌سازی امن تصویر…");
+    activeJob = true; fileInput.disabled = true; promptInput.disabled = true;
+    refreshButton(); actions.hidden = true; say("در حال آماده‌سازی امن تصویر…");
     try {
       const prepared = await prepareImage(selectedFile);
       const result = await callArmexApi(session, "", { action: "edit_image", request_id: crypto.randomUUID(), prompt, ...prepared });
@@ -201,11 +202,17 @@ export function initImageEditor({ supabase, callArmexApi }) {
       quotaRemaining = Math.max(0, quotaRemaining - (result.duplicate ? 0 : 1)); refreshButton();
       await pollJob(session, result.job.id, currentInputUrl);
     } catch (error) { say(error.message || "ویرایش تصویر ناموفق بود.", true); await updateQuota(); }
-    finally { activeJob = false; refreshButton(); }
+    finally { activeJob = false; fileInput.disabled = false; promptInput.disabled = false; refreshButton(); }
   });
   $("ie-download").addEventListener("click", async () => {
     if (!currentOutputUrl) return;
-    const a = document.createElement("a"); a.href = currentOutputUrl; a.download = "lokal-ai-edited-image.jpg"; a.target = "_blank"; a.rel = "noopener"; a.click();
+    try {
+      const response = await fetch(currentOutputUrl);
+      if (!response.ok) throw new Error("خروجی برای دانلود در دسترس نیست.");
+      const blob = await response.blob(), localUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = localUrl; a.download = "lokal-ai-edited-image.jpg";
+      document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(localUrl);
+    } catch (error) { say(error.message || "دانلود تصویر ناموفق بود.", true); }
   });
   $("ie-next-stage").addEventListener("click", async () => {
     if (!currentOutputUrl) return;
