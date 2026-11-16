@@ -798,6 +798,35 @@ body{background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05
 #workspace-app .signup-dialog-message.error{color:#f0b6b6!important}
 #public-site *,#workspace-app *{--purple:#36bff2}
 @media(prefers-reduced-motion:reduce){#public-site *,#workspace-app *{scroll-behavior:auto}}
+
+/* LOKAL AI — brighter hero logo aura + neon-blue home icon glow */
+#public-site .lokal-hero-logo{
+ border-color:#2d83a8!important;
+ box-shadow:0 0 18px #25bfff28,0 0 42px #25bfff20,0 0 86px #25bfff12,inset 0 0 28px #25bfff12!important;
+}
+#public-site .lokal-hero-logo:before{
+ background:radial-gradient(ellipse at 50% 38%,#20bfff28 0%,#20bfff18 24%,#20bfff08 48%,transparent 72%)!important;
+}
+#public-site .lokal-hero-logo svg{
+ filter:drop-shadow(0 0 7px #36c8ff88) drop-shadow(0 0 19px #20bfff72) drop-shadow(0 0 38px #20bfff36)!important;
+}
+#public-site .lokal-hero-wordmark{
+ text-shadow:0 0 8px #20bfff45,0 0 20px #20bfff38,0 0 36px #20bfff20!important;
+}
+#public-site .feature-icon,#public-site #studios .tool .feature-icon,
+#workspace-app .app-tool .feature-icon,#workspace-app .dashboard-tools-panel .dashboard-tool-icon,
+#workspace-app .dashboard-shortcut>span{
+ box-shadow:0 0 8px #20bfff30,0 0 18px #20bfff20,inset 0 0 12px #20bfff10!important;
+}
+#public-site .feature-icon svg,#public-site #studios .tool .feature-icon svg,
+#workspace-app .app-tool .feature-icon svg,#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg,
+#workspace-app .dashboard-shortcut>span svg{
+ filter:drop-shadow(0 0 4px #36c8ff66) drop-shadow(0 0 10px #20bfff42)!important;
+}
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon,
+#workspace-app .app-tool .feature-icon{
+ border-color:#347b9c!important;
+}
 </style>
 </head>
 <body>
