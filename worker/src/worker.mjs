@@ -103,7 +103,10 @@ async function runImageEditProvider(job) {
   }
 
   const form = new FormData();
-  form.append("prompt", job.prompt);
+  form.append(
+    "prompt",
+    "Apply only the changes requested below. Preserve the original subject identity and recognizable features, proportions, pose, framing, and every unmentioned detail as faithfully as possible. Do not add or remove objects unless explicitly requested. User edit request: " + job.prompt,
+  );
   form.append("input_image_0", new Blob([inputBytes], { type: inputType }), "input." + (inputType === "image/png" ? "png" : inputType === "image/webp" ? "webp" : "jpg"));
   const url = "https://api.cloudflare.com/client/v4/accounts/" + CLOUDFLARE_ACCOUNT_ID +
     "/ai/run/@cf/black-forest-labs/flux-2-klein-4b";
