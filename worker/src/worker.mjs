@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { supabaseAuthHeaders } from "./supabase-auth.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -31,8 +32,7 @@ async function supabase(path, options = {}) {
   const response = await fetch(SUPABASE_URL + path, {
     ...options,
     headers: {
-      apikey: SUPABASE_API_KEY,
-      Authorization: "Bearer " + SUPABASE_API_KEY,
+      ...supabaseAuthHeaders(SUPABASE_API_KEY),
       ...(options.headers || {}),
     },
   });
@@ -66,6 +66,146 @@ async function heartbeat(jobId) {
     p_job_id: jobId,
     p_worker_id: workerId,
   });
+}
+
+async function claimImageEditJob() {
+  try { return await rpc("armex_claim_image_edit_job", { p_worker_id: workerId }); }
+  catch (error) {
+    // Keep the existing text-to-image queue operational before the edit migration is applied.
+    if (error?.status === 404) return null;
+    throw error;
+  }
+}
+
+async function heartbeatImageEdit(jobId) {
+  return rpc("armex_heartbeat_image_edit_job", { p_job_id: jobId, p_worker_id: workerId });
+}
+
+async function runImageEditProvider(job) {
+  const encodedPath = String(job.input_storage_path || "").split("/").map(encodeURIComponent).join("/");
+  const inputResponse = await fetch(
+    SUPABASE_URL + "/storage/v1/object/" + IMAGE_BUCKET + "/" + encodedPath,
+    { headers: supabaseAuthHeaders(SUPABASE_API_KEY), signal: AbortSignal.timeout(30000) },
+  );
+  if (!inputResponse.ok) {
+    const error = new Error("IMAGE_EDIT_INPUT_HTTP_" + inputResponse.status);
+    error.retryable = inputResponse.status === 408 || inputResponse.status === 429 || inputResponse.status >= 500;
+    error.status = inputResponse.status;
+    throw error;
+  }
+  const inputBytes = new Uint8Array(await inputResponse.arrayBuffer());
+  if (!inputBytes.length || inputBytes.length > 5 * 1024 * 1024) {
+    const error = new Error("IMAGE_EDIT_INPUT_SIZE_INVALID"); error.retryable = false; throw error;
+  }
+  const inputType = inputResponse.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+  if (!["image/jpeg", "image/png", "image/webp"].includes(inputType)) {
+    const error = new Error("IMAGE_EDIT_INPUT_TYPE_INVALID"); error.retryable = false; throw error;
+  }
+
+  const form = new FormData();
+  form.append(
+    "prompt",
+    "Apply only the changes requested below. Preserve the original subject identity and recognizable features, proportions, pose, framing, and every unmentioned detail as faithfully as possible. Do not add or remove objects unless explicitly requested. User edit request: " + job.prompt,
+  );
+  form.append("input_image_0", new Blob([inputBytes], { type: inputType }), "input." + (inputType === "image/png" ? "png" : inputType === "image/webp" ? "webp" : "jpg"));
+  const url = "https://api.cloudflare.com/client/v4/accounts/" + CLOUDFLARE_ACCOUNT_ID +
+    "/ai/run/@cf/black-forest-labs/flux-2-klein-4b";
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + CLOUDFLARE_API_TOKEN },
+    body: form,
+    signal: AbortSignal.timeout(150000),
+  });
+  if (!response.ok) {
+    const error = new Error("IMAGE_EDIT_PROVIDER_HTTP_" + response.status);
+    error.retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    error.status = response.status;
+    throw error;
+  }
+  const payload = await response.json();
+  const imageBase64 = typeof payload?.result?.image === "string"
+    ? payload.result.image
+    : typeof payload?.image === "string" ? payload.image : "";
+  if (!imageBase64 || imageBase64.length > 28000000) {
+    const error = new Error("IMAGE_EDIT_INVALID_PROVIDER_RESPONSE"); error.retryable = false; throw error;
+  }
+  const bytes = Buffer.from(imageBase64, "base64");
+  if (!bytes.length || bytes.length > 20 * 1024 * 1024) {
+    const error = new Error("IMAGE_EDIT_OUTPUT_SIZE_INVALID"); error.retryable = false; throw error;
+  }
+  return { bytes, mimeType: "image/jpeg" };
+}
+
+async function removeImageEditIfJobNotCompleted(jobId, path) {
+  try {
+    const rows = await supabase(
+      "/rest/v1/armex_image_edit_jobs?id=eq." + encodeURIComponent(jobId) + "&select=status",
+      { method: "GET", signal: AbortSignal.timeout(10000) },
+    );
+    if (!Array.isArray(rows) || !rows.length) {
+      log("image_edit_storage_cleanup_skipped_unknown_job", { job_id: jobId });
+      return;
+    }
+    if (rows[0].status !== "completed") await removeImage(path);
+  } catch {
+    // Never delete an output if the database outcome cannot be established.
+    log("image_edit_storage_cleanup_skipped_ambiguous_job_state", { job_id: jobId });
+  }
+}
+
+async function processImageEditJob(job) {
+  const jobId = job.job_id;
+  const storagePath = job.user_id + "/edit/" + job.request_id + "-" + workerId + "-output.jpg";
+  let leaseLost = false;
+  let uploadAttempted = false;
+  let heartbeatBusy = false;
+  const timer = setInterval(async () => {
+    if (heartbeatBusy || leaseLost) return;
+    heartbeatBusy = true;
+    try {
+      if (await heartbeatImageEdit(jobId) !== true) {
+        leaseLost = true;
+        log("image_edit_lease_lost", { job_id: jobId });
+      }
+    } catch { log("image_edit_heartbeat_error", { job_id: jobId }); }
+    finally { heartbeatBusy = false; }
+  }, 45000);
+
+  try {
+    log("image_edit_started", { job_id: jobId, attempt: job.attempt_count, model: job.model });
+    const output = await runImageEditProvider(job);
+    if (leaseLost) return;
+    uploadAttempted = true;
+    await uploadImage(storagePath, output.bytes, output.mimeType);
+    if (leaseLost) {
+      await removeImage(storagePath);
+      return;
+    }
+    const completed = await rpc("armex_complete_image_edit_job", {
+      p_job_id: jobId, p_worker_id: workerId, p_output_storage_path: storagePath,
+    });
+    if (completed !== true) {
+      await removeImage(storagePath);
+      log("image_edit_completion_rejected", { job_id: jobId });
+      return;
+    }
+    log("image_edit_completed", { job_id: jobId, bytes: output.bytes.length });
+  } catch (error) {
+    if (leaseLost) return;
+    const code = String(error?.message || "image_edit_worker_error").replace(/[^A-Za-z0-9_:-]/g, "_").slice(0, 80);
+    try {
+      const result = await rpc("armex_fail_image_edit_job", {
+        p_job_id: jobId, p_worker_id: workerId, p_error_code: code,
+        p_retryable: error?.retryable !== false,
+      });
+      log("image_edit_failed", { job_id: jobId, code, outcome: result?.status || result?.code || "unknown" });
+    } catch {
+      log("image_edit_failure_deferred_to_lease_recovery", { job_id: jobId, code });
+    }
+    if (uploadAttempted) await removeImageEditIfJobNotCompleted(jobId, storagePath);
+  } finally {
+    clearInterval(timer);
+  }
 }
 
 async function runProvider(job) {
@@ -115,8 +255,7 @@ async function uploadImage(path, bytes, mimeType) {
     {
       method: "POST",
       headers: {
-        apikey: SUPABASE_API_KEY,
-        Authorization: "Bearer " + SUPABASE_API_KEY,
+        ...supabaseAuthHeaders(SUPABASE_API_KEY),
         "Content-Type": mimeType,
         "x-upsert": "true",
         "Cache-Control": "3600",
@@ -138,8 +277,7 @@ async function removeImage(path) {
     const response = await fetch(SUPABASE_URL + "/storage/v1/object/" + IMAGE_BUCKET, {
       method: "DELETE",
       headers: {
-        apikey: SUPABASE_API_KEY,
-        Authorization: "Bearer " + SUPABASE_API_KEY,
+        ...supabaseAuthHeaders(SUPABASE_API_KEY),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ prefixes: [path] }),
@@ -287,16 +425,20 @@ while (!stopping) {
   }
   try {
     const job = await claimJob();
-    if (!job) {
+    if (job) {
+      activeJob = true;
+      try { await processJob(job); }
+      finally { activeJob = false; }
+      continue;
+    }
+    const editJob = await claimImageEditJob();
+    if (!editJob) {
       await sleep(POLL_MS);
       continue;
     }
     activeJob = true;
-    try {
-      await processJob(job);
-    } finally {
-      activeJob = false;
-    }
+    try { await processImageEditJob(editJob); }
+    finally { activeJob = false; }
   } catch (error) {
     log("poll_error", { code: String(error?.message || "unknown").slice(0, 80) });
     await sleep(Math.max(POLL_MS, 5000));
