@@ -1,8 +1,9 @@
 {
-  "name": "lokal-ai-image-worker",
+  "name": "lokal-ai-image-edit-test-worker",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "engines": { "node": ">=22 <23" },
-  "scripts": { "start": "node src/worker.mjs" }
+  "scripts": { "start": "node src/worker.mjs" },
+  "dependencies": { "sharp": "0.35.5" }
 }
