@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import sharp from "sharp";
 import { supabaseAuthHeaders } from "./supabase-auth.mjs";
 
 const required = (name) => {
@@ -18,6 +19,8 @@ const IMAGE_BUCKET = "lokal-ai-images";
 const DEFAULT_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 const POLL_MS = Math.min(15000, Math.max(1000, Number(process.env.WORKER_POLL_MS || 2500)));
 const workerId = randomUUID();
+sharp.concurrency(1);
+sharp.cache({ memory: 64, files: 0, items: 10 });
 let stopping = false;
 let activeJob = false;
 
@@ -102,12 +105,26 @@ async function runImageEditProvider(job) {
     const error = new Error("IMAGE_EDIT_INPUT_TYPE_INVALID"); error.retryable = false; throw error;
   }
 
+  // FLUX.2 Klein 4B requires reference images below 512x512. Normalize
+  // orientation, preserve aspect ratio, and resize locally before multipart upload.
+  let modelInput;
+  try {
+    modelInput = await sharp(Buffer.from(inputBytes), { limitInputPixels: 20000000 })
+      .rotate()
+      .resize({ width: 511, height: 511, fit: "inside", withoutEnlargement: true })
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+  } catch {
+    const error = new Error("IMAGE_EDIT_INPUT_DECODE_FAILED"); error.retryable = false; throw error;
+  }
+
   const form = new FormData();
   form.append(
     "prompt",
     "Apply only the changes requested below. Preserve the original subject identity and recognizable features, proportions, pose, framing, and every unmentioned detail as faithfully as possible. Do not add or remove objects unless explicitly requested. User edit request: " + job.prompt,
   );
-  form.append("input_image_0", new Blob([inputBytes], { type: inputType }), "input." + (inputType === "image/png" ? "png" : inputType === "image/webp" ? "webp" : "jpg"));
+  form.append("input_image_0", new Blob([modelInput], { type: "image/jpeg" }), "input.jpg");
   const url = "https://api.cloudflare.com/client/v4/accounts/" + CLOUDFLARE_ACCOUNT_ID +
     "/ai/run/@cf/black-forest-labs/flux-2-klein-4b";
   const response = await fetch(url, {
