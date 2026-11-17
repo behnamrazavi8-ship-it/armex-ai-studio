@@ -1345,6 +1345,158 @@ const zarinpalCallback = async (request: Request): Promise<Response> => {
   return new Response(`<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>پرداخت موفق</title><body style="font-family:sans-serif;background:#07110f;color:#eafff8;padding:40px;text-align:center"><h2>پرداخت با موفقیت تأیید شد</h2><p>${Number(order.credits).toLocaleString("fa-IR")} اعتبار به کیف پول شما اضافه شد.</p><a style="color:#5ce5bd" href="https://lokal-ai.net/?payment=success#workspace-home">بازگشت به LOKAL AI</a></body></html>`, {status:200,headers:{"Content-Type":"text/html; charset=utf-8"}});
 };
 
+
+const CHAT_MEDIA_BUCKET = "lokal-chat-media";
+const CHAT_MEDIA_MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const CHAT_MEDIA_MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+const CHAT_MEDIA_TYPES: Record<string, { extension: string; kind: "image" | "video" }> = {
+  "image/jpeg": { extension: "jpg", kind: "image" },
+  "image/png": { extension: "png", kind: "image" },
+  "image/webp": { extension: "webp", kind: "image" },
+  "video/mp4": { extension: "mp4", kind: "video" },
+  "video/webm": { extension: "webm", kind: "video" },
+  "video/quicktime": { extension: "mov", kind: "video" },
+};
+
+const createChatConversation = async (
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+): Promise<Response> => {
+  const title = typeof body.title === "string"
+    ? body.title.replace(/\\s+/g, " ").trim().slice(0, 80)
+    : "";
+  const { data, error } = await db.from("armex_conversations")
+    .insert({ user_id: userId, title: title || "گفتگوی جدید", model: DEFAULT_MODEL })
+    .select("id,title,model,created_at,updated_at")
+    .single();
+  if (error || !data) return fail("Could not create conversation", 500, cors);
+  return json({ success: true, conversation: data }, 201, cors);
+};
+
+const createChatMediaUpload = async (
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+): Promise<Response> => {
+  const conversationId = body.conversation_id;
+  const mimeType = typeof body.mime_type === "string" ? body.mime_type.toLowerCase() : "";
+  const filename = typeof body.filename === "string" ? body.filename : "";
+  const sizeBytes = Number(body.size_bytes);
+  const mediaType = CHAT_MEDIA_TYPES[mimeType];
+  if (!isUuid(conversationId)) return fail("A valid conversation_id is required", 400, cors);
+  if (!mediaType || !Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) {
+    return fail("Unsupported media type or file size", 400, cors);
+  }
+  const maxBytes = mediaType.kind === "image" ? CHAT_MEDIA_MAX_IMAGE_BYTES : CHAT_MEDIA_MAX_VIDEO_BYTES;
+  if (sizeBytes > maxBytes) {
+    return fail(mediaType.kind === "image" ? "Images must be 20 MB or smaller" : "Videos must be 50 MB or smaller", 413, cors);
+  }
+  const { data: conversation, error: conversationError } = await db.from("armex_conversations")
+    .select("id").eq("id", conversationId).eq("user_id", userId).maybeSingle();
+  if (conversationError || !conversation) return fail("Conversation not found", 404, cors);
+  const safeFilename = filename.replace(/[\\\\/]/g, "_")
+    .replace(/[^\\p{L}\\p{N}._ -]/gu, "_").trim().slice(0, 180) || ("upload." + mediaType.extension);
+  const attachmentId = crypto.randomUUID();
+  const storagePath = userId + "/" + attachmentId + "." + mediaType.extension;
+  const { error: insertError } = await db.from("armex_chat_attachments").insert({
+    id: attachmentId, user_id: userId, conversation_id: conversationId,
+    storage_path: storagePath, original_filename: safeFilename, mime_type: mimeType,
+    size_bytes: sizeBytes, status: "pending",
+  });
+  if (insertError) return fail("Could not register media attachment", 500, cors);
+  const { data: signedUpload, error: signingError } = await db.storage
+    .from(CHAT_MEDIA_BUCKET).createSignedUploadUrl(storagePath, { upsert: false });
+  if (signingError || !signedUpload?.token) {
+    await db.from("armex_chat_attachments").delete().eq("id", attachmentId).eq("user_id", userId);
+    return fail("Could not prepare a secure upload", 503, cors);
+  }
+  return json({
+    success: true, attachment_id: attachmentId, bucket: CHAT_MEDIA_BUCKET,
+    path: storagePath, token: signedUpload.token, expires_in_seconds: 7200,
+  }, 201, cors);
+};
+
+const hasValidMediaSignature = (bytes: Uint8Array, mimeType: string): boolean => {
+  const starts = (...values: number[]) => values.every((value, index) => bytes[index] === value);
+  const ascii = (offset: number, value: string) =>
+    value.split("").every((char, index) => bytes[offset + index] === char.charCodeAt(0));
+  if (mimeType === "image/jpeg") return starts(0xff, 0xd8, 0xff);
+  if (mimeType === "image/png") return starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+  if (mimeType === "image/webp") return ascii(0, "RIFF") && ascii(8, "WEBP");
+  if (mimeType === "video/webm") return starts(0x1a, 0x45, 0xdf, 0xa3);
+  if (mimeType === "video/mp4") return ascii(4, "ftyp") && !ascii(8, "qt  ");
+  if (mimeType === "video/quicktime") return ascii(4, "ftyp") && ascii(8, "qt  ");
+  return false;
+};
+
+const completeChatMediaUpload = async (
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+): Promise<Response> => {
+  const attachmentId = body.attachment_id;
+  if (!isUuid(attachmentId)) return fail("Invalid attachment_id", 400, cors);
+  const { data: attachment, error: lookupError } = await db.from("armex_chat_attachments")
+    .select("id,user_id,conversation_id,storage_path,original_filename,mime_type,size_bytes,status")
+    .eq("id", attachmentId).eq("user_id", userId).maybeSingle();
+  if (lookupError || !attachment) return fail("Attachment not found", 404, cors);
+  if (attachment.status === "ready") {
+    const { data: signed, error } = await db.storage.from(CHAT_MEDIA_BUCKET)
+      .createSignedUrl(attachment.storage_path, 300);
+    if (error || !signed?.signedUrl) return fail("Could not prepare a private preview", 503, cors);
+    return json({ success: true, attachment: {
+      id: attachment.id, conversation_id: attachment.conversation_id,
+      original_filename: attachment.original_filename, mime_type: attachment.mime_type,
+      size_bytes: attachment.size_bytes, status: attachment.status, signed_url: signed.signedUrl,
+    } }, 200, cors);
+  }
+  if (attachment.status !== "pending") return fail("Attachment is not awaiting upload", 409, cors);
+  const { data: blob, error: downloadError } = await db.storage.from(CHAT_MEDIA_BUCKET)
+    .download(attachment.storage_path);
+  if (downloadError || !blob) return fail("Uploaded file was not found; retry the upload", 409, cors);
+  const maxBytes = String(attachment.mime_type).startsWith("image/")
+    ? CHAT_MEDIA_MAX_IMAGE_BYTES : CHAT_MEDIA_MAX_VIDEO_BYTES;
+  if (blob.size !== Number(attachment.size_bytes) || blob.size <= 0 || blob.size > maxBytes) {
+    await db.storage.from(CHAT_MEDIA_BUCKET).remove([attachment.storage_path]);
+    await db.from("armex_chat_attachments").update({ status: "rejected" })
+      .eq("id", attachmentId).eq("user_id", userId);
+    return fail("Uploaded file size does not match the requested file size", 413, cors);
+  }
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  if (!hasValidMediaSignature(bytes, attachment.mime_type)) {
+    await db.storage.from(CHAT_MEDIA_BUCKET).remove([attachment.storage_path]);
+    await db.from("armex_chat_attachments").update({ status: "rejected" })
+      .eq("id", attachmentId).eq("user_id", userId);
+    return fail("File contents do not match the declared media type", 415, cors);
+  }
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const sha256 = Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, "0")).join("");
+  const { data: updated, error: updateError } = await db.from("armex_chat_attachments")
+    .update({ status: "ready", sha256, verified_at: new Date().toISOString() })
+    .eq("id", attachmentId).eq("user_id", userId).eq("status", "pending")
+    .select("id,conversation_id,original_filename,mime_type,size_bytes,status,created_at,verified_at")
+    .maybeSingle();
+  if (updateError || !updated) return fail("Could not finalize media attachment", 500, cors);
+  const { data: signed, error: signingError } = await db.storage.from(CHAT_MEDIA_BUCKET)
+    .createSignedUrl(attachment.storage_path, 300);
+  if (signingError || !signed?.signedUrl) return fail("Attachment saved but preview is unavailable", 503, cors);
+  await db.from("armex_conversations").update({ updated_at: new Date().toISOString() })
+    .eq("id", attachment.conversation_id).eq("user_id", userId);
+  return json({ success: true, attachment: { ...updated, signed_url: signed.signedUrl } }, 200, cors);
+};
+
+const listChatAttachments = async (
+  db: SupabaseClient, userId: string, conversationId: string,
+): Promise<Json[]> => {
+  const { data, error } = await db.from("armex_chat_attachments")
+    .select("id,message_id,original_filename,mime_type,size_bytes,status,created_at,storage_path")
+    .eq("user_id", userId).eq("conversation_id", conversationId).eq("status", "ready")
+    .order("created_at", { ascending: true }).limit(20);
+  if (error) throw new Error("Could not load conversation attachments");
+  return await Promise.all((data ?? []).map(async (item: Record<string, unknown>) => {
+    const { data: signed, error: signingError } = await db.storage.from(CHAT_MEDIA_BUCKET)
+      .createSignedUrl(String(item.storage_path), 300);
+    if (signingError || !signed?.signedUrl) return null;
+    const { storage_path: _privatePath, ...safeItem } = item;
+    return { ...safeItem, signed_url: signed.signedUrl };
+  })).then((items) => items.filter(Boolean) as Json[]);
+};
+
 const handle = async (request: Request): Promise<Response> => {
   const origin = request.headers.get("Origin");
   const cors = corsFor(origin);
@@ -1374,7 +1526,7 @@ const handle = async (request: Request): Promise<Response> => {
       status: "online",
       api_version: "5.0",
       secure_api: true,
-      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger", "image_generation", "video_generation", "zarinpal_payments", "private_image_storage"],
+      features: ["supabase_auth", "wallet_billing", "conversation_history", "usage_ledger", "image_generation", "video_generation", "zarinpal_payments", "private_image_storage", "private_chat_media"],
     }, 200, cors);
   }
 
@@ -1423,7 +1575,10 @@ const handle = async (request: Request): Promise<Response> => {
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) return fail("Could not load conversation messages", 500, cors);
-    return json({ success: true, messages: (data ?? []).reverse() }, 200, cors);
+    let attachments: Json[] = [];
+    try { attachments = await listChatAttachments(db, userId, conversationId); }
+    catch { return fail("Could not load conversation attachments", 500, cors); }
+    return json({ success: true, messages: (data ?? []).reverse(), attachments }, 200, cors);
   }
   if (request.method === "GET" && url.searchParams.get("action") === "payment_packages") {
     return json({ success: true, packages: configuredPaymentPackages().map(({id,title,amount_irr,credits}) => ({id,title,amount_irr,credits})) }, 200, cors);
@@ -1525,6 +1680,15 @@ const handle = async (request: Request): Promise<Response> => {
     return fail("Invalid JSON", 400, cors);
   }
 
+  if (body.action === "create_conversation") {
+    return await createChatConversation(db, userId, body, cors);
+  }
+  if (body.action === "create_media_upload") {
+    return await createChatMediaUpload(db, userId, body, cors);
+  }
+  if (body.action === "complete_media_upload") {
+    return await completeChatMediaUpload(db, userId, body, cors);
+  }
   if (body.action === "edit_image") {
     return await handleImageEditApi(db, userId, "edit_image", body, "", cors);
   }
@@ -1551,6 +1715,9 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   const conversationId = body.conversation_id;
+  const attachmentId = body.attachment_id == null ? null : body.attachment_id;
+  if (attachmentId != null && !isUuid(attachmentId)) return fail("Invalid attachment_id", 400, cors);
+  if (attachmentId != null && !conversationId) return fail("An attachment requires an existing conversation", 400, cors);
   if (conversationId != null && !isUuid(conversationId)) {
     return fail("Invalid conversation_id", 400, cors);
   }
@@ -1707,6 +1874,29 @@ const handle = async (request: Request): Promise<Response> => {
     }).reverse();
   }
 
+  let verifiedAttachment: Record<string, unknown> | null = null;
+  let imageSignedUrl: string | null = null;
+  if (attachmentId) {
+    const { data: attachment, error: attachmentError } = await db.from("armex_chat_attachments")
+      .select("id,conversation_id,storage_path,mime_type,original_filename,status")
+      .eq("id", attachmentId).eq("user_id", userId).eq("conversation_id", conversationId)
+      .eq("status", "ready").maybeSingle();
+    if (attachmentError || !attachment) {
+      await markChatRequestFailed(db, userId, requestId, "attachment_not_ready_or_not_owned");
+      return fail("Attachment not found or not ready", 404, cors);
+    }
+    verifiedAttachment = attachment as Record<string, unknown>;
+    if (String(attachment.mime_type).startsWith("image/")) {
+      const { data: signed, error: signingError } = await db.storage.from(CHAT_MEDIA_BUCKET)
+        .createSignedUrl(String(attachment.storage_path), 300);
+      if (signingError || !signed?.signedUrl) {
+        await markChatRequestFailed(db, userId, requestId, "attachment_signing_failed");
+        return fail("Could not prepare image for the AI model", 503, cors);
+      }
+      imageSignedUrl = signed.signedUrl;
+    }
+  }
+
   const promptChars = SYSTEM_PROMPT.length + context.reduce((sum, item) => sum + item.content.length, 0) + message.length;
   const estimatedInputTokens = Math.max(1, Math.ceil(promptChars / 3));
 
@@ -1799,10 +1989,17 @@ const handle = async (request: Request): Promise<Response> => {
       }, 202, cors);
     }
 
+    const providerUserContent = imageSignedUrl
+      ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageSignedUrl } }]
+      : verifiedAttachment && String(verifiedAttachment.mime_type).startsWith("video/")
+      ? message + String.fromCharCode(10, 10) +
+        "[The user attached a video file named " + String(verifiedAttachment.original_filename) +
+        ". The video is securely stored but video understanding/editing is not available in this release. Do not claim to have viewed or edited it.]"
+      : message;
     const providerMessages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...context,
-      { role: "user", content: message },
+      { role: "user", content: providerUserContent },
     ];
 
     // From this point onward, a thrown fetch/timeout is ambiguous: OpenRouter
@@ -1950,6 +2147,15 @@ const handle = async (request: Request): Promise<Response> => {
       }, 202, cors);
     }
 
+    if (verifiedAttachment) {
+      const { data: userMessage } = await db.from("armex_messages")
+        .select("id").eq("user_id", userId).eq("request_id", requestId)
+        .eq("role", "user").maybeSingle();
+      if (userMessage?.id) {
+        await db.from("armex_chat_attachments").update({ message_id: userMessage.id })
+          .eq("id", attachmentId).eq("user_id", userId);
+      }
+    }
     debitCompleted = false;
     return json(persistedResponse as Json, 200, cors);
   } catch (error) {

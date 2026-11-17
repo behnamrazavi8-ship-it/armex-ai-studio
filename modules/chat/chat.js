@@ -1,108 +1,381 @@
-// Smart Chat UI module for the latest LOKAL AI workspace.
-// Backend access, auth and wallet refresh are injected by the host app.
+// Smart Chat module with private image/video attachments.
+// Auth, API access and wallet refresh are injected by the host application.
 export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensureSecureApi }) {
- const chatHistoryList=document.getElementById("chat-history-list");
- const chatTranscript=document.getElementById("chat-transcript");
- const chatInput=document.getElementById("chat-input");
- const chatSend=document.getElementById("chat-send");
- const chatStatus=document.getElementById("chat-status");
- const chatTitle=document.getElementById("chat-title");
- let activeChatConversationId=null;
- let chatRequestBusy=false;
- const setChatStatus=(message,isError=false)=>{if(!chatStatus)return;chatStatus.textContent=message||"";chatStatus.style.color=isError?"#ffb8c2":"#91aaa9"};
- const addChatMessage=(role,content)=>{
-  const bubble=document.createElement("div");
-  bubble.className="chat-message "+(role==="user"?"user":"assistant");
-  bubble.textContent=String(content||"");
-  chatTranscript.append(bubble);
-  chatTranscript.scrollTop=chatTranscript.scrollHeight;
- };
- const renderChatHistory=(messages)=>{
-  chatTranscript.replaceChildren();
-  if(!messages?.length){
-   const empty=document.createElement("div");empty.className="chat-empty-state";
-   const heading=document.createElement("b");heading.textContent="سلام! من دستیار هوشمند LOKAL AI هستم.";
-   empty.append(heading,document.createTextNode("سؤال یا ایده‌ات را بنویس تا شروع کنیم."));
-   chatTranscript.append(empty);return;
-  }
-  messages.forEach(item=>addChatMessage(item.role,item.content));
- };
- const loadChatHistoryList=async(session)=>{
-  if(!chatHistoryList||!session)return;
-  chatHistoryList.replaceChildren();
-  const loading=document.createElement("div");loading.className="empty";loading.textContent="در حال دریافت گفتگوها…";chatHistoryList.append(loading);
-  try{
-   const result=await callArmexApi(session,"?action=conversations");
-   chatHistoryList.replaceChildren();
-   if(!Array.isArray(result.conversations)||!result.conversations.length){
-    const empty=document.createElement("div");empty.className="empty";empty.textContent="هنوز گفتگویی نداری.";chatHistoryList.append(empty);return;
-   }
-   result.conversations.forEach(item=>{
-    const button=document.createElement("button");button.type="button";
-    button.className="chat-history-item"+(item.id===activeChatConversationId?" active":"");
-    button.dataset.conversationId=item.id;button.textContent=item.title||"گفتگوی جدید";
-    chatHistoryList.append(button);
-   });
-  }catch(error){
-   chatHistoryList.replaceChildren();const empty=document.createElement("div");empty.className="empty";
-   empty.textContent="دریافت تاریخچه ممکن نشد: "+String(error?.message||"خطای سرویس");
-   chatHistoryList.append(empty);
-  }
- };
- const openChatHistory=async(id,session)=>{
-  setChatStatus("در حال بارگذاری گفتگو…");
-  try{
-   const result=await callArmexApi(session,"?action=conversation_messages&id="+encodeURIComponent(id));
-   if(result.success!==true||!Array.isArray(result.messages))throw new Error("پاسخ تاریخچه معتبر نیست.");
-   activeChatConversationId=id;chatTitle.textContent="گفتگو";
-   renderChatHistory(result.messages);await loadChatHistoryList(session);setChatStatus("");
-  }catch(error){setChatStatus("بارگذاری گفتگو انجام نشد: "+String(error?.message||error),true)}
- };
- const sendChatMessage=async()=>{
-  const message=chatInput?.value?.trim()||"";
-  if(!message||chatRequestBusy)return;
-  const {data:{session}}=await supabase.auth.getSession();
-  if(!session){setChatStatus("برای استفاده از چت ابتدا وارد حساب کاربری شو.",true);return}
-  chatRequestBusy=true;chatSend.disabled=true;chatInput.disabled=true;
-  try{
-   await ensureSecureApi(session);
-   addChatMessage("user",message);chatInput.value="";
-   setChatStatus("در حال دریافت پاسخ هوش مصنوعی…");
-   const payload={request_id:crypto.randomUUID(),message,model:"openai/gpt-4o-mini",max_tokens:1200};
-   if(activeChatConversationId)payload.conversation_id=activeChatConversationId;
-   const result=await callArmexApi(session,"",payload);
-   if(result.success!==true||!result.answer||!result.conversation_id){
-    if(result.pending)throw new Error("درخواست برای بررسی وضعیت مالی در صف تطبیق قرار گرفت؛ پیام را دوباره ارسال نکن.");
-    throw new Error("پاسخ معتبر از سرویس چت دریافت نشد.");
-   }
-   activeChatConversationId=result.conversation_id;
-   addChatMessage("assistant",result.answer);
-   chatTitle.textContent="گفتگو";
-   setChatStatus("پاسخ آماده شد · "+Number(result.usage?.credits_charged||1).toLocaleString("fa-IR")+" اعتبار مصرف شد.");
-   await Promise.all([loadWalletBalance(session),loadChatHistoryList(session)]);
-  }catch(error){
-   setChatStatus(String(error?.message||"ارسال پیام ناموفق بود."),true);
-   await loadWalletBalance(session);
-  }finally{chatRequestBusy=false;chatSend.disabled=false;chatInput.disabled=false;chatInput.focus()}
- };
- document.getElementById("chat-new")?.addEventListener("click",()=>{
-  activeChatConversationId=null;chatTitle.textContent="گفتگوی جدید";renderChatHistory([]);
-  setChatStatus("");chatHistoryList?.querySelectorAll(".chat-history-item").forEach(item=>item.classList.remove("active"));chatInput?.focus();
- });
- chatHistoryList?.addEventListener("click",async event=>{
-  const button=event.target.closest("[data-conversation-id]");if(!button)return;
-  const {data:{session}}=await supabase.auth.getSession();if(session)await openChatHistory(button.dataset.conversationId,session);
- });
- chatSend?.addEventListener("click",sendChatMessage);
- chatInput?.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendChatMessage()}});
- document.querySelectorAll('[data-page="chat"]').forEach(button=>button.addEventListener("click",async()=>{
-  const {data:{session}}=await supabase.auth.getSession();if(session)await loadChatHistoryList(session);
- }));
- supabase.auth.onAuthStateChange((event,session)=>{
-  if(event==="SIGNED_IN"&&session)void loadChatHistoryList(session);
-  if(event==="SIGNED_OUT"){activeChatConversationId=null;chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
- });
- void supabase.auth.getSession().then(({data:{session}})=>{if(session)void loadChatHistoryList(session)});
+  const chatHistoryList = document.getElementById("chat-history-list");
+  const chatTranscript = document.getElementById("chat-transcript");
+  const chatInput = document.getElementById("chat-input");
+  const chatSend = document.getElementById("chat-send");
+  const chatStatus = document.getElementById("chat-status");
+  const chatTitle = document.getElementById("chat-title");
+  const mediaInput = document.getElementById("chat-media-input");
+  const mediaNote = document.getElementById("chat-file-note");
+  const mediaPreview = document.getElementById("chat-attachment-preview");
+  let activeChatConversationId = null;
+  let chatRequestBusy = false;
+  let uploadBusy = false;
+  let pendingAttachment = null;
 
+  const styleId = "lokal-chat-media-styles";
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      #chat-media-input{display:none}
+      #chat-file-note{display:block;font-size:9px;line-height:1.7;color:#8da8b0;margin-top:6px}
+      #chat-attachment-preview{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:8px 0}
+      #chat-attachment-preview:empty{display:none}
+      .chat-media-preview{display:flex;align-items:center;gap:9px;padding:8px 10px;border:1px solid #28515a;border-radius:12px;background:#0c1b22;max-width:100%}
+      .chat-media-preview img{width:64px;height:64px;object-fit:cover;border-radius:8px}
+      .chat-media-preview video{width:110px;max-height:75px;border-radius:8px}
+      .chat-media-preview a{color:#9cebd8;font-size:10px;overflow-wrap:anywhere}
+      .chat-media-remove{border:1px solid #4b3b43;background:#21151b;color:#ffd6dc;border-radius:8px;padding:6px 9px;font-size:10px}
+      .chat-message-attachment{margin-top:8px}
+      .chat-message-attachment img{display:block;max-width:min(100%,360px);max-height:260px;object-fit:contain;border-radius:10px}
+      .chat-message-attachment video{display:block;max-width:min(100%,360px);max-height:260px;border-radius:10px}
+      .chat-message-attachment a{color:#9cebd8;font-size:10px}
+    `;
+    document.head.append(style);
+  }
 
+  const setChatStatus = (message, isError = false) => {
+    if (!chatStatus) return;
+    chatStatus.textContent = message || "";
+    chatStatus.style.color = isError ? "#ffb8c2" : "#91aaa9";
+  };
+
+  const addChatMessage = (role, content) => {
+    const bubble = document.createElement("div");
+    bubble.className = "chat-message " + (role === "user" ? "user" : "assistant");
+    bubble.textContent = String(content || "");
+    chatTranscript.append(bubble);
+    chatTranscript.scrollTop = chatTranscript.scrollHeight;
+    return bubble;
+  };
+
+  const addAttachmentToBubble = (bubble, attachment) => {
+    if (!bubble || !attachment?.signed_url) return;
+    const wrap = document.createElement("div");
+    wrap.className = "chat-message-attachment";
+    const link = document.createElement("a");
+    link.href = attachment.signed_url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = attachment.original_filename || "فایل پیوست";
+    if (String(attachment.mime_type || "").startsWith("image/")) {
+      const image = document.createElement("img");
+      image.src = attachment.signed_url;
+      image.alt = attachment.original_filename || "تصویر پیوست";
+      image.loading = "lazy";
+      wrap.append(image, link);
+    } else if (String(attachment.mime_type || "").startsWith("video/")) {
+      const video = document.createElement("video");
+      video.src = attachment.signed_url;
+      video.controls = true;
+      video.preload = "metadata";
+      wrap.append(video, link);
+    } else {
+      wrap.append(link);
+    }
+    bubble.append(wrap);
+  };
+
+  const renderChatHistory = (messages, attachments = []) => {
+    chatTranscript.replaceChildren();
+    if (!messages?.length) {
+      const empty = document.createElement("div");
+      empty.className = "chat-empty-state";
+      const heading = document.createElement("b");
+      heading.textContent = "سلام! من دستیار هوشمند LOKAL AI هستم.";
+      empty.append(heading, document.createTextNode("سؤال یا ایده‌ات را بنویس تا شروع کنیم."));
+      chatTranscript.append(empty);
+    } else {
+      const bubbles = new Map();
+      messages.forEach((item) => {
+        const bubble = addChatMessage(item.role, item.content);
+        if (item.id) bubbles.set(item.id, bubble);
+      });
+      const unlinked = [];
+      (attachments || []).forEach((attachment) => {
+        const bubble = bubbles.get(attachment.message_id);
+        if (bubble) addAttachmentToBubble(bubble, attachment);
+        else unlinked.push(attachment);
+      });
+      unlinked.forEach((attachment) => {
+        const bubble = addChatMessage("user", "");
+        addAttachmentToBubble(bubble, attachment);
+      });
+    }
+    chatTranscript.scrollTop = chatTranscript.scrollHeight;
+  };
+
+  const renderPendingAttachment = (attachment) => {
+    if (!mediaPreview) return;
+    mediaPreview.replaceChildren();
+    if (!attachment) return;
+    const wrap = document.createElement("div");
+    wrap.className = "chat-media-preview";
+    if (String(attachment.mime_type).startsWith("image/") && attachment.signed_url) {
+      const image = document.createElement("img");
+      image.src = attachment.signed_url;
+      image.alt = attachment.original_filename;
+      wrap.append(image);
+    } else {
+      const label = document.createElement("span");
+      label.textContent = String(attachment.mime_type).startsWith("video/") ? "▶ ویدئو" : "📎 فایل";
+      wrap.append(label);
+    }
+    const name = document.createElement("span");
+    name.textContent = attachment.original_filename || "فایل پیوست";
+    name.style.cssText = "font-size:10px;color:#c5dadd;overflow-wrap:anywhere";
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "chat-media-remove";
+    remove.textContent = "حذف";
+    remove.addEventListener("click", () => {
+      pendingAttachment = null;
+      if (mediaInput) mediaInput.value = "";
+      renderPendingAttachment(null);
+      if (mediaNote) mediaNote.textContent = "عکس تا ۲۰ مگابایت · ویدئو تا ۵۰ مگابایت";
+    });
+    wrap.append(name, remove);
+    mediaPreview.append(wrap);
+  };
+
+  const ensureConversation = async (session) => {
+    if (activeChatConversationId) return activeChatConversationId;
+    const result = await callArmexApi(session, "", {
+      action: "create_conversation",
+      title: "گفتگوی جدید",
+    });
+    if (result.success !== true || !result.conversation?.id) {
+      throw new Error("ساخت گفتگوی جدید برای پیوست فایل ناموفق بود.");
+    }
+    activeChatConversationId = result.conversation.id;
+    chatTitle.textContent = result.conversation.title || "گفتگوی جدید";
+    await loadChatHistoryList(session);
+    return activeChatConversationId;
+  };
+
+  const uploadChatAttachment = async (file) => {
+    if (uploadBusy || chatRequestBusy) return;
+    const allowed = ["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm", "video/quicktime"];
+    if (!allowed.includes(file.type)) {
+      setChatStatus("فرمت فایل پشتیبانی نمی‌شود. JPG، PNG، WebP، MP4، WebM و MOV مجازند.", true);
+      return;
+    }
+    const isImage = file.type.startsWith("image/");
+    const maxBytes = isImage ? 20 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (!file.size || file.size > maxBytes) {
+      setChatStatus(isImage ? "حجم تصویر باید حداکثر ۲۰ مگابایت باشد." : "حجم ویدئو باید حداکثر ۵۰ مگابایت باشد.", true);
+      return;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setChatStatus("برای پیوست فایل ابتدا وارد حساب کاربری شو.", true);
+      return;
+    }
+    uploadBusy = true;
+    if (mediaInput) mediaInput.disabled = true;
+    try {
+      await ensureSecureApi(session);
+      const conversationId = await ensureConversation(session);
+      if (mediaNote) mediaNote.textContent = "در حال آماده‌سازی آپلود امن…";
+      setChatStatus("در حال بارگذاری امن فایل…");
+      const upload = await callArmexApi(session, "", {
+        action: "create_media_upload",
+        conversation_id: conversationId,
+        filename: file.name,
+        mime_type: file.type,
+        size_bytes: file.size,
+      });
+      if (upload.success !== true || !upload.token || !upload.path || !upload.bucket) {
+        throw new Error("لینک امن بارگذاری فایل دریافت نشد.");
+      }
+      const { error: storageError } = await supabase.storage
+        .from(upload.bucket)
+        .uploadToSignedUrl(upload.path, upload.token, file, { contentType: file.type, upsert: false });
+      if (storageError) throw new Error("بارگذاری فایل ناموفق بود: " + storageError.message);
+      const completed = await callArmexApi(session, "", {
+        action: "complete_media_upload",
+        attachment_id: upload.attachment_id,
+      });
+      if (completed.success !== true || !completed.attachment?.signed_url) {
+        throw new Error(completed.error || "اعتبارسنجی فایل پس از آپلود ناموفق بود.");
+      }
+      pendingAttachment = completed.attachment;
+      renderPendingAttachment(pendingAttachment);
+      if (mediaNote) mediaNote.textContent = "فایل با موفقیت و به‌صورت خصوصی بارگذاری شد.";
+      setChatStatus("فایل آمادهٔ ارسال همراه پیام است.");
+    } catch (error) {
+      setChatStatus(String(error?.message || "آپلود فایل ناموفق بود."), true);
+      if (mediaNote) mediaNote.textContent = "آپلود کامل نشد؛ فایل را دوباره انتخاب کن.";
+    } finally {
+      uploadBusy = false;
+      if (mediaInput) mediaInput.disabled = false;
+    }
+  };
+
+  const loadChatHistoryList = async (session) => {
+    if (!chatHistoryList || !session) return;
+    chatHistoryList.replaceChildren();
+    const loading = document.createElement("div");
+    loading.className = "empty";
+    loading.textContent = "در حال دریافت گفتگوها…";
+    chatHistoryList.append(loading);
+    try {
+      const result = await callArmexApi(session, "?action=conversations");
+      chatHistoryList.replaceChildren();
+      if (!Array.isArray(result.conversations) || !result.conversations.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "هنوز گفتگویی نداری.";
+        chatHistoryList.append(empty);
+        return;
+      }
+      result.conversations.forEach((item) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "chat-history-item" + (item.id === activeChatConversationId ? " active" : "");
+        button.dataset.conversationId = item.id;
+        button.textContent = item.title || "گفتگوی جدید";
+        chatHistoryList.append(button);
+      });
+    } catch (error) {
+      chatHistoryList.replaceChildren();
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "دریافت تاریخچه ممکن نشد: " + String(error?.message || "خطای سرویس");
+      chatHistoryList.append(empty);
+    }
+  };
+
+  const openChatHistory = async (id, session) => {
+    setChatStatus("در حال بارگذاری گفتگو…");
+    try {
+      const result = await callArmexApi(session, "?action=conversation_messages&id=" + encodeURIComponent(id));
+      if (result.success !== true || !Array.isArray(result.messages)) throw new Error("پاسخ تاریخچه معتبر نیست.");
+      activeChatConversationId = id;
+      pendingAttachment = null;
+      renderPendingAttachment(null);
+      if (mediaInput) mediaInput.value = "";
+      chatTitle.textContent = "گفتگو";
+      renderChatHistory(result.messages, result.attachments || []);
+      await loadChatHistoryList(session);
+      setChatStatus("");
+    } catch (error) {
+      setChatStatus("بارگذاری گفتگو انجام نشد: " + String(error?.message || error), true);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    const message = chatInput?.value?.trim() || "";
+    if ((!message && !pendingAttachment) || chatRequestBusy || uploadBusy) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setChatStatus("برای استفاده از چت ابتدا وارد حساب کاربری شو.", true);
+      return;
+    }
+    chatRequestBusy = true;
+    chatSend.disabled = true;
+    chatInput.disabled = true;
+    if (mediaInput) mediaInput.disabled = true;
+    try {
+      await ensureSecureApi(session);
+      const outgoingMessage = message || (pendingAttachment?.mime_type?.startsWith("image/")
+        ? "لطفاً این تصویر را بررسی کن."
+        : "این ویدئو را به‌عنوان فایل پیوست در نظر بگیر.");
+      addChatMessage("user", outgoingMessage);
+      if (pendingAttachment) {
+        const localBubble = chatTranscript.lastElementChild;
+        addAttachmentToBubble(localBubble, pendingAttachment);
+      }
+      chatInput.value = "";
+      setChatStatus("در حال دریافت پاسخ هوش مصنوعی…");
+      const payload = {
+        request_id: crypto.randomUUID(),
+        message: outgoingMessage,
+        model: "openai/gpt-4o-mini",
+        max_tokens: 1200,
+      };
+      if (activeChatConversationId) payload.conversation_id = activeChatConversationId;
+      if (pendingAttachment) payload.attachment_id = pendingAttachment.id;
+      const result = await callArmexApi(session, "", payload);
+      if (result.pending) {
+        pendingAttachment = null;
+        renderPendingAttachment(null);
+        if (mediaInput) mediaInput.value = "";
+        setChatStatus("درخواست برای تطبیق امن وضعیت پردازش و اعتبار نگه داشته شد؛ آن را دوباره ارسال نکن.");
+        await loadWalletBalance(session);
+        return;
+      }
+      if (result.success !== true || !result.answer || !result.conversation_id) {
+        throw new Error("پاسخ معتبر از سرویس چت دریافت نشد.");
+      }
+      activeChatConversationId = result.conversation_id;
+      addChatMessage("assistant", result.answer);
+      pendingAttachment = null;
+      renderPendingAttachment(null);
+      if (mediaInput) mediaInput.value = "";
+      if (mediaNote) mediaNote.textContent = "عکس تا ۲۰ مگابایت · ویدئو تا ۵۰ مگابایت؛ در این نسخه، مدل چت فقط تصاویر را تحلیل می‌کند.";
+      chatTitle.textContent = "گفتگو";
+      setChatStatus("پاسخ آماده شد · " + Number(result.usage?.credits_charged || 1).toLocaleString("fa-IR") + " اعتبار مصرف شد.");
+      await Promise.all([loadWalletBalance(session), loadChatHistoryList(session)]);
+    } catch (error) {
+      setChatStatus(String(error?.message || "ارسال پیام ناموفق بود."), true);
+      await loadWalletBalance(session);
+    } finally {
+      chatRequestBusy = false;
+      chatSend.disabled = false;
+      chatInput.disabled = false;
+      if (mediaInput) mediaInput.disabled = false;
+      chatInput.focus();
+    }
+  };
+
+  document.getElementById("chat-new")?.addEventListener("click", () => {
+    activeChatConversationId = null;
+    pendingAttachment = null;
+    chatTitle.textContent = "گفتگوی جدید";
+    renderChatHistory([]);
+    renderPendingAttachment(null);
+    if (mediaInput) mediaInput.value = "";
+    setChatStatus("");
+    chatHistoryList?.querySelectorAll(".chat-history-item").forEach((item) => item.classList.remove("active"));
+    chatInput?.focus();
+  });
+  chatHistoryList?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-conversation-id]");
+    if (!button) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) await openChatHistory(button.dataset.conversationId, session);
+  });
+  mediaInput?.addEventListener("change", () => {
+    const file = mediaInput.files?.[0];
+    if (file) void uploadChatAttachment(file);
+  });
+  chatSend?.addEventListener("click", sendChatMessage);
+  chatInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendChatMessage();
+    }
+  });
+  document.querySelectorAll('[data-page="chat"]').forEach((button) => button.addEventListener("click", async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) await loadChatHistoryList(session);
+  }));
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_IN" && session) void loadChatHistoryList(session);
+    if (event === "SIGNED_OUT") {
+      activeChatConversationId = null;
+      pendingAttachment = null;
+      chatHistoryList?.replaceChildren();
+      renderChatHistory([]);
+      renderPendingAttachment(null);
+      setChatStatus("");
+    }
+  });
+  void supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) void loadChatHistoryList(session);
+  });
 }
