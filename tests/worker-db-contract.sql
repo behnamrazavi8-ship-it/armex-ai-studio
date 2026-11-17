@@ -183,3 +183,73 @@ begin
 end $$;
 
 select 'LOKAL_IMAGE_JOB_SQL_TESTS_PASSED' as result;
+
+\i supabase/migrations/20261116010000_lokal_image_edit_free_quota.sql
+
+-- Free image-edit quota and queue contract: no wallet debit, five per UTC day,
+-- per-user isolation, idempotent request IDs, and lease lifecycle.
+do $$
+declare
+  u1 constant uuid := '00000000-0000-4000-8000-000000000001';
+  u2 constant uuid := '00000000-0000-4000-8000-000000000002';
+  wid constant uuid := '30000000-0000-4000-8000-000000000001';
+  req uuid;
+  e jsonb;
+  j jsonb;
+  job uuid;
+  used_count integer;
+  i integer;
+  wallet_before bigint;
+begin
+  select balance into wallet_before from public.armex_wallets where user_id=u1;
+  for i in 1..5 loop
+    req := gen_random_uuid();
+    e := public.armex_enqueue_image_edit(u1,req,'preserve the subject','00000000-0000-4000-8000-000000000001/edit/'||req::text||'-input.jpg');
+    if e->>'success' <> 'true' then raise exception 'free edit % was rejected: %',i,e; end if;
+    if e->>'duplicate' = 'true' then raise exception 'new edit unexpectedly marked duplicate'; end if;
+    if i=1 then
+      e := public.armex_enqueue_image_edit(u1,req,'preserve the subject','00000000-0000-4000-8000-000000000001/edit/'||req::text||'-input.jpg');
+      if e->>'duplicate' <> 'true' then raise exception 'edit retry was not idempotent: %',e; end if;
+    end if;
+  end loop;
+
+  req := gen_random_uuid();
+  e := public.armex_enqueue_image_edit(u1,req,'sixth edit','00000000-0000-4000-8000-000000000001/edit/'||req::text||'-input.jpg');
+  if e->>'code' <> 'daily_quota_exceeded' then raise exception 'sixth daily edit was not rejected: %',e; end if;
+
+  req := gen_random_uuid();
+  e := public.armex_enqueue_image_edit(u2,req,'separate user','00000000-0000-4000-8000-000000000002/edit/'||req::text||'-input.jpg');
+  if e->>'success' <> 'true' then raise exception 'second user did not receive an independent quota: %',e; end if;
+
+  select edits_used into used_count from public.armex_image_edit_daily_usage
+    where user_id=u1 and usage_date=(now() at time zone 'UTC')::date;
+  if used_count <> 5 then raise exception 'daily usage count mismatch: %',used_count; end if;
+  if (select balance from public.armex_wallets where user_id=u1) <> wallet_before then
+    raise exception 'free image edits changed wallet balance';
+  end if;
+  if exists(select 1 from public.armex_credit_transactions where user_id=u1 and idempotency_key like 'image_edit%') then
+    raise exception 'free image edits created credit ledger entries';
+  end if;
+
+  j := public.armex_claim_image_edit_job(wid);
+  job := (j->>'job_id')::uuid;
+  if job is null then raise exception 'image edit queue did not return a job'; end if;
+  if public.armex_heartbeat_image_edit_job(job,wid) is distinct from true then
+    raise exception 'image edit heartbeat rejected active lease';
+  end if;
+  if public.armex_complete_image_edit_job(job,wid,'00000000-0000-4000-8000-000000000001/edit/output.jpg') is distinct from true then
+    raise exception 'image edit completion rejected';
+  end if;
+  if (select status from public.armex_image_edit_jobs where id=job) <> 'completed' then
+    raise exception 'image edit job did not reach completed state';
+  end if;
+end $$;
+
+do $$
+begin
+  if has_function_privilege('anon','public.armex_claim_image_edit_job(uuid)','EXECUTE') then raise exception 'anon can execute image edit claim RPC'; end if;
+  if has_function_privilege('authenticated','public.armex_claim_image_edit_job(uuid)','EXECUTE') then raise exception 'authenticated can execute image edit claim RPC'; end if;
+  if not has_function_privilege('service_role','public.armex_claim_image_edit_job(uuid)','EXECUTE') then raise exception 'service_role cannot execute image edit claim RPC'; end if;
+end $$;
+
+select 'LOKAL_IMAGE_EDIT_SQL_TESTS_PASSED' as result;
