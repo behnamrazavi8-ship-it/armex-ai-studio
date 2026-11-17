@@ -5,6 +5,8 @@ on:
     paths:
       - "index.html"
       - "modules/chat/**"
+      - "modules/image-editor/**"
+      - "modules/chat/**"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
       - "supabase/migrations/**"
@@ -75,6 +77,8 @@ jobs:
           PY
           node --check /tmp/lokal-inline-0.js
           node --check /tmp/lokal-inline-1.mjs
+          node --check modules/chat/chat.js
+          node --check modules/image-editor/image-editor.js
           node --check modules/chat/chat.js
           node --check modules/auth/preview-return.js
           node --test tests/auth-preview-return.test.mjs
