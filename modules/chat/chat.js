@@ -175,14 +175,19 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   }
  };
  document.getElementById("chat-new")?.addEventListener("click",()=>{
+  if(uploadedAttachment){setChatStatus("تصویر بارگذاری‌شده هنوز ارسال نشده است؛ ابتدا همان پیام را ارسال کن.",true);return}
   activeChatConversationId=null;chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
   setChatStatus("");chatHistoryList?.querySelectorAll(".chat-history-item").forEach(item=>item.classList.remove("active"));chatInput?.focus();
  });
  chatHistoryList?.addEventListener("click",async event=>{
   const button=event.target.closest("[data-conversation-id]");if(!button)return;
+  if(uploadedAttachment){setChatStatus("ابتدا تصویر پیوست‌شده را ارسال کن؛ سپس می‌توانی گفتگوی دیگری باز کنی.",true);return}
   const {data:{session}}=await supabase.auth.getSession();if(session)await openChatHistory(button.dataset.conversationId,session);
  });
- attachButton?.addEventListener("click",()=>attachmentInput?.click());
+ attachButton?.addEventListener("click",()=>{
+  if(uploadedAttachment){setChatStatus("ابتدا تصویر پیوست‌شده را ارسال کن.",true);return}
+  attachmentInput?.click();
+ });
  attachmentInput?.addEventListener("change",()=>{
   const file=attachmentInput.files?.[0];if(!file)return;
   if(!["image/jpeg","image/png","image/webp"].includes(file.type)){setChatStatus("فقط تصاویر JPG، PNG و WebP پشتیبانی می‌شوند.",true);attachmentInput.value="";return}
