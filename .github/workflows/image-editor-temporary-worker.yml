@@ -1,0 +1,105 @@
+name: Temporary isolated FLUX.2 image-edit worker
+
+on:
+  push:
+    branches:
+      - test/image-editor-flux2-temporary-worker
+    paths:
+      - "worker/**"
+      - "Dockerfile"
+      - ".github/workflows/image-editor-temporary-worker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  temporary-image-edit-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - name: Checkout isolated test branch
+        uses: actions/checkout@v4
+
+      - name: Check required repository secrets without exposing values
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -eu
+          missing=0
+          for name in SUPABASE_URL SUPABASE_SECRET_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN; do
+            eval 'value=${'"$name"'-}'
+            if [ -z "$value" ]; then
+              echo "Missing repository secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "No live worker started. Add the missing secrets in GitHub Actions or use the existing secure runtime."
+            exit 1
+          fi
+          echo "All required secret names are present; values remain masked."
+
+      - name: Build isolated image-edit worker
+        run: docker build --pull -t lokal-ai-image-edit-test:temporary .
+
+      - name: Start temporary worker (image-edit queue only)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -eu
+          docker run -d --name lokal-ai-image-edit-temporary \
+            -p 127.0.0.1:18808:8080 \
+            --env SUPABASE_URL \
+            --env SUPABASE_SECRET_KEY \
+            --env CLOUDFLARE_ACCOUNT_ID \
+            --env CLOUDFLARE_API_TOKEN \
+            -e WORKER_POLL_MS=2000 \
+            lokal-ai-image-edit-test:temporary
+          healthy=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18808/health >/tmp/image-edit-health.json; then
+              healthy=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$healthy" -ne 1 ]; then
+            docker logs lokal-ai-image-edit-temporary || true
+            echo "Temporary worker did not become healthy."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          with open("/tmp/image-edit-health.json", encoding="utf-8") as f:
+              data = json.load(f)
+          assert data.get("service") == "lokal-ai-image-edit-test-worker", data
+          assert data.get("status") == "ok", data
+          print("Temporary image-edit worker is healthy.")
+          PY
+
+      - name: Keep isolated worker available for user testing (3 hours)
+        run: |
+          set -eu
+          for minute in $(seq 1 180); do
+            running=$(docker inspect -f '{{.State.Running}}' lokal-ai-image-edit-temporary 2>/dev/null || echo false)
+            if [ "$running" != "true" ]; then
+              docker logs --tail 120 lokal-ai-image-edit-temporary || true
+              echo "Temporary image-edit worker stopped unexpectedly."
+              exit 1
+            fi
+            sleep 60
+          done
+          echo "Three-hour isolated test window completed."
+
+      - name: Stop temporary worker and print safe diagnostic logs
+        if: always()
+        run: |
+          docker logs --tail 120 lokal-ai-image-edit-temporary 2>/dev/null || true
+          docker rm -f lokal-ai-image-edit-temporary 2>/dev/null || true
