@@ -21,6 +21,9 @@ jobs:
       - name: Checkout isolated test branch
         uses: actions/checkout@v4
 
+      - name: Build isolated image-edit worker
+        run: docker build --pull -t lokal-ai-image-edit-test:temporary .
+
       - name: Check required repository secrets without exposing values
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -43,8 +46,6 @@ jobs:
           fi
           echo "All required secret names are present; values remain masked."
 
-      - name: Build isolated image-edit worker
-        run: docker build --pull -t lokal-ai-image-edit-test:temporary .
 
       - name: Start temporary worker (image-edit queue only)
         env:
