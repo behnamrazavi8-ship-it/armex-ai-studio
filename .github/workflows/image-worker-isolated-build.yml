@@ -1,0 +1,26 @@
+name: Image worker isolated build check
+
+on:
+  push:
+    branches:
+      - fix/medium-worker-image-edit-only
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run worker auth tests
+        run: node --test tests/worker-auth-headers.test.mjs
+      - name: Build production Docker image
+        run: docker build --pull -t lokal-ai-image-worker:ci .
