@@ -1,6 +1,32 @@
 const MODEL_LABEL = "FLUX.2 Klein 4B";
 const STYLE_ID = "lokal-image-editor-styles";
 
+export function readImageEditQuota(payload) {
+  if (!payload || payload.success !== true ||
+      !Number.isInteger(payload.used) || !Number.isInteger(payload.limit) ||
+      !Number.isInteger(payload.remaining) || payload.used < 0 ||
+      payload.limit < 1 || payload.remaining < 0 || payload.remaining > payload.limit ||
+      payload.used > payload.limit || payload.remaining !== payload.limit - payload.used) {
+    throw new Error("IMAGE_EDIT_API_NOT_READY");
+  }
+  return { used: payload.used, limit: payload.limit, remaining: payload.remaining };
+}
+
+export function readImageEditHistory(payload) {
+  if (!payload || payload.success !== true || !Array.isArray(payload.edits)) {
+    throw new Error("IMAGE_EDIT_API_NOT_READY");
+  }
+  return payload.edits;
+}
+
+export function readImageEditJob(payload) {
+  const job = payload?.job;
+  if (payload?.success !== true || !job || !["queued", "processing", "completed", "failed"].includes(job.status)) {
+    throw new Error("IMAGE_EDIT_API_NOT_READY");
+  }
+  return job;
+}
+
 export function initImageEditor({ supabase, callArmexApi }) {
   const main = document.querySelector("#workspace-app .main");
   if (!main || document.getElementById("page-image-editor")) return;
@@ -97,17 +123,29 @@ export function initImageEditor({ supabase, callArmexApi }) {
   const say = (message, bad = false) => { status.textContent = message; status.style.color = bad ? "#ff9c9c" : "#9bb9c1"; };
   const updateQuota = async () => {
     const session = await getSession();
-    if (!session) { quotaLabel.textContent = "برای مشاهده سهمیه وارد حساب شو"; meter.style.width = "0%"; return; }
+    if (!session) {
+      quotaRemaining = 0;
+      quotaLabel.textContent = "برای مشاهده سهمیه وارد حساب شو";
+      meter.style.width = "0%";
+      refreshButton();
+      return;
+    }
     try {
-      const q = await callArmexApi(session, "?action=image_edit_quota");
-      quotaRemaining = Number(q.remaining || 0);
+      const q = readImageEditQuota(await callArmexApi(session, "?action=image_edit_quota"));
+      quotaRemaining = q.remaining;
       quotaLabel.textContent = `سهمیه امروز: ${q.used}/${q.limit} · ${quotaRemaining} باقی‌مانده`;
-      meter.style.width = Math.min(100, Number(q.used || 0) / 5 * 100) + "%";
+      meter.style.width = Math.min(100, q.used / q.limit * 100) + "%";
       if (!quotaRemaining) say("سهمیه رایگان امروز تمام شده است؛ سهمیه بعد از بازنشانی UTC دوباره فعال می‌شود.");
+      else if (status.textContent.includes("هنوز فعال نشده")) say("تصویر را انتخاب کن و دستور ویرایش را بنویس.");
       refreshButton();
     } catch (error) {
-      quotaLabel.textContent = "سهمیه هنوز آماده نیست";
-      say(error.message || "خواندن سهمیه ناموفق بود.", true);
+      quotaRemaining = 0;
+      quotaLabel.textContent = "سرویس ویرایش آماده نیست";
+      meter.style.width = "0%";
+      say(error.message === "IMAGE_EDIT_API_NOT_READY"
+        ? "API ویرایش تصویر هنوز فعال نشده یا Migration لازم روی Supabase اعمال نشده است. انتخاب تصویر ممکن است، اما ارسال برای ویرایش تا فعال‌شدن سرویس غیرفعال می‌ماند."
+        : (error.message || "خواندن سهمیه ویرایش ناموفق بود."), true);
+      refreshButton();
     }
   };
   const refreshButton = () => { submit.disabled = activeJob || !selectedFile || !promptInput.value.trim() || quotaRemaining <= 0; };
@@ -150,8 +188,9 @@ export function initImageEditor({ supabase, callArmexApi }) {
     const host = $("ie-history"); host.innerHTML = "<small>در حال بارگذاری…</small>";
     try {
       const result = await callArmexApi(session, "?action=image_edits");
+      const edits = readImageEditHistory(result);
       host.innerHTML = "";
-      const completed = (result.edits || []).filter((item) => item.status === "completed" && item.image_url);
+      const completed = edits.filter((item) => item.status === "completed" && item.image_url);
       if (!completed.length) { host.innerHTML = "<small>هنوز ویرایشی ثبت نشده است.</small>"; return; }
       for (const item of completed) {
         const card = document.createElement("button"); card.type = "button"; card.className = "ie-history-card";
@@ -173,7 +212,7 @@ export function initImageEditor({ supabase, callArmexApi }) {
     while (Date.now() - started < 240000) {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       const result = await callArmexApi(session, "?action=image_edit_status&job_id=" + encodeURIComponent(jobId));
-      const job = result.job;
+      const job = readImageEditJob(result);
       if (job.status === "completed" && job.image_url) {
         currentOutputUrl = job.image_url; showComparison(inputUrl, job.image_url); actions.hidden = false;
         say("ویرایش با موفقیت انجام شد. خروجی در تاریخچه خصوصی ذخیره شد.");
@@ -202,7 +241,12 @@ export function initImageEditor({ supabase, callArmexApi }) {
     try {
       const prepared = await prepareImage(selectedFile);
       const result = await callArmexApi(session, "", { action: "edit_image", request_id: crypto.randomUUID(), prompt, ...prepared });
-      if (!result.success || !result.job?.id) throw new Error(result.error || "ثبت درخواست ویرایش ناموفق بود.");
+      if (!result || result.success !== true || !result.job?.id) {
+        if (result?.status === "online" || (result?.success === true && !result?.job?.id)) {
+          throw new Error("API ویرایش تصویر هنوز روی سرور فعال نشده است؛ درخواست به صف پردازش ارسال نشد.");
+        }
+        throw new Error(result?.error || "ثبت درخواست ویرایش ناموفق بود.");
+      }
       quotaRemaining = Math.max(0, quotaRemaining - (result.duplicate ? 0 : 1)); refreshButton();
       await pollJob(session, result.job.id, currentInputUrl);
     } catch (error) {
