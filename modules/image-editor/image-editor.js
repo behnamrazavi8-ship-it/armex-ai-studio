@@ -1,6 +1,13 @@
 const MODEL_LABEL = "FLUX.2 Klein 4B";
 const STYLE_ID = "lokal-image-editor-styles";
 
+export function friendlyImageEditError(error) {
+  if (error?.message === "IMAGE_EDIT_API_NOT_READY") {
+    return "سرویس ویرایش تصویر هنوز روی API فعال نشده است یا Migration لازم اعمال نشده؛ فعلاً درخواست ویرایش ارسال نمی‌شود.";
+  }
+  return error?.message || "عملیات ویرایش تصویر ناموفق بود.";
+}
+
 export function readImageEditQuota(payload) {
   if (!payload || payload.success !== true ||
       !Number.isInteger(payload.used) || !Number.isInteger(payload.limit) ||
@@ -205,7 +212,7 @@ export function initImageEditor({ supabase, callArmexApi }) {
         });
         host.append(card);
       }
-    } catch (error) { host.textContent = error.message || "تاریخچه در دسترس نیست."; }
+    } catch (error) { host.textContent = friendlyImageEditError(error); }
   };
   const pollJob = async (session, jobId, inputUrl) => {
     const started = Date.now();
@@ -255,6 +262,8 @@ export function initImageEditor({ supabase, callArmexApi }) {
         ? "ظرفیت یا سهمیه رایگان Cloudflare فعلاً در دسترس نیست. هیچ سرویس پولی جایگزین نمی‌شود؛ بعداً دوباره تلاش کن."
         : raw.includes("IMAGE_EDIT_PROVIDER_HTTP_5")
         ? "سرویس رایگان ویرایش تصویر موقتاً پاسخ نمی‌دهد؛ بعداً دوباره تلاش کن."
+        : raw === "IMAGE_EDIT_API_NOT_READY"
+        ? friendlyImageEditError(error)
         : raw || "ویرایش تصویر ناموفق بود.";
       say(friendly, true); await updateQuota();
     }
