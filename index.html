@@ -1124,7 +1124,8 @@ else{
  
  // Smart Chat is loaded as an independent module; the host provides auth/API/wallet bridges.
  const { initSmartChat } = await import("./modules/chat/chat.js");
- initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensureSecureApi });\n initImageEditor({ supabase, callArmexApi });
+ initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensureSecureApi });
+ initImageEditor({ supabase, callArmexApi });
 
  const imageButton=document.getElementById("generateImage");
  const imageStatus=document.getElementById("imageStatus");
