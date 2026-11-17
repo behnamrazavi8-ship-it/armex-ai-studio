@@ -1021,7 +1021,8 @@ body{background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05
    history.replaceState({...history.state,lokalRoute:routeMode,lokalWorkspacePage:target,lokalWorkspaceRoot:target==='home'},'',location.pathname+location.search+(routeMode==='preview'?'#preview-':'#workspace-')+target);
   }
   if(target==='projects')renderProjects();
-  if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'));\n   if(target==='image-editor')window.dispatchEvent(new CustomEvent('lokal:open-image-editor'));
+  if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'));
+   if(target==='image-editor')window.dispatchEvent(new CustomEvent('lokal:open-image-editor'));
  }
 
  window.lokalShowPage=showPage;
@@ -1069,7 +1070,8 @@ body{background:radial-gradient(ellipse at 82% 0%,#12324718,transparent 36%),#05
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveAuthReturnContext, buildAuthRedirectUrl } from "./modules/auth/preview-return.js";
- import { renderImagePromptFromIR } from "./prompt-intelligence/render-image-prompt.mjs";\nimport { initImageEditor } from "./modules/image-editor/image-editor.js";
+ import { renderImagePromptFromIR } from "./prompt-intelligence/render-image-prompt.mjs";
+import { initImageEditor } from "./modules/image-editor/image-editor.js";
 const config=window.LOKAL_CONFIG||{},message=document.getElementById("auth-message"),formCard=document.getElementById("auth-form-card"),sessionCard=document.getElementById("auth-session-card"),publicSite=document.getElementById("public-site"),workspace=document.getElementById("workspace-app"),emailInput=document.getElementById("auth-email"),passwordInput=document.getElementById("auth-password");
 let landingView=false;let activeSession=null;let routeInitialized=false;let previewMode=false;let backHomeConsumed=false;let ignoreNextPopstate=false;let authReturnToPreview=false;let authReturnPage='';
 const setMessage=(text,isError=false)=>{if(!message)return;message.textContent=text;message.style.borderColor=isError?"#60358a":"#443157";message.style.background=isError?"#1e1328":"#1b1025";message.style.color=isError?"#e0c0ff":"#d9c8ea"};
