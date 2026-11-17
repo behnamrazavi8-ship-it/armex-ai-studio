@@ -108,7 +108,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  const openChatHistory=async(id,session)=>{
   setChatStatus("در حال بارگذاری گفتگو…");
   try{
-   const result=await callArmexApi(session,"?action=conversation_messages&id="+encodeURIComponent(id));
+   const result=await callArmexApi(session,"?action=conversation&id="+encodeURIComponent(id));
    if(result.success!==true||!Array.isArray(result.messages))throw new Error("پاسخ تاریخچه معتبر نیست.");
    activeChatConversationId=id;chatTitle.textContent=result.conversation?.title||"گفتگو";
    clearSelectedImage();renderChatHistory(result.messages,result.attachments||[]);
