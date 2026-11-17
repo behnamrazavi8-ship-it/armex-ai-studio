@@ -142,6 +142,63 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   uploadedAttachment=completed.attachment;
   return uploadedAttachment;
  };
+
+ const isImageEditRequest=(message)=>{
+  const text=String(message||"").toLowerCase().replace(/[ي]/g,"ی").replace(/[ك]/g,"ک");
+  return /(ویرایش|ادیت|تغییر|عوض کن|تبدیل کن|سفید کن|سیاه کن|روشن کن|تیره کن|حذف کن|پاک کن|جایگزین کن|اضافه کن|برش بده|کراپ|روتوش|پس\\s*زمینه|بک\\s*گراند|background|retouch|\\bedit\\b|\\bremove\\b|\\breplace\\b)/i.test(text);
+ };
+ const imageBlobToPayload=async(blob)=>{
+  const bitmap=await createImageBitmap(blob);
+  if(bitmap.width*bitmap.height>40000000){bitmap.close();throw new Error("ابعاد تصویر بیش از حد بزرگ است؛ لطفاً نسخه کوچک‌تری انتخاب کن.")}
+  let prepared=null;
+  for(const maxSide of [1024,768,640]){
+   const scale=Math.min(1,maxSide/Math.max(bitmap.width,bitmap.height));
+   const canvas=document.createElement("canvas");
+   canvas.width=Math.max(1,Math.round(bitmap.width*scale));
+   canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+   const context=canvas.getContext("2d",{alpha:true});
+   if(!context)continue;
+   context.clearRect(0,0,canvas.width,canvas.height);
+   context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+   const output=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",0.86));
+   if(output&&output.size<=5*1024*1024){prepared=output;break}
+  }
+  bitmap.close();
+  if(!prepared)throw new Error("آماده‌سازی تصویر برای ویرایش انجام نشد؛ یک تصویر کم‌حجم‌تر انتخاب کن.");
+  const bytes=new Uint8Array(await prepared.arrayBuffer());let binary="";
+  for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+  return {image_base64:btoa(binary),mime_type:"image/webp"};
+ };
+ const prepareChatImageForEdit=async(attachment)=>{
+  if(!attachment?.signed_url||!String(attachment.mime_type||"").startsWith("image/"))throw new Error("برای ویرایش، ابتدا یک تصویر معتبر پیوست کن.");
+  const response=await fetch(attachment.signed_url,{cache:"no-store"});
+  if(!response.ok)throw new Error("دریافت تصویر پیوست برای ویرایش ناموفق بود.");
+  return imageBlobToPayload(await response.blob());
+ };
+ const runChatImageEdit=async(session,prompt,attachment)=>{
+  setChatStatus("در حال آماده‌سازی تصویر برای موتور ویرایش…");
+  const prepared=await prepareChatImageForEdit(attachment);
+  const queued=await callArmexApi(session,"",{action:"edit_image",request_id:crypto.randomUUID(),prompt,...prepared});
+  if(queued?.success!==true||!queued?.job?.id){
+   if(queued?.code==="daily_quota_exceeded"||queued?.status===429)throw new Error("سهمیه رایگان ویرایش تصویر امروز تمام شده است.");
+   throw new Error(queued?.error||"ثبت درخواست ویرایش تصویر ناموفق بود.");
+  }
+  const started=Date.now();
+  while(Date.now()-started<240000){
+   await new Promise(resolve=>setTimeout(resolve,3000));
+   const status=await callArmexApi(session,"?action=image_edit_status&job_id="+encodeURIComponent(queued.job.id));
+   const job=status?.job;
+   if(status?.success!==true||!job)throw new Error("وضعیت پردازش تصویر دریافت نشد.");
+   if(job.status==="completed"&&job.image_url)return job.image_url;
+   if(job.status==="failed"){
+    const code=String(job.error_code||"");
+    if(/429|quota|capacity/i.test(code))throw new Error("ظرفیت رایگان موتور ویرایش تصویر فعلاً در دسترس نیست؛ بعداً دوباره تلاش کن.");
+    throw new Error("موتور ویرایش نتوانست تصویر را پردازش کند. لطفاً دوباره تلاش کن.");
+   }
+   setChatStatus(job.status==="processing"?"موتور هوش مصنوعی در حال ویرایش تصویر است…":"درخواست ویرایش تصویر در صف پردازش است…");
+  }
+  throw new Error("پردازش تصویر طول کشید؛ نتیجه را از تاریخچه ویرایش تصویر پیگیری کن.");
+ };
  const sendChatMessage=async()=>{
   const typedMessage=chatInput?.value?.trim()||"";
   if((!typedMessage&&!selectedImageFile&&!uploadedAttachment)||chatRequestBusy)return;
@@ -152,6 +209,17 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   try{
    await ensureSecureApi(session);
    const attachment=await uploadSelectedImage(session);
+   if(attachment&&String(attachment.mime_type||"").startsWith("image/")&&isImageEditRequest(typedMessage)){
+    addChatMessage("user",message,attachment);
+    const outputUrl=await runChatImageEdit(session,typedMessage,attachment);
+    addChatMessage("assistant","ویرایش تصویر با موفقیت انجام شد. خروجی آماده است:",{
+     signed_url:outputUrl,mime_type:"image/jpeg",original_filename:"lokal-ai-edited-image.jpg"
+    });
+    chatInput.value="";clearSelectedImage();
+    setChatStatus("ویرایش تصویر کامل شد · بدون مصرف اعتبار چت.");
+    await loadChatHistoryList(session);
+    return;
+   }
    setChatStatus("در حال دریافت پاسخ هوش مصنوعی…");
    const payload={request_id:crypto.randomUUID(),message,model:"openai/gpt-4o-mini",max_tokens:1200};
    if(activeChatConversationId)payload.conversation_id=activeChatConversationId;
