@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
+  friendlyImageEditError,
   readImageEditHistory,
   readImageEditJob,
   readImageEditQuota,
@@ -26,6 +27,7 @@ test("history and job polling reject generic online responses", () => {
   assert.throws(() => readImageEditHistory({ success: true, service: "LOKAL AI" }), /IMAGE_EDIT_API_NOT_READY/);
   assert.equal(readImageEditJob({ success: true, job: { status: "queued" } }).status, "queued");
   assert.throws(() => readImageEditJob({ success: true, status: "online" }), /IMAGE_EDIT_API_NOT_READY/);
+  assert.match(friendlyImageEditError(new Error("IMAGE_EDIT_API_NOT_READY")), /Migration/);
 });
 
 test("image editor API, migration and Weblines coordinator share the same queue contract", async () => {
