@@ -435,27 +435,41 @@ process.on("SIGINT", () => { stopping = true; log("shutdown_requested"); });
 
 log("worker_started", { worker_id: workerId, poll_ms: POLL_MS });
 
+// Alternate the preferred queue after each completed job so a busy generation
+// queue cannot indefinitely starve image edits (or vice versa). Only claim one
+// job at a time; an unprocessed claim would otherwise hold a lease.
+let preferImageEdit = false;
+
 while (!stopping) {
   if (activeJob) {
     await sleep(POLL_MS);
     continue;
   }
   try {
-    const job = await claimJob();
-    if (job) {
-      activeJob = true;
-      try { await processJob(job); }
-      finally { activeJob = false; }
-      continue;
+    let job = null;
+    let editJob = null;
+
+    if (preferImageEdit) {
+      editJob = await claimImageEditJob();
+      if (!editJob) job = await claimJob();
+    } else {
+      job = await claimJob();
+      if (!job) editJob = await claimImageEditJob();
     }
-    const editJob = await claimImageEditJob();
-    if (!editJob) {
+
+    if (!job && !editJob) {
       await sleep(POLL_MS);
       continue;
     }
+
     activeJob = true;
-    try { await processImageEditJob(editJob); }
-    finally { activeJob = false; }
+    try {
+      if (editJob) await processImageEditJob(editJob);
+      else await processJob(job);
+    } finally {
+      activeJob = false;
+      preferImageEdit = !preferImageEdit;
+    }
   } catch (error) {
     log("poll_error", { code: String(error?.message || "unknown").slice(0, 80) });
     await sleep(Math.max(POLL_MS, 5000));
