@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
+// This branch is intentionally restricted to the image-edit queue for safe testing.
 import { supabaseAuthHeaders } from "./supabase-auth.mjs";
 
 const required = (name) => {
