@@ -152,7 +152,6 @@ a{color:inherit}
 .input::placeholder,.textarea::placeholder{color:#73808a}
 #public-site .auth-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}
 #public-site .message,#public-site .result{margin-top:15px;padding:12px;border:1px solid #ffffff1b;background:#141a20;border-radius:11px;color:#d5dce0;font-size:11px;line-height:1.9}
-#public-site .public-footer{background:#08090b;color:#6f7b84;border-top:1px solid #ffffff12}
 
 /* Workspace shell */
 #workspace-app{min-height:100vh;background:transparent;color:var(--text)}
