@@ -109,3 +109,5 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/worker-db-contract.sql
+          createdb -h 127.0.0.1 -U postgres lokal_chat_contract
+          psql -h 127.0.0.1 -U postgres -d lokal_chat_contract -v ON_ERROR_STOP=1 -f tests/chat-free-contract.sql
