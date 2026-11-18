@@ -735,3 +735,56 @@ body:before{
  #workspace-app .app-tool:hover,#workspace-app .dashboard-shortcut:hover{transform:none!important}
  #workspace-app .feature-icon{box-shadow:inset 0 1px rgba(255,255,255,.34),0 6px 16px rgba(0,0,0,.2)!important}
 }
+
+
+/* Concept artwork v2 — luminous creative portal, organic light and flowing energy. */
+#workspace-app .dashboard-art-hero{
+ min-height:275px;padding:13px 18px 16px;
+ background:
+  radial-gradient(ellipse at 50% 48%,rgba(59,153,181,.22),transparent 48%),
+  radial-gradient(ellipse at 88% 100%,rgba(193,112,91,.13),transparent 42%),
+  linear-gradient(132deg,rgba(14,32,40,.98),rgba(11,17,26,.97) 58%,rgba(29,22,28,.96))!important;
+}
+#workspace-app .dashboard-art-scene{height:222px;position:relative;display:grid;place-items:center;overflow:hidden}
+#workspace-app .art-nebula{position:absolute;border-radius:50%;filter:blur(25px);pointer-events:none}
+#workspace-app .art-nebula-a{width:44%;height:72%;left:23%;top:12%;background:rgba(68,187,213,.15)}
+#workspace-app .art-nebula-b{width:30%;height:55%;right:12%;bottom:0;background:rgba(255,151,111,.09)}
+#workspace-app .art-cosmos{position:relative;width:min(100%,560px);height:100%;overflow:visible;filter:drop-shadow(0 8px 24px rgba(74,183,213,.2))}
+#workspace-app .art-caption{position:absolute;font:700 8px/1 Arial,sans-serif;letter-spacing:3px;color:rgba(205,236,241,.64)}
+#workspace-app .art-caption-left{left:8%;top:23%}
+#workspace-app .art-caption-right{right:7%;bottom:23%;color:rgba(255,193,158,.78)}
+#workspace-app .dashboard-art-cta{
+ align-self:center;margin:0 auto;padding:11px 24px;border-radius:999px;
+ background:linear-gradient(115deg,#ff7148,#ffad54)!important;
+ box-shadow:0 8px 26px rgba(255,112,68,.2),inset 0 1px rgba(255,255,255,.4)!important;
+}
+#workspace-app .dashboard-art-cta span{margin-right:9px}
+@media(max-width:700px){
+ #workspace-app .dashboard-art-hero{min-height:264px;padding:10px 12px 13px;border-radius:23px}
+ #workspace-app .dashboard-art-scene{height:211px}
+ #workspace-app .art-cosmos{width:112%;max-width:none}
+ #workspace-app .art-caption{font-size:7px;letter-spacing:2.4px}
+ #workspace-app .dashboard-art-cta{padding:10px 22px}
+ /* Match the tool tiles to the dashboard's layered translucent glass panel. */
+ #workspace-app .app-tool{
+  background:
+   radial-gradient(ellipse at 12% 0%,rgba(125,208,226,.16),transparent 58%),
+   linear-gradient(145deg,rgba(174,210,222,.16),rgba(38,57,68,.48) 46%,rgba(16,22,29,.58))!important;
+  border:1px solid rgba(220,239,245,.23)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(150%)!important;
+  backdrop-filter:blur(16px) saturate(150%)!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.18),inset 0 -1px rgba(255,255,255,.04)!important;
+ }
+ #workspace-app .app-tool:before{
+  background:
+   linear-gradient(125deg,rgba(255,255,255,.10),transparent 38%),
+   radial-gradient(ellipse at 100% 100%,rgba(255,153,111,.12),transparent 56%)!important;
+ }
+ #workspace-app .app-tool .feature-icon{
+  background:linear-gradient(145deg,rgba(209,244,250,.29),rgba(79,151,174,.19) 48%,rgba(255,255,255,.075))!important;
+  border-color:rgba(216,244,250,.42)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(160%)!important;
+  backdrop-filter:blur(12px) saturate(160%)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.4),0 8px 22px rgba(0,0,0,.22),0 0 20px rgba(86,193,220,.13)!important;
+ }
+}
