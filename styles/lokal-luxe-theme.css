@@ -1,0 +1,110 @@
+/* LOKAL AI — warm gold luxury theme. Purple/blue ambient light is intentionally retained. */
+:root{
+ color-scheme:dark;
+ --bg:#252123;
+ --panel:#302a2c;
+ --panel2:#393235;
+ --line:#62545a;
+ --text:#fff8ed;
+ --muted:#c5b8b0;
+ --mint:#e1b44e;
+ --gold:#e7bd61;
+ --blue:#35c9ff;
+ --radius:22px;
+ --shadow:0 24px 70px #17131988;
+}
+html,body{background-color:var(--bg);color:var(--text)}
+body{
+ background:
+  radial-gradient(ellipse at 88% 4%,#7837b84a,transparent 34%),
+  radial-gradient(ellipse at 8% 38%,#147ebd38,transparent 36%),
+  radial-gradient(ellipse at 50% 100%,#d4a33b12,transparent 48%),
+  linear-gradient(135deg,#292426,#242124 58%,#2d272a);
+}
+.topbar,.app-top{
+ background:linear-gradient(110deg,#302a2deF,#292528f2)!important;
+ border-color:#66565b!important;
+ box-shadow:0 8px 28px #15111644;
+}
+.brand-mark{
+ background:linear-gradient(145deg,#5b4829,#332d2c)!important;
+ border-color:#e5bd62!important;color:#ffe4a1!important;
+ box-shadow:0 0 22px #d9a93d55,inset 0 0 14px #f2c65b22!important;
+}
+.brand small,.side-label{color:#d7b66f!important}
+.btn{
+ background:linear-gradient(115deg,#f1d17b,#c28a2f 58%,#9b6a28)!important;
+ color:#28201a!important;
+ border:1px solid #f5d98a!important;
+ box-shadow:0 8px 26px #d9a63e38!important;
+}
+.btn:hover{filter:brightness(1.08)}
+.btn-ghost{
+ background:linear-gradient(135deg,#51474a,#3c3539)!important;
+ border:1px solid #78666d!important;color:#fff1d7!important;
+}
+.sidebar,.auth-wrap,.signup-dialog,.visual-card,.hero-desktop-panel,.lokal-hero-logo{
+ background:linear-gradient(145deg,#393235ed,#2c272aef)!important;
+ border-color:#77616a!important;
+ box-shadow:0 18px 48px #17131966,0 0 38px #713bb522!important;
+}
+.stat,.panel,.feature,.tool,.step,.app-tool,.account-card,.account-details>div,
+.image-gallery-card,.compiler-review,.image-preview,.download-progress,.chat-attachment-history{
+ background:linear-gradient(145deg,#3b3336,#302a2d)!important;
+ border-color:#68585e!important;
+ box-shadow:0 10px 28px #17131933;
+}
+.dash-hero,.cta{
+ background:
+  radial-gradient(ellipse at 10% 100%,#7838b944,transparent 45%),
+  radial-gradient(ellipse at 90% 0%,#168fc533,transparent 42%),
+  linear-gradient(115deg,#413438,#302b2e)!important;
+ border-color:#92704b!important;
+}
+.input,.textarea,.select,
+#chat-attachment-preview{
+ background:#3a3336!important;
+ border-color:#716168!important;color:#fff8ed!important;
+}
+.input:focus,.textarea:focus,.select:focus{
+ border-color:var(--gold)!important;box-shadow:0 0 0 3px #e1b44e2b!important;
+}
+.nav-btn{color:#e4d7d0!important}
+.nav-btn:hover,.nav-btn.active{
+ background:linear-gradient(90deg,#e1b44e24,#7d46b52a)!important;color:#fff2d4!important;
+}
+.nav-btn.active{box-shadow:inset -2px 0 #edc66d!important}
+.mobile-nav{
+ background:#302a2df2!important;border-color:#6a5960!important;
+}
+.mobile-nav button{color:#d6c6bf!important}
+.mobile-nav button.active{color:#f0c86b!important}
+.feature-icon{
+ background:linear-gradient(145deg,#7b4bbd3b,#249ed33b)!important;
+ border-color:#8a6ab3!important;
+ box-shadow:0 0 22px #7348b52a,inset 0 0 16px #25a8dc18;
+}
+.feature-icon svg,.app-tool .feature-icon svg{
+ filter:drop-shadow(0 0 8px #7d59d9aa) drop-shadow(0 0 10px #28b9e477)!important;
+}
+.brand-mark,.lokal-hero-logo svg,.orb{filter:drop-shadow(0 0 12px #7c4fbd55)}
+.lokal-hero-wordmark{background-image:linear-gradient(100deg,#f5d982,#d8a33c 48%,#f1d18a)!important}
+.gradient{background-image:linear-gradient(90deg,#ffe39a,#d9a63d 48%,#b58ae9)!important}
+.eyebrow,.hero-panel-kicker,.step b,.top-links a:hover{color:#edc76c!important}
+.tag,.tag.soon,.image-cost-note,.message,.result,.notice{
+ background:#42383b!important;border-color:#8a6a55!important;color:#f2dfb7!important;
+}
+.empty{border-color:#89715a!important;color:#d9c8b7!important}
+.image-preview img,.image-gallery-card img{background:#393337!important}
+.chat-message.user{background:linear-gradient(135deg,#604a36,#514047)!important}
+.chat-message.assistant{background:linear-gradient(135deg,#3e363b,#353039)!important}
+.chat-compose-tools button,.chat-history-item{
+ background:#3b3337!important;border-color:#6d5c63!important;color:#fff1d9!important;
+}
+.signup-dialog::backdrop{background:#201c22c9!important}
+.toast{background:#3a3236!important;border-color:#92764e!important;color:#fff2d6!important}
+.public-footer{border-color:#62545a!important;color:#c0aaa0!important}
+@media(max-width:680px){
+ .mobile-nav{backdrop-filter:blur(18px) saturate(140%)}
+ .app-layout{background:transparent}
+}
