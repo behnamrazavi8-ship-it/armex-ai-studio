@@ -898,3 +898,91 @@ body:before{
     linear-gradient(0deg,rgba(4,9,14,.52),transparent 62%),
     linear-gradient(135deg,rgba(41,117,145,.10),transparent 48%,rgba(210,133,91,.08));
 }
+
+
+/* Dashboard-only concept: translucent glass with quiet typography visible beneath it. */
+#workspace-app .dashboard-glass-concept{
+ position:relative;isolation:isolate;overflow:hidden;
+ min-height:300px;padding:0!important;display:block;
+ border:1px solid rgba(213,239,246,.30)!important;border-radius:26px;
+ background:
+  radial-gradient(ellipse at 50% 38%,rgba(68,174,203,.19),transparent 48%),
+  linear-gradient(125deg,rgba(21,43,54,.68),rgba(9,17,27,.76) 58%,rgba(31,25,43,.72))!important;
+ box-shadow:0 24px 62px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.25),inset 0 -1px rgba(255,255,255,.06)!important;
+ -webkit-backdrop-filter:blur(18px) saturate(155%);
+ backdrop-filter:blur(18px) saturate(155%);
+}
+#workspace-app .dashboard-glass-backdrop{
+ position:absolute;inset:0;overflow:hidden;z-index:0;pointer-events:none;
+ background:
+  radial-gradient(circle at 50% 48%,rgba(93,201,221,.16),transparent 34%),
+  linear-gradient(110deg,rgba(255,255,255,.045),transparent 38%,rgba(180,154,231,.055));
+}
+#workspace-app .glass-word{
+ position:absolute;display:block;white-space:nowrap;user-select:none;
+ font-family:Arial,sans-serif;font-weight:900;line-height:.8;
+ color:rgba(218,242,248,.075);text-shadow:0 4px 26px rgba(133,211,229,.12);
+ filter:blur(.25px);
+}
+#workspace-app .glass-word-main{
+ top:23px;left:50%;transform:translateX(-50%);
+ font-size:clamp(76px,16vw,164px);letter-spacing:.11em;
+}
+#workspace-app .glass-word-side{
+ top:45%;right:7%;transform:translateY(-50%);
+ font-size:clamp(95px,19vw,190px);color:rgba(172,197,255,.075);
+}
+#workspace-app .glass-word-bottom{
+ bottom:22px;left:50%;transform:translateX(-50%);
+ font-size:clamp(9px,1.4vw,13px);letter-spacing:.42em;
+ color:rgba(221,239,246,.22);text-shadow:0 2px 15px rgba(96,194,218,.22);
+}
+#workspace-app .glass-orbit{
+ position:absolute;left:50%;top:48%;border:1px solid rgba(130,218,229,.16);
+ border-radius:50%;transform:translate(-50%,-50%) rotate(-23deg);
+ box-shadow:0 0 26px rgba(83,193,219,.08),inset 0 0 20px rgba(83,193,219,.04);
+}
+#workspace-app .glass-orbit-one{width:64%;height:48%}
+#workspace-app .glass-orbit-two{width:48%;height:70%;transform:translate(-50%,-50%) rotate(31deg);border-color:rgba(194,162,241,.15)}
+#workspace-app .dashboard-glass-content{
+ position:relative;z-index:1;min-height:300px;padding:27px 30px 23px;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+ background:linear-gradient(180deg,rgba(7,14,22,.08),rgba(7,14,22,.18));
+}
+#workspace-app .dashboard-glass-eyebrow{
+ color:rgba(185,229,238,.76);font:700 9px/1 Arial,sans-serif;letter-spacing:3.2px;
+ text-shadow:0 2px 12px rgba(0,0,0,.55);
+}
+#workspace-app .dashboard-glass-mark{
+ width:92px;height:92px;margin:14px 0 5px;display:grid;place-items:center;
+ border:1px solid rgba(190,235,242,.22);border-radius:28px;
+ background:linear-gradient(145deg,rgba(207,242,247,.13),rgba(69,119,148,.10) 55%,rgba(170,142,218,.10));
+ box-shadow:0 12px 34px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.25),0 0 30px rgba(83,190,218,.10);
+ -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+}
+#workspace-app .dashboard-glass-mark svg{width:78px;height:78px;filter:drop-shadow(0 0 13px rgba(104,211,222,.24))}
+#workspace-app .dashboard-glass-copy h2{
+ margin:8px 0 6px;font-size:clamp(19px,3vw,25px);font-weight:800;letter-spacing:-.4px;
+ color:#f0fbfc;text-shadow:0 2px 16px rgba(0,0,0,.7),0 0 22px rgba(99,202,219,.16);
+}
+#workspace-app .dashboard-glass-copy p{
+ max-width:440px;margin:0;color:rgba(218,235,240,.82);font-size:11px;line-height:1.9;
+ text-shadow:0 2px 12px rgba(0,0,0,.78);
+}
+#workspace-app .dashboard-glass-concept .dashboard-art-cta{
+ margin:16px 0 0;align-self:center;position:relative;z-index:2;
+ padding:11px 23px;border:1px solid rgba(255,223,188,.42);
+ background:linear-gradient(120deg,#ff8658,#f5b85c)!important;
+ color:#211a16;box-shadow:0 8px 24px rgba(255,135,83,.22),inset 0 1px rgba(255,255,255,.42)!important;
+}
+@media(max-width:700px){
+ #workspace-app .dashboard-glass-concept{min-height:285px;border-radius:23px}
+ #workspace-app .dashboard-glass-content{min-height:285px;padding:22px 15px 20px}
+ #workspace-app .dashboard-glass-mark{width:78px;height:78px;border-radius:24px;margin:12px 0 4px}
+ #workspace-app .dashboard-glass-mark svg{width:66px;height:66px}
+ #workspace-app .glass-word-main{top:35px;font-size:clamp(65px,18vw,100px)}
+ #workspace-app .glass-word-side{right:2%;font-size:clamp(90px,25vw,130px)}
+ #workspace-app .glass-word-bottom{bottom:15px;font-size:8px;letter-spacing:.25em}
+ #workspace-app .glass-orbit-one{width:84%;height:43%}
+ #workspace-app .glass-orbit-two{width:62%;height:65%}
+}
