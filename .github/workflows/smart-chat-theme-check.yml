@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/lokal-smart-chat-gold-luxe
+      - feat/lokal-popcorn-studio-rebuild
   pull_request:
     branches:
       - fix/pr49-chat-image-edit-routing
