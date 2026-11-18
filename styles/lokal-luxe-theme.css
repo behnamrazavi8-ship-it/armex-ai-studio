@@ -472,3 +472,161 @@ html,body,body#app-body,#public-site,#workspace-app{
 @media(max-width:680px){
   html,body,#workspace-app,#public-site{background-attachment:scroll!important}
 }
+
+
+/* --- LOKAL AI: selector-accurate blue + champagne ambient lighting --- */
+/* Keep the public footer and all lower-page footer styling completely untouched. */
+/* Hero brand window: blue/cyan light blended with warm gold, outside the frame. */
+#public-site .lokal-hero-logo{
+  position:relative!important;
+  isolation:isolate!important;
+  border:1px solid #d4b56f!important;
+  background:
+    radial-gradient(ellipse at 50% 0%,#39c7f044 0%,transparent 58%),
+    radial-gradient(ellipse at 92% 92%,#d8a83e3d 0%,transparent 52%),
+    linear-gradient(145deg,#fff9eaf2 0%,#f0dfbded 55%,#fff8e8f2 100%)!important;
+  box-shadow:
+    0 16px 38px #8d6b3428,
+    0 0 0 1px #e5c77b88,
+    0 0 30px 8px #29b9e052,
+    0 0 54px 15px #d5a33c40,
+    0 0 82px 22px #29b9e01c!important;
+}
+#public-site .lokal-hero-logo::before{
+  background:
+    linear-gradient(128deg,transparent 0 34%,#ffffff55 34.2%,transparent 35% 67%,#d6ad5b24 67.3%,transparent 68%),
+    radial-gradient(ellipse at 50% 0%,#32bce52a,transparent 68%)!important;
+}
+#public-site .lokal-hero-logo::after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:-18px;
+  border-radius:inherit;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 24% 45%,#35c4ed45,transparent 58%),
+    radial-gradient(ellipse at 78% 58%,#d8a83e40,transparent 60%);
+  filter:blur(20px);
+}
+#public-site .lokal-hero-logo svg{
+  filter:drop-shadow(0 0 12px #25bde0aa) drop-shadow(0 0 20px #d5a33c66)!important;
+}
+
+/* Real dashboard structure (dashboard-hero-row / dashboard-overview /
+   dashboard-shortcuts): use the actual selectors present in index.html. */
+#workspace-app #page-home .dashboard-hero-row,
+#workspace-app #page-home .dashboard-overview{
+  position:relative;
+  isolation:isolate;
+}
+#workspace-app #page-home .dashboard-intro{
+  position:relative!important;
+  isolation:isolate!important;
+  border:1px solid #d9bd78!important;
+  background:
+    radial-gradient(ellipse at 8% 8%,#38c2e94a 0%,transparent 52%),
+    radial-gradient(ellipse at 96% 92%,#d9a83c3d 0%,transparent 50%),
+    linear-gradient(125deg,#fffaf0 0%,#f2e3c6 55%,#fff8e8 100%)!important;
+  box-shadow:
+    0 14px 32px #8d6b3424,
+    0 0 0 1px #ffffffa0,
+    0 0 28px 7px #28b9e04a,
+    0 0 48px 12px #d4a23b35!important;
+}
+#workspace-app #page-home .dashboard-intro::after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:-14px;
+  border-radius:inherit;
+  pointer-events:none;
+  background:linear-gradient(115deg,#25b9e044,#d5a33c3d);
+  filter:blur(20px);
+}
+#workspace-app #page-home .dashboard-shortcuts{
+  display:grid;
+  gap:12px;
+}
+#workspace-app #page-home .dashboard-shortcut,
+#workspace-app #page-home .stat,
+#workspace-app #page-home .dashboard-tools-panel,
+#workspace-app #page-home .app-tool{
+  position:relative!important;
+  isolation:isolate!important;
+  border:1px solid #d8c18d!important;
+  background:
+    radial-gradient(ellipse at 8% 8%,#35bde52b 0%,transparent 54%),
+    radial-gradient(ellipse at 94% 94%,#d6a43a25 0%,transparent 54%),
+    linear-gradient(145deg,#fffaf0f5,#f0e1c5f5)!important;
+  box-shadow:
+    0 10px 26px #80633b20,
+    0 0 0 1px #ffffff8c,
+    0 0 22px 5px #28b9e03a,
+    0 0 38px 9px #d4a23b22!important;
+}
+#workspace-app #page-home .dashboard-shortcut::after,
+#workspace-app #page-home .stat::after,
+#workspace-app #page-home .dashboard-tools-panel::after,
+#workspace-app #page-home .app-tool::after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:-9px;
+  border-radius:inherit;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 10% 20%,#32bde54a,transparent 62%),
+    radial-gradient(ellipse at 90% 85%,#d8a83c38,transparent 62%);
+  filter:blur(15px);
+}
+#workspace-app #page-home .dashboard-shortcut>span,
+#workspace-app #page-home .app-tool .feature-icon,
+#workspace-app #page-home .dashboard-tool-icon{
+  color:#087eae!important;
+  background:
+    radial-gradient(circle at 28% 18%,#ffffffed,transparent 44%),
+    linear-gradient(145deg,#e4f8fc 0%,#bde9f5 65%,#f4e6c8 100%)!important;
+  border:1px solid #75c9e3!important;
+  border-radius:14px;
+  box-shadow:
+    0 0 0 1px #ffffffa8,
+    0 0 18px 4px #24b9e05c,
+    0 0 30px 8px #d4a23b35,
+    inset 0 1px 0 #fff!important;
+  text-shadow:0 0 8px #25b9e099!important;
+}
+#workspace-app #page-home .app-tool svg,
+#workspace-app #page-home .app-tool svg *{
+  stroke:#087eae!important;
+  color:#087eae!important;
+  filter:drop-shadow(0 0 5px #28bde099)!important;
+}
+#workspace-app #page-home .dashboard-shortcut strong,
+#workspace-app #page-home .dashboard-shortcut small,
+#workspace-app #page-home .app-tool h4,
+#workspace-app #page-home .app-tool p,
+#workspace-app #page-home .stat span,
+#workspace-app #page-home .stat b{
+  color:#202d35!important;
+}
+#workspace-app #page-home .dashboard-section-head p{
+  color:#52636d!important;
+}
+
+/* Extend the same blue/gold backlight to workspace windows and icon tiles,
+   without changing the fixed mobile bottom navigation or public footer. */
+#workspace-app :is(.panel,.account-card,.image-studio-panel,.image-preview,
+  .image-gallery-card,.compiler-review,.chat-compose-box,.chat-message.assistant,
+  .dashboard-info-card,.dashboard-tools-panel){
+  box-shadow:
+    0 12px 28px #80633b20,
+    0 0 22px 5px #28b9e033,
+    0 0 38px 9px #d4a23b20!important;
+}
+#workspace-app :is(.feature-icon,.dashboard-tool-icon,.image-studio-panel .feature-icon){
+  box-shadow:
+    0 0 18px 4px #28b9e052,
+    0 0 28px 7px #d4a23b30,
+    inset 0 1px 0 #fff!important;
+}
