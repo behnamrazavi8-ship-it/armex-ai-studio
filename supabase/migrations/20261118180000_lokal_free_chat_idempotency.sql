@@ -108,7 +108,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if p_credits <> 0 or p_user_id is null or p_request_id is null
+  if p_credits is distinct from 0 or p_user_id is null or p_request_id is null
      or p_attempt_id is null or nullif(trim(p_message), '') is null
      or nullif(trim(p_model), '') is null then
     raise exception 'Invalid free chat recovery metadata';
@@ -146,8 +146,9 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if p_provider_outcome not in ('not_started', 'accepted', 'rejected', 'unknown')
-     or p_debit_outcome <> 'not_charged'
+  if p_provider_outcome is null
+     or p_provider_outcome not in ('not_started', 'accepted', 'rejected', 'unknown')
+     or p_debit_outcome is distinct from 'not_charged'
      or (p_provider_response_payload is not null
          and octet_length(p_provider_response_payload::text) > 1048576) then
     raise exception 'Invalid free chat provider evidence';
