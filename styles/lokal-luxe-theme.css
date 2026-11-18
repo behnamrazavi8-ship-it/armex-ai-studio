@@ -1,632 +1,323 @@
-/* LOKAL AI — Champagne Gold Luxury UI.
-   The app's primary surface is warm champagne/ivory, not black.
-   Blue and violet ambient light is deliberately preserved behind panels and icons. */
+/* LOKAL AI — cinematic studio system
+   Rebuilt as a coherent product interface; functionality and routes remain in the app markup. */
 :root{
- color-scheme:light;
- --bg:#f4ead5;
- --panel:#fff9ed;
- --panel2:#f2e4c8;
- --line:#ddc48f;
- --text:#3c2c18;
- --muted:#79684f;
- --mint:#c59635;
- --gold:#d4a13d;
- --blue:#36bde8;
- --radius:22px;
- --shadow:0 18px 48px #8d6b3424;
+  color-scheme:dark;
+  --bg:#08090b;--bg-elev:#0d1014;--panel:#11151a;--panel-raised:#171c22;
+  --line:#262d35;--line-strong:#39434e;--text:#f4f1eb;--muted:#9aa4ad;
+  --accent:#ff6538;--accent-2:#ff9b43;--blue:#4db8d8;--success:#6bc6a2;
+  --radius:18px;--shadow:0 28px 80px #0009;
 }
-html,body,body#app-body{
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--bg)}
+body,body#app-body{margin:0;min-height:100vh;background:
+ radial-gradient(ellipse at 50% -18%,#26313c66,transparent 46%),
+ radial-gradient(ellipse at 100% 48%,#19232a2b,transparent 32%),var(--bg);
+ color:var(--text);font-family:Inter,"Segoe UI",Tahoma,Arial,sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+.hidden,[hidden]{display:none!important}
+::selection{background:#ff653855;color:#fff}
+a{color:inherit}
+.container{width:min(1280px,calc(100% - 48px));margin-inline:auto}
+
+/* Public navigation */
+#public-site{min-height:100vh;background:transparent;color:var(--text)}
+#public-site .topbar{
+ height:78px;display:flex;align-items:center;justify-content:space-between;gap:24px;
+ position:sticky;top:0;z-index:40;padding:0 max(24px,calc((100vw - 1280px)/2));
+ background:#090b0eeF;border-bottom:1px solid #ffffff12;backdrop-filter:blur(22px)
+}
+#public-site .brand,.app-top .brand{
+ display:flex;align-items:center;gap:12px;text-decoration:none;color:#f6f3ee;
+ font-size:17px;font-weight:850;letter-spacing:.7px
+}
+#public-site .brand-mark,.app-top .brand-mark{
+ width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+ background:linear-gradient(145deg,#ff7446,#d84425);border:1px solid #ff9a6e;
+ color:#160d09;font-size:15px;font-weight:950;letter-spacing:-1px;
+ box-shadow:0 8px 28px #ff65382b
+}
+#public-site .brand small,.app-top .brand small{
+ display:block;color:#a5afb7;font-size:9px;letter-spacing:2.2px;margin-top:4px;font-weight:600
+}
+#public-site .top-links{display:flex;align-items:center;gap:30px}
+#public-site .top-links a{color:#aeb7bf;text-decoration:none;font-size:12px;transition:color .2s}
+#public-site .top-links a:hover{color:#ff875e}
+#public-site .top-actions{display:flex;align-items:center;gap:10px}
+.btn{
+ border:1px solid transparent;border-radius:11px;padding:13px 19px;
+ background:linear-gradient(110deg,var(--accent),var(--accent-2));color:#1c100b!important;
+ font-weight:850;font-size:12px;box-shadow:0 8px 26px #ff653826;transition:transform .2s,filter .2s,border-color .2s
+}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.08)}
+.btn:focus-visible,.nav-btn:focus-visible,.app-tool:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.btn-ghost{background:#ffffff08;border:1px solid #ffffff24;color:#f1eee9!important;box-shadow:none}
+.btn-small{padding:9px 14px;font-size:11px}
+.tag{display:inline-flex;align-items:center;gap:5px;border:1px solid #3a444d;color:#c4cbd0;background:#171c21;padding:6px 10px;border-radius:30px;font-size:10px}
+.tag.soon{border-color:#704b38;color:#ffb18e;background:#281a15}
+
+/* Cinematic landing hero */
+#public-site .hero{
+ position:relative;overflow:hidden;padding:66px 0 76px;
+ background:radial-gradient(ellipse at 76% 30%,#25313b55,transparent 42%)
+}
+#public-site .hero:before{
+ content:"";position:absolute;inset:0;pointer-events:none;opacity:.42;
+ background:linear-gradient(115deg,transparent 0 48%,#ffffff08 48.2%,transparent 48.6% 100%),
+ repeating-linear-gradient(90deg,transparent 0 119px,#ffffff06 120px,transparent 121px 240px)
+}
+#public-site .hero-copy{
+ position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.94fr);
+ grid-template-areas:"eyebrow media" "heading media" "brand media" "description media" "actions media" "note media";
+ align-items:center;column-gap:clamp(32px,6vw,88px);row-gap:8px;min-height:510px
+}
+#public-site .hero-copy>.eyebrow{grid-area:eyebrow;color:#ff9169;font-size:10px;letter-spacing:2.8px;font-weight:800}
+#public-site .hero-copy>h1{grid-area:heading;font-size:clamp(38px,5vw,66px);line-height:1.4;letter-spacing:-1.7px;margin:8px 0 0;max-width:680px;color:#f5f2ec}
+#public-site .hero-copy>.lokal-hero-logo{grid-area:brand;display:flex;align-items:center;justify-content:flex-start;gap:12px;
+ margin:0;padding:0;width:auto;border:0;border-radius:0;background:none;box-shadow:none}
+#public-site .lokal-hero-logo svg{width:52px;height:52px;filter:none}
+#public-site .lokal-hero-wordmark{font-size:20px;letter-spacing:2px;font-weight:900;color:#f4f1eb;background:none;-webkit-text-fill-color:#f4f1eb}
+#public-site .lokal-hero-caption{color:#929da6;font-size:8px;letter-spacing:2.5px;margin-top:3px}
+#public-site .hero-desktop-panel{
+ grid-area:media;align-self:stretch;min-height:420px;position:relative;isolation:isolate;overflow:hidden;
+ display:flex;flex-direction:column;justify-content:flex-end;padding:30px;
+ border:1px solid #ffffff20;border-radius:24px;
  background:
-  radial-gradient(ellipse at 88% 5%,#9a65df38,transparent 32%),
-  radial-gradient(ellipse at 8% 38%,#42bde735,transparent 36%),
-  radial-gradient(ellipse at 52% 100%,#e2b64b25,transparent 48%),
-  linear-gradient(135deg,#f8f0e1 0%,#ead8b4 52%,#f8f0df 100%)!important;
- color:var(--text)!important;
+  linear-gradient(180deg,#0a101455 0%,#0b0e13a8 60%,#090b0feF 100%),
+  radial-gradient(ellipse at 52% 22%,#ff8a4b44,transparent 35%),
+  linear-gradient(130deg,#35424b 0%,#1a252d 38%,#11171d 72%,#0b0e12 100%);
+ box-shadow:0 30px 90px #0009,0 0 0 1px #ffffff08,inset 0 1px #ffffff16
 }
-#public-site,#workspace-app{
+#public-site .hero-desktop-panel:before{
+ content:"";position:absolute;z-index:-1;inset:0;opacity:.82;
  background:
-  radial-gradient(ellipse at 88% 5%,#9a65df2b,transparent 32%),
-  radial-gradient(ellipse at 8% 38%,#42bde72b,transparent 36%),
-  linear-gradient(135deg,#f8f0e1 0%,#ead8b4 52%,#f8f0df 100%)!important;
- color:var(--text)!important;
+  linear-gradient(90deg,transparent 0 12%,#080b0e88 12.2% 13%,transparent 13.2% 29%,#080b0e77 29.2% 31%,transparent 31.2% 46%,#080b0e99 46.2% 48%,transparent 48.2% 70%,#080b0e88 70.2% 72%,transparent 72.2%),
+  linear-gradient(0deg,#080b0e 0 8%,transparent 8.2% 76%,#ffffff0b 76.2% 77%,transparent 77.2%),
+  repeating-linear-gradient(90deg,transparent 0 38px,#ffffff0b 39px,#ffffff0b 40px,transparent 41px 76px);
+ clip-path:polygon(0 18%,9% 18%,9% 4%,18% 4%,18% 0,30% 0,30% 12%,39% 12%,39% 3%,54% 3%,54% 18%,65% 18%,65% 6%,77% 6%,77% 0,89% 0,89% 16%,100% 16%,100% 100%,0 100%)
 }
-#public-site :is(h1,h2,h3,h4,p,span,label,small,strong,b,li,summary),
-#workspace-app :is(h1,h2,h3,h4,p,span,label,small,strong,b,li,summary){
- color:inherit;
+#public-site .hero-desktop-panel:after{
+ content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+ background:linear-gradient(125deg,transparent 35%,#ff9b4330 48%,transparent 60%),radial-gradient(ellipse at 55% 48%,#4db8d833,transparent 58%)
 }
-#public-site .topbar,#workspace-app .app-top,.topbar,.app-top{
- background:#fff8e9eF!important;
- border-color:#d9bd7f!important;
- box-shadow:0 8px 28px #8c692c20!important;
- backdrop-filter:blur(18px) saturate(135%);
+#public-site .hero-panel-kicker{font-size:9px;letter-spacing:2px;color:#ff9b73;font-weight:800;margin-bottom:12px}
+#public-site .hero-desktop-panel h2{font-size:clamp(22px,2.4vw,32px);line-height:1.55;margin:0 0 8px;color:#f7f3ed}
+#public-site .hero-desktop-panel p{font-size:12px;line-height:2;color:#bdc4c9;max-width:430px;margin:0 0 18px}
+#public-site .hero-desktop-panel .btn{align-self:flex-start}
+#public-site .hero-panel-foot{display:flex;gap:16px;flex-wrap:wrap;margin-top:26px;padding-top:16px;border-top:1px solid #ffffff20;color:#9ca7af;font-size:9px}
+#public-site .hero-copy>p{grid-area:description;color:#aeb7bf;font-size:14px;line-height:2.15;max-width:610px;margin:7px 0}
+#public-site .hero-actions{grid-area:actions;display:flex;flex-wrap:wrap;gap:11px;margin-top:9px}
+#public-site .hero-note{grid-area:note;font-size:10px;color:#79858f;margin-top:8px}
+#public-site .gradient{background:linear-gradient(90deg,#ffb17e,#ff6538 65%,#e84b2a);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* Public sections */
+#public-site .section{padding:72px 0}
+#public-site .section-head{text-align:center;margin-bottom:34px}
+#public-site .section-head h2{font-size:clamp(24px,3vw,36px);margin:10px 0;color:#f4f1eb}
+#public-site .section-head p{color:var(--muted);font-size:12px;line-height:2}
+#public-site .features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+#public-site .feature{
+ border:1px solid #ffffff15;background:linear-gradient(145deg,#151a20,#0e1217);
+ border-radius:17px;padding:24px;min-height:185px;transition:transform .22s,border-color .22s,background .22s
 }
-#public-site .brand-mark,#workspace-app .brand-mark,.brand-mark{
- background:linear-gradient(145deg,#f9e6ad,#c99a3d)!important;
- border:1px solid #b9872c!important;color:#593d12!important;
- box-shadow:0 0 22px #d9a93d66,inset 0 0 14px #fff5cf88!important;
+#public-site .feature:hover{transform:translateY(-4px);border-color:#ff875e66;background:linear-gradient(145deg,#1a2026,#10151a)}
+#public-site .feature-icon{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;background:#ff65381a;border:1px solid #ff805744;font-size:22px;margin-bottom:18px}
+#public-site .feature-icon svg{width:27px;height:27px;display:block;filter:none}
+#public-site .feature-icon svg *{stroke:#ff9069!important}
+#public-site .feature h3{font-size:14px;margin:0 0 9px;color:#f3f0eb}
+#public-site .feature p{font-size:11px;line-height:2;color:#9da8b0;margin:0}
+#public-site .tool-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+#public-site .tool{background:#11161b;border:1px solid #ffffff17;border-radius:16px;padding:19px;transition:border-color .2s,transform .2s}
+#public-site .tool:hover{border-color:#ff805766;transform:translateY(-3px)}
+#public-site .tool h3{font-size:13px;margin:12px 0 7px;color:#f3f0eb}
+#public-site .tool p{font-size:10px;line-height:1.9;color:#9da8b0;min-height:40px}
+#public-site .steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+#public-site .step{border:1px solid #ffffff16;background:#11161b;border-radius:16px;padding:22px}
+#public-site .step b{font-size:25px;color:#ff8058}
+#public-site .step h3{font-size:13px;color:#f2eee8}
+#public-site .step p{font-size:10px;color:#9da8b0;line-height:2}
+#public-site .cta{border:1px solid #ffffff1b;border-radius:22px;padding:34px;background:radial-gradient(ellipse at 0 100%,#ff65381d,transparent 45%),linear-gradient(110deg,#171c21,#101419);display:flex;justify-content:space-between;align-items:center;gap:20px}
+#public-site .cta h2{font-size:22px;margin:0 0 9px;color:#f4f1eb}
+#public-site .cta p{font-size:11px;color:#aab3ba;line-height:1.9;margin:0}
+#public-site .auth-section{padding:58px 0 78px}
+#public-site .auth-wrap{max-width:520px;margin:auto;border:1px solid #ffffff20;border-radius:20px;background:linear-gradient(145deg,#171c22,#0e1217);overflow:hidden;box-shadow:var(--shadow)}
+#public-site .auth-head{padding:23px 25px;border-bottom:1px solid #ffffff15}
+#public-site .auth-head h2{font-size:19px;margin:0 0 8px;color:#f4f1eb}
+#public-site .auth-head p{font-size:11px;color:#9da8b0;margin:0;line-height:1.9}
+#public-site .auth-body{padding:24px}
+#public-site .field-label{display:block;font-size:11px;color:#d7dce0;margin:0 0 8px}
+.input,.textarea,.select{width:100%;background:#090d11;border:1px solid #343e47;border-radius:11px;color:#f3f1ed;padding:13px;outline:none;font-size:12px}
+.input:focus,.textarea:focus,.select:focus{border-color:#ff8058;box-shadow:0 0 0 3px #ff65381c}
+.input::placeholder,.textarea::placeholder{color:#73808a}
+#public-site .auth-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}
+#public-site .message,#public-site .result{margin-top:15px;padding:12px;border:1px solid #ffffff1b;background:#141a20;border-radius:11px;color:#d5dce0;font-size:11px;line-height:1.9}
+#public-site .public-footer{background:#08090b;color:#6f7b84;border-top:1px solid #ffffff12}
+
+/* Workspace shell */
+#workspace-app{min-height:100vh;background:transparent;color:var(--text)}
+#workspace-app .app-top{
+ height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 max(22px,calc((100vw - 1440px)/2));
+ border-bottom:1px solid #ffffff14;background:#090c10ed;position:sticky;top:0;z-index:35;backdrop-filter:blur(20px)
 }
-#public-site .brand small,#workspace-app .brand small,.side-label,.eyebrow,
-.hero-panel-kicker,.step b{color:#94691d!important}
-#public-site .lokal-hero-logo,#public-site .hero-desktop-panel,
-#workspace-app .dashboard-intro,.visual-card,.hero-desktop-panel,.lokal-hero-logo,
-.sidebar,.auth-wrap,.signup-dialog{
- background:
-  radial-gradient(ellipse at 90% 0%,#a16ce22b,transparent 42%),
-  radial-gradient(ellipse at 5% 100%,#3bbde52b,transparent 44%),
-  linear-gradient(145deg,#fffaf0f2,#f0e2c9f5)!important;
- border-color:#d6b66e!important;
- box-shadow:0 18px 48px #8d6b3424,0 0 32px #7650bd12!important;
- color:var(--text)!important;
-}
-#public-site .visual-card{
- background:
-  radial-gradient(ellipse at 72% 16%,#8c54d82c,transparent 38%),
-  radial-gradient(ellipse at 10% 88%,#39bde52b,transparent 40%),
-  linear-gradient(145deg,#fff9eb,#eddfc4 78%)!important;
- border-color:#d5b36b!important;
-}
-#public-site .orb{
- background:radial-gradient(circle at 35% 28%,#fff7d5 0,#eac36b 14%,#b7832c 42%,#8a6428 68%,#e9d5a8 78%)!important;
- box-shadow:0 0 42px #d7a63e66,0 0 90px #8153c52e!important;
- color:#fff9e8!important;
-}
-#public-site .btn,#workspace-app .btn,.btn{
- background:linear-gradient(115deg,#f7df9a,#d5a13e 58%,#b47b27)!important;
- color:#402b0c!important;border:1px solid #bd8d32!important;
- box-shadow:0 8px 24px #c5963538!important;
-}
-#public-site .btn:hover,#workspace-app .btn:hover,.btn:hover{filter:brightness(1.045)}
-#public-site .btn-ghost,#workspace-app .btn-ghost,.btn-ghost{
- background:linear-gradient(135deg,#fff8e9,#ead9b9)!important;
- border:1px solid #c9aa69!important;color:#5d4828!important;
- box-shadow:0 7px 20px #8d6b3418!important;
-}
-#public-site .feature,#public-site #studios .tool,
-#workspace-app .app-tool,#workspace-app .dashboard-shortcut,
-#workspace-app .dashboard-tools-panel,#workspace-app .dashboard-info-card,
-.feature,.tool,.step,.app-tool,.dashboard-shortcut,.dashboard-tools-panel,
-.dashboard-info-card,.stat,.panel,.account-card,.account-details>div,
-.image-gallery-card,.compiler-review,.image-preview,.download-progress{
- background:
-  radial-gradient(ellipse at 100% 0%,#8e5bd416,transparent 42%),
-  linear-gradient(145deg,#fffaf0,#f1e4ce)!important;
- border-color:#ddc48f!important;color:var(--text)!important;
- box-shadow:0 10px 28px #8d6b3418!important;
-}
-#workspace-app #page-home.dashboard-home .dashboard-intro,
+#workspace-app .top-actions{display:flex;align-items:center;gap:10px}
+#workspace-app .app-layout{width:min(1440px,100%);margin:auto;display:grid;grid-template-columns:238px minmax(0,1fr);gap:22px;padding:24px}
+#workspace-app .sidebar{position:sticky;top:94px;align-self:start;background:linear-gradient(180deg,#14191f,#0d1116);border:1px solid #ffffff17;border-radius:17px;padding:13px}
+#workspace-app .side-label{font-size:9px;color:#73818c;padding:13px 10px 7px;letter-spacing:1.8px;font-weight:800}
+#workspace-app .nav-btn{width:100%;border:0;background:transparent;color:#aeb8c0;padding:12px;border-radius:10px;text-align:right;display:flex;align-items:center;gap:11px;font-size:11px;margin:2px 0;transition:background .2s,color .2s}
+#workspace-app .nav-btn:hover{background:#ffffff0b;color:#f5f2ed}
+#workspace-app .nav-btn.active{background:linear-gradient(90deg,#ff65381c,#ff653808);color:#ff9a74;box-shadow:inset -2px 0 #ff7045}
+#workspace-app .main{min-width:0}
+#workspace-app .page{display:none}
+#workspace-app .page.active{display:block}
+#workspace-app .welcome{margin:4px 0 22px}
+#workspace-app .welcome h1{font-size:clamp(23px,3vw,34px);margin:9px 0;color:#f4f1eb}
+#workspace-app .welcome p{font-size:11px;color:#9da8b0;line-height:2;margin:0}
+#workspace-app .eyebrow{color:#ff936b;font-size:10px;letter-spacing:2px;font-weight:800}
+#workspace-app .dashboard-hero-row{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:18px;align-items:stretch}
+#workspace-app .dashboard-bot-wrap{order:2;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:225px;border:1px solid #ffffff15;border-radius:18px;background:radial-gradient(ellipse at 50% 35%,#ff65381b,transparent 55%),linear-gradient(145deg,#171c22,#0d1116)}
+#workspace-app .bot-stage{transform:scale(.8);transform-origin:center}
+#workspace-app .dashboard-bot-label{font-size:10px;letter-spacing:2px;color:#e8e4de;text-align:center;margin-top:-12px}
+#workspace-app .dashboard-bot-label span{display:block;font-size:7px;color:#85919a;letter-spacing:1.6px;margin-top:4px}
 #workspace-app .dashboard-intro{
- background:
-  radial-gradient(ellipse at 8% 0%,#9b69df24,transparent 45%),
-  radial-gradient(ellipse at 92% 100%,#43bde52b,transparent 44%),
-  linear-gradient(110deg,#fff9ec,#efdfc0)!important;
- border-color:#d6b66e!important;
- color:var(--text)!important;
+ min-height:225px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:18px;
+ padding:27px;border:1px solid #ffffff1b;border-radius:18px;
+ background:radial-gradient(ellipse at 8% 10%,#4db8d81a,transparent 48%),radial-gradient(ellipse at 96% 100%,#ff65381a,transparent 50%),linear-gradient(125deg,#171c22,#10151a);
+ box-shadow:0 20px 50px #0004
 }
-#public-site .feature-icon,#public-site #studios .tool .feature-icon,
-#workspace-app .app-tool .feature-icon,
-#workspace-app .dashboard-tools-panel .dashboard-tool-icon,.feature-icon{
- background:
-  radial-gradient(circle at 28% 18%,#ffffffbb,transparent 40%),
-  linear-gradient(145deg,#e6d4fa,#c6eaf6)!important;
- border:1px solid #9c80cb!important;
- box-shadow:0 0 18px #8456c63d,0 0 22px #32b9df2b,inset 0 1px 0 #fff!important;
+#workspace-app .dashboard-intro h1{font-size:clamp(24px,3vw,36px);line-height:1.45;margin:12px 0;color:#f5f1eb}
+#workspace-app .dashboard-intro p{font-size:12px;color:#aab4bc;line-height:2}
+#workspace-app .dashboard-overview{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin:16px 0}
+#workspace-app .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0}
+#workspace-app .stat,#workspace-app .panel{
+ background:linear-gradient(145deg,#151a20,#0d1217);border:1px solid #ffffff16;border-radius:15px;padding:17px
 }
-#public-site .feature-icon svg,#workspace-app .app-tool .feature-icon svg,
-#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg,.feature-icon svg{
- filter:drop-shadow(0 0 7px #8c63d5aa) drop-shadow(0 0 9px #32bde899)!important;
+#workspace-app .stat span{font-size:10px;color:#94a0a9}
+#workspace-app .stat b{display:block;font-size:22px;margin-top:9px;color:#f4f1eb}
+#workspace-app .dashboard-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#workspace-app .dashboard-shortcut{
+ border:1px solid #ffffff18;background:#141a20;border-radius:13px;padding:15px;text-align:right;color:#f0ede7;
+ display:flex;flex-direction:column;align-items:flex-start;gap:7px;transition:border-color .2s,transform .2s
 }
-#public-site .lokal-hero-wordmark,#public-site .gradient,
-.lokal-hero-wordmark,.gradient{
- background-image:linear-gradient(100deg,#a97822,#e0b64e 48%,#8b68c7)!important;
+#workspace-app .dashboard-shortcut:hover{border-color:#ff805866;transform:translateY(-2px)}
+#workspace-app .dashboard-shortcut>span{color:#ff9169;font-size:19px}
+#workspace-app .dashboard-shortcut strong{font-size:11px;color:#f3f0ea}
+#workspace-app .dashboard-shortcut small{font-size:9px;color:#8f9ba4}
+#workspace-app .panel{margin-top:16px}
+#workspace-app .panel h3{font-size:14px;margin:0 0 13px;color:#f3f0eb}
+#workspace-app .dashboard-section-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:14px}
+#workspace-app .dashboard-section-head p{font-size:10px;color:#96a1aa;margin:0;line-height:1.8}
+#workspace-app .tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+#workspace-app .app-tool{
+ border:1px solid #ffffff17;background:linear-gradient(145deg,#151a20,#0e1318);border-radius:14px;padding:17px;
+ text-align:right;color:#f3f0ea;transition:transform .2s,border-color .2s,background .2s
 }
-#public-site .tag,#workspace-app .tag,.tag,.tag.soon,
-.message,.result,.notice,.image-cost-note{
- background:#f3e7d0!important;border-color:#d6b66e!important;
- color:#76551c!important;
-}
-#public-site .input,#public-site .textarea,#public-site .select,
-#workspace-app .input,#workspace-app .textarea,#workspace-app .select,
-.input,.textarea,.select,#chat-attachment-preview{
- background:#fffaf0!important;border-color:#d8c18d!important;
- color:#3c2c18!important;
-}
-#public-site .input::placeholder,#public-site .textarea::placeholder,
-#workspace-app .input::placeholder,#workspace-app .textarea::placeholder{
- color:#9a896e!important;
-}
-#public-site .input:focus,#public-site .textarea:focus,#public-site .select:focus,
-#workspace-app .input:focus,#workspace-app .textarea:focus,#workspace-app .select:focus{
- border-color:#c99a3d!important;box-shadow:0 0 0 3px #d9ad4a2e!important;
-}
-#workspace-app .nav-btn,.nav-btn,#workspace-app .mobile-nav button{
- color:#65502f!important;
-}
-#workspace-app .nav-btn:hover,#workspace-app .nav-btn.active,
-#workspace-app .mobile-nav button.active,.nav-btn.active{
- background:linear-gradient(90deg,#e5c36b55,#9a6bd32b)!important;
- color:#4b3411!important;
-}
-#workspace-app .nav-btn.active,.nav-btn.active{box-shadow:inset -2px 0 #bd8c2e!important}
-#workspace-app .mobile-nav,.mobile-nav{
- background:#fff8e9f5!important;border-color:#d9bd7f!important;
- box-shadow:0 -8px 25px #8d6b3418!important;
-}
-#workspace-app .chat-history-item,.chat-history-item,
-#workspace-app .chat-compose-tools button,.chat-compose-tools button{
- background:#fff8e9!important;border:1px solid #ddc48f!important;
- color:#5c4829!important;
-}
-#workspace-app .chat-history-item.active,#workspace-app .chat-history-item:hover,
-.chat-history-item.active,.chat-history-item:hover{
- background:linear-gradient(90deg,#e5c36b55,#9a6bd32b)!important;
- border-color:#c99a3d!important;color:#4b3411!important;
-}
-#workspace-app .chat-message.user,.chat-message.user{
- background:linear-gradient(135deg,#f4dfac,#e9cc86)!important;
- border:1px solid #d1a64d!important;color:#4a3515!important;
-}
-#workspace-app .chat-message.assistant,.chat-message.assistant{
- background:linear-gradient(135deg,#fffaf0,#eee2cf)!important;
- border:1px solid #d9c7a3!important;color:#443622!important;
-}
-#workspace-app .chat-compose-box,.chat-compose-box{
- background:#fff9ed!important;border:1px solid #d6bd87!important;
-}
-#workspace-app .bot-head,#workspace-app .bot-body{
- background:linear-gradient(135deg,#f7e5b6 0%,#d4ae63 42%,#9b7bc2 100%)!important;
- border-color:#bd923d!important;
- box-shadow:inset 5px 5px 12px #ffffffa0,0 8px 18px #8d6b342b!important;
-}
-#workspace-app .bot-head:before,#workspace-app .bot-face,#workspace-app .bot-chest{
- background:linear-gradient(145deg,#fff9e9,#e7d8bd 60%,#d8c7a9)!important;
- border-color:#b69b6b!important;
-}
-#workspace-app .bot-ear,#workspace-app .bot-neck,#workspace-app .bot-shoulder,
-#workspace-app .bot-arm,#workspace-app .bot-arm:after,#workspace-app .bot-leg,
-#workspace-app .bot-leg:after{
- background:linear-gradient(90deg,#e8d5a8,#b99b65 48%,#9a83bd)!important;
- border-color:#b69b6b!important;
-}
-#workspace-app .bot-antenna{
- background:linear-gradient(90deg,#d5ad55,#58c7e8,#8e69c5)!important;
-}
-#workspace-app .bot-antenna i{
- background:radial-gradient(circle at 35% 30%,#ffffff,#55cfff 48%,#8b69c7)!important;
- box-shadow:0 0 12px #20bfff66!important;
-}
-#workspace-app .image-studio-panel,#workspace-app .image-preview,
-#workspace-app .download-progress,#workspace-app .image-gallery-card,
-#workspace-app .compiler-review{
- border-color:#d6bd87!important;background:#fff8eb!important;color:#443622!important;
-}
-#workspace-app .compiler-review .compiled-prompt{
- border-color:#d6bd87!important;background:#f4ead8!important;color:#443622!important;
-}
-#workspace-app .account-details>div{background:#fff8eb!important}
-#workspace-app .toast{
- background:#fff8e9!important;border-color:#c9a45a!important;color:#4a3515!important;
-}
-#workspace-app .signup-dialog{
- background:linear-gradient(145deg,#fffaf0,#efdfc3)!important;
- border-color:#d6bd87!important;color:#443622!important;
-}
-#workspace-app .signup-dialog::backdrop{background:#4b39204d!important;backdrop-filter:blur(8px)}
-#workspace-app .image-preview img,#workspace-app .image-gallery-card img,
-.image-preview img,.image-gallery-card img{background:#eee2cc!important}
-.empty{border-color:#d5bd89!important;color:#80683e!important}
-.public-footer{border-color:#d5bd89!important;color:#806d50!important}
-#public-site .top-links a,#workspace-app a{color:#8a641e}
-#public-site .top-links a:hover,#workspace-app a:hover{color:#7950b7}
-#public-site .signup-dialog::backdrop{background:#4b39204d!important;backdrop-filter:blur(8px)}
-@media(max-width:680px){
- #workspace-app .mobile-nav,.mobile-nav{backdrop-filter:blur(18px) saturate(140%)}
- .app-layout{background:transparent}
-}
+#workspace-app .app-tool:hover{border-color:#ff805866;transform:translateY(-3px);background:#1a2026}
+#workspace-app .app-tool .feature-icon{width:46px;height:46px;border-radius:12px;background:#ff65381b;border:1px solid #ff805744}
+#workspace-app .app-tool .feature-icon svg{width:30px;height:30px}
+#workspace-app .app-tool h4{margin:9px 0;font-size:12px;color:#f4f1eb}
+#workspace-app .app-tool p{font-size:10px;color:#9da8b0;line-height:1.8;margin:0 0 10px}
+#workspace-app .app-tool .tag{font-size:9px}
 
-/* --- LOKAL AI: luminous blue-gold refinement --- */
-:root{
- --lokal-ink:#242b33;
- --lokal-ink-soft:#46515d;
- --lokal-blue:#20aee0;
- --lokal-blue-bright:#48c9f1;
- --lokal-violet:#9271c8;
+/* All studio pages and form controls */
+#workspace-app .textarea{min-height:130px;resize:vertical;line-height:2}
+#workspace-app .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:13px}
+#workspace-app .workspace-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}
+#workspace-app .result{white-space:pre-wrap;overflow-wrap:anywhere;display:none;margin-top:14px;padding:14px;border:1px solid #ffffff1c;background:#11171d;border-radius:12px;color:#e9e6df;font-size:11px;line-height:2}
+#workspace-app .empty{padding:30px;text-align:center;color:#84919a;border:1px dashed #47525c;border-radius:14px;font-size:11px;line-height:2}
+#workspace-app .notice{font-size:10px;color:#b6c0c6;line-height:1.9;border-right:2px solid var(--accent);padding:9px 12px;background:#ff65380b;margin-top:13px}
+#workspace-app .muted-copy{color:#9da8b0;font-size:11px;line-height:1.9}
+#workspace-app .image-studio-panel,#workspace-app .image-preview,#workspace-app .download-progress,
+#workspace-app .image-gallery-card,#workspace-app .compiler-review{
+ border:1px solid #ffffff19;background:#11171d;color:#e9e6df;border-radius:14px;padding:14px
 }
-/* Restore readable dark typography on the light champagne surfaces. */
-#public-site :is(h1,h2,h3,h4,h5,p,span,label,small,strong,b,li,summary,div),
-#workspace-app :is(h1,h2,h3,h4,h5,p,span,label,small,strong,b,li,summary){
- color:var(--lokal-ink);
-}
-#public-site :is(.hero p,.feature p,.tool p,.step p,.section-head p,.hero-note,.lokal-hero-caption),
-#workspace-app :is(.welcome p,.side-label,.muted,.hint,.description,.dashboard-subtitle){
- color:var(--lokal-ink-soft)!important;
-}
-#public-site .lokal-hero-wordmark,#public-site .gradient,
-#workspace-app .gradient{ -webkit-text-fill-color:transparent; }
-#public-site .btn,#workspace-app .btn,.btn{color:#352608!important}
-#public-site .btn-ghost,#workspace-app .btn-ghost,.btn-ghost{color:#34404b!important}
-#workspace-app :is(input,textarea,select),
-#public-site :is(input,textarea,select){color:#242b33!important}
-#workspace-app :is(input,textarea)::placeholder,
-#public-site :is(input,textarea)::placeholder{color:#77818a!important}
+#workspace-app .image-studio-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:13px}
+#workspace-app .image-cost-note{margin:12px 0;padding:10px 12px;border:1px solid #ff805744;border-radius:11px;background:#ff65380d;color:#f2c1a9;font-size:11px;line-height:1.9}
+#workspace-app .compiler-review h4{margin:0 0 9px;font-size:12px;color:#ff9a74}
+#workspace-app .compiler-review p{font-size:10px;line-height:1.9;color:#b8c1c7;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0}
+#workspace-app .compiler-review .compiled-prompt{padding:11px;border:1px solid #39434e;border-radius:10px;background:#090d11;color:#f2eee8;direction:ltr;text-align:left}
+#workspace-app .image-preview img{display:block;width:100%;max-height:620px;object-fit:contain;border-radius:10px;background:#080b0e}
+#workspace-app .image-preview-actions{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+#workspace-app .image-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+#workspace-app .image-gallery-card{min-width:0;padding:9px}
+#workspace-app .image-gallery-card img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:9px;background:#080b0e}
+#workspace-app .image-gallery-card p{font-size:10px;line-height:1.8;color:#c1c8cd;overflow-wrap:anywhere;margin:9px 2px 5px}
+#workspace-app .image-gallery-card small{font-size:9px;color:#89959e}
+#workspace-app .image-gallery-card a{display:inline-block;margin:8px 2px 2px;color:#ff936b;font-size:10px;text-decoration:none}
+#workspace-app .image-status{margin-top:12px;min-height:22px;font-size:11px;color:#aeb9c0;line-height:1.9}
+#workspace-app .image-status.error{color:#ff9a74}
+#workspace-app .image-preview-actions a{color:#ff936b}
+#workspace-app .account-details>div{background:#151b21!important;border:1px solid #ffffff12;border-radius:10px}
+#workspace-app .toast{background:#171d23!important;border:1px solid #46515b!important;color:#f3f0ea!important}
+#workspace-app .signup-dialog{background:#11171d!important;border:1px solid #46515b!important;color:#f4f1eb!important}
+#workspace-app .signup-dialog::backdrop{background:#020406bb!important;backdrop-filter:blur(8px)}
+#workspace-app .bot-face,#workspace-app .bot-chest{background:linear-gradient(145deg,#e7edf0,#8e9ba3 60%,#56636d)!important;border-color:#6d7a83!important}
+#workspace-app .bot-ear,#workspace-app .bot-neck,#workspace-app .bot-shoulder,#workspace-app .bot-arm,#workspace-app .bot-arm:after,#workspace-app .bot-leg,#workspace-app .bot-leg:after{background:linear-gradient(90deg,#aebac1,#65727b 55%,#38444d)!important;border-color:#65727b!important}
+#workspace-app .bot-antenna{background:linear-gradient(90deg,#ff7446,#4db8d8)!important}
+#workspace-app .bot-antenna i{background:radial-gradient(circle at 35% 30%,#fff,#ff875d 48%,#4db8d8)!important;box-shadow:0 0 12px #ff704588!important}
+#workspace-app .feature-icon svg,#workspace-app .feature-icon svg *{stroke:#ff9169!important}
+#workspace-app .app-tool .feature-icon svg{filter:none!important}
 
-/* Fine luminous traces: low-contrast diagonal filaments, not noisy stripes. */
-html,body,body#app-body,#public-site,#workspace-app{
- background-image:
-  radial-gradient(ellipse at 12% 14%,#27b8e51c,transparent 28%),
-  radial-gradient(ellipse at 88% 24%,#9271c81a,transparent 30%),
-  repeating-linear-gradient(128deg,transparent 0 74px,#38bce00b 75px,#38bce00b 76px,transparent 77px 148px),
-  repeating-linear-gradient(38deg,transparent 0 112px,#9b7bd009 113px,#9b7bd009 114px,transparent 115px 226px);
- background-attachment:fixed;
+/* Responsive app shell — preserve the existing fixed mobile navigation geometry. */
+@media(max-width:980px){
+ #public-site .hero-copy{column-gap:30px;grid-template-columns:minmax(0,1fr) minmax(300px,.9fr)}
+ #workspace-app .app-layout{grid-template-columns:205px minmax(0,1fr);gap:15px;padding:17px}
+ #workspace-app .dashboard-hero-row{grid-template-columns:minmax(0,1fr) 190px}
+ #workspace-app .dashboard-overview{grid-template-columns:1fr}
 }
-#public-site :is(.hero,.visual-card,.feature,.tool,.auth-wrap),
-#workspace-app :is(.dashboard-intro,.dash-hero,.sidebar,.panel,.stat,.app-tool,.dashboard-shortcut,.dashboard-tools-panel,.dashboard-info-card,.image-studio-panel,.chat-compose-box,.chat-message){
- position:relative;
- isolation:isolate;
+@media(max-width:700px){
+ .container{width:calc(100% - 32px)}
+ #public-site .topbar{height:64px;padding:0 16px}
+ #public-site .top-links{display:none}
+ #public-site .top-actions{gap:6px}
+ #public-site .brand{font-size:14px}
+ #public-site .brand-mark{width:36px;height:36px}
+ #public-site .hero{padding:34px 0 48px}
+ #public-site .hero-copy{
+  min-height:0;grid-template-columns:1fr;
+  grid-template-areas:"eyebrow" "heading" "brand" "media" "description" "actions" "note";
+  row-gap:12px
+ }
+ #public-site .hero-copy>h1{font-size:clamp(34px,9vw,48px);margin:0}
+ #public-site .hero-desktop-panel{min-height:310px;padding:22px;border-radius:18px;margin:8px 0}
+ #public-site .hero-desktop-panel h2{font-size:22px}
+ #public-site .hero-copy>.lokal-hero-logo{margin:2px 0}
+ #public-site .lokal-hero-logo svg{width:42px;height:42px}
+ #public-site .lokal-hero-wordmark{font-size:17px}
+ #public-site .hero-copy>p{font-size:12px}
+ #public-site .section{padding:48px 0}
+ #public-site .features{grid-template-columns:1fr}
+ #public-site .tool-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #public-site .steps{grid-template-columns:1fr}
+ #public-site .cta{padding:23px;align-items:flex-start;flex-direction:column}
+ #workspace-app .app-top{height:62px;padding:0 13px}
+ #workspace-app .app-top .brand{font-size:13px;gap:8px}
+ #workspace-app .app-top .brand-mark{width:34px;height:34px}
+ #workspace-app .app-top .top-actions{gap:5px}
+ #workspace-app .app-layout{display:block;padding:13px 13px 110px}
+ #workspace-app .sidebar{display:none}
+ #workspace-app .dashboard-hero-row{grid-template-columns:1fr;gap:12px}
+ #workspace-app .dashboard-bot-wrap{display:none}
+ #workspace-app .dashboard-intro{min-height:190px;padding:21px}
+ #workspace-app .dashboard-overview{grid-template-columns:1fr;gap:10px}
+ #workspace-app .stats{gap:7px}
+ #workspace-app .stat{padding:12px}
+ #workspace-app .stat span{font-size:9px}
+ #workspace-app .stat b{font-size:18px}
+ #workspace-app .dashboard-shortcuts{grid-template-columns:1fr 1fr}
+ #workspace-app .tools-grid{grid-template-columns:1fr 1fr}
+ #workspace-app .app-tool{padding:13px}
+ #workspace-app .field-row,#workspace-app .image-studio-controls{grid-template-columns:1fr}
+ #workspace-app .image-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #workspace-app .dashboard-section-head{align-items:flex-start;flex-direction:column}
 }
-#public-site :is(.visual-card,.feature,.tool,.auth-wrap)::after,
-#workspace-app :is(.dashboard-intro,.dash-hero,.sidebar,.panel,.stat,.app-tool,.dashboard-shortcut,.dashboard-tools-panel,.dashboard-info-card,.image-studio-panel,.chat-compose-box)::after{
- content:"";
- position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
- background:
-  linear-gradient(132deg,transparent 0 32%,#35bce00b 32.2%,transparent 32.7% 67%,#9b79c90a 67.2%,transparent 67.8%),
-  radial-gradient(ellipse at 8% 8%,#31bce51c,transparent 48%),
-  radial-gradient(ellipse at 94% 92%,#9271c81a,transparent 46%);
+@media(max-width:390px){
+ #public-site .top-actions .btn-small{padding:8px 9px;font-size:10px}
+ #workspace-app .app-top .top-actions .btn-small{padding:8px 8px;font-size:9px}
+ #workspace-app .tools-grid{grid-template-columns:1fr}
+ #workspace-app .stats{grid-template-columns:1fr 1fr}
+ #workspace-app .stats .stat:last-child{grid-column:1/-1}
 }
-
-/* Blue is the icon lead color; violet stays a small ambient accent only. */
-#public-site .feature-icon,#public-site #studios .tool .feature-icon,
-#workspace-app .app-tool .feature-icon,
-#workspace-app .dashboard-tools-panel .dashboard-tool-icon,
-#workspace-app .nav-btn svg,.feature-icon,.dashboard-tool-icon{
- background:
-  radial-gradient(circle at 28% 18%,#ffffffd9,transparent 42%),
-  linear-gradient(145deg,#d8f4fc 0%,#a9e2f4 72%,#d9d0f0 100%)!important;
- border:1px solid #69c3e0!important;
- box-shadow:0 0 20px #20b4e04d,0 0 30px #9271c81a,inset 0 1px 0 #fff!important;
-}
-#public-site .feature-icon svg,#workspace-app .app-tool .feature-icon svg,
-#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg,
-#workspace-app .nav-btn svg,.feature-icon svg,.dashboard-tool-icon svg{
- color:#087eae!important;
- stroke:#087eae!important;
- filter:drop-shadow(0 0 5px #25b9e077)!important;
-}
-#workspace-app .nav-btn.active svg{color:#087eae!important;stroke:#087eae!important}
-#workspace-app :is(.dashboard-intro,.dash-hero,.panel,.stat,.app-tool,.dashboard-shortcut,.dashboard-tools-panel,.dashboard-info-card,.image-studio-panel,.chat-compose-box),
-#public-site :is(.visual-card,.feature,.tool,.auth-wrap){
- box-shadow:0 16px 38px #8d6b3420,0 0 28px #24b8e02b,0 0 38px #8c70c31b!important;
- border-color:#b9d6df!important;
-}
-#workspace-app .dashboard-intro,#workspace-app .dash-hero{
- background:
-  radial-gradient(ellipse at 8% 8%,#39c4ed42,transparent 46%),
-  radial-gradient(ellipse at 94% 92%,#9271c82b,transparent 45%),
-  linear-gradient(120deg,#fffaf0,#f0e2c9)!important;
-}
-#workspace-app .dashboard-tools-panel .dashboard-tool-icon,
-#workspace-app .dashboard-shortcut .feature-icon{color:#087eae!important}
-#workspace-app .nav-btn.active{
- background:linear-gradient(90deg,#32bce52b,#9271c81a)!important;
- color:#263540!important;
- box-shadow:inset -2px 0 #20aee0,0 0 18px #20aee01c!important;
-}
-#workspace-app .nav-btn:hover{background:#32bce51a!important;color:#263540!important}
-@media(max-width:680px){
- html,body,#workspace-app{background-attachment:scroll}
- #workspace-app :is(.dashboard-intro,.dash-hero,.panel,.app-tool,.dashboard-shortcut){box-shadow:0 12px 28px #8d6b3420,0 0 22px #24b8e025!important}
-}
-
-
-
-/* --- Dashboard finish: visible blue light, lively champagne, true ink typography --- */
-:root{
-  --lokal-ink:#182a35;
-  --lokal-ink-soft:#465967;
-  --lokal-blue:#159dcc;
-  --lokal-blue-deep:#087eae;
-  --lokal-blue-glow:#36c5f2;
-}
-/* Make the cream canvas feel luminous, with barely-there flowing filaments. */
-html,body,body#app-body,#workspace-app,#workspace-app #page-home{
-  background-color:#f4ead5!important;
-  background-image:
-    radial-gradient(ellipse at 12% 12%,#54c9ed30 0%,transparent 31%),
-    radial-gradient(ellipse at 88% 22%,#65c8e922 0%,transparent 34%),
-    radial-gradient(ellipse at 74% 88%,#d9b35a20 0%,transparent 38%),
-    repeating-linear-gradient(122deg,transparent 0 92px,#28aeda0c 93px,#28aeda0c 94px,transparent 95px 184px),
-    repeating-linear-gradient(32deg,transparent 0 138px,#c6a45d0b 139px,#c6a45d0b 140px,transparent 141px 278px),
-    linear-gradient(135deg,#fbf4e7 0%,#f0e2c7 52%,#faf2e3 100%)!important;
-  background-attachment:fixed!important;
-}
-/* Dark ink only on dashboard: never use white text on champagne surfaces. */
-#workspace-app #page-home,
-#workspace-app #page-home :is(h1,h2,h3,h4,h5,p,span,label,small,strong,b,li,div,a,button){
-  color:#182a35!important;
-}
-#workspace-app #page-home :is(.muted,.hint,.description,.dashboard-subtitle,.side-label,.eyebrow){
-  color:#526573!important;
-}
-#workspace-app #page-home :is(.gradient,.accent,.highlight,.count,.stat-value){
-  color:#087eae!important;
-}
-/* Force every dashboard icon glyph to blue, overriding legacy violet rules and inline styles. */
-#workspace-app #page-home svg,
-#workspace-app #page-home svg *,
-#workspace-app #page-home :is(i,.icon,[class*="icon"]):not(button){
-  color:#087eae!important;
-  stroke:#087eae!important;
-}
-#workspace-app #page-home svg{
-  filter:drop-shadow(0 0 4px #31bce077) drop-shadow(0 0 9px #31bce044)!important;
-}
-#workspace-app #page-home :is(.feature-icon,.dashboard-tool-icon,.app-tool-icon,.tool-icon,[class*="icon-wrap"],[class*="icon-box"]){
-  background:
-    radial-gradient(circle at 30% 20%,#ffffffed 0%,#ffffff00 46%),
-    linear-gradient(145deg,#e7f9ff 0%,#c4edfa 62%,#e2f4f7 100%)!important;
-  border:1px solid #80cfe8!important;
-  box-shadow:0 0 18px #28b9e052,0 0 34px #28b9e02e,inset 0 1px 0 #fff!important;
-}
-/* Give every dashboard surface a soft blue backlight, not a purple wash. */
-#workspace-app #page-home :is(.dashboard-intro,.dash-hero,.panel,.stat,.app-tool,.dashboard-shortcut,.dashboard-tools-panel,.dashboard-info-card,.card,.tool,.feature,.image-studio-panel,.chat-compose-box){
-  background-image:
-    radial-gradient(ellipse at 8% 8%,#36c5f22b 0%,transparent 48%),
-    radial-gradient(ellipse at 96% 94%,#6bcde91c 0%,transparent 46%),
-    linear-gradient(135deg,#fffaf0f5,#f0e2c9f5)!important;
-  border-color:#c4dce2!important;
-  box-shadow:0 14px 34px #8d6b341c,0 0 24px #27b8e02b,0 0 42px #27b8e018!important;
-}
-#workspace-app #page-home :is(.dashboard-intro,.dash-hero){
-  box-shadow:0 18px 42px #8d6b3420,0 0 34px #27b8e03a,0 0 58px #27b8e01c!important;
-}
-#workspace-app #page-home :is(.nav-btn.active,.dashboard-shortcut:hover,.app-tool:hover){
-  background-color:#e2f5fa!important;
-  border-color:#73c6e2!important;
-}
-@media(max-width:680px){
-  html,body,#workspace-app,#workspace-app #page-home{background-attachment:scroll!important}
-}
-
-
-/* --- FINAL VISUAL CORRECTION: light must sit BEHIND surfaces, not paint over them --- */
-/* A separate atmospheric layer adds visible silky filaments to the cream base. */
-html,body,body#app-body,#public-site,#workspace-app{
-  background-color:#f3e8d2!important;
-  background-image:
-    radial-gradient(ellipse 48% 34% at 8% 18%,#58c9ed26 0%,transparent 72%),
-    radial-gradient(ellipse 42% 30% at 92% 36%,#68bde91e 0%,transparent 72%),
-    radial-gradient(ellipse 50% 32% at 62% 96%,#d7ad5b20 0%,transparent 75%),
-    repeating-linear-gradient(118deg,transparent 0 118px,#ffffff30 119px,#ffffff30 120px,transparent 121px 238px),
-    repeating-linear-gradient(28deg,transparent 0 166px,#c6a35b17 167px,#c6a35b17 168px,transparent 169px 334px),
-    linear-gradient(135deg,#fbf3e3 0%,#efe0c3 48%,#f8efdf 100%)!important;
-  background-attachment:fixed!important;
-}
-/* Keep the app canvas translucent so the luminous base and fine streaks remain visible. */
-#public-site,#workspace-app{
-  background-color:transparent!important;
-  background-image:none!important;
-}
-/* Give each card/window a real external blue backlight via outer shadows.
-   No blue overlay is placed inside the card content. */
-#workspace-app .dashboard-intro,
-#workspace-app .app-tool,
-#workspace-app .dashboard-shortcut,
-#workspace-app .dashboard-tools-panel,
-#workspace-app .dashboard-info-card,
-#workspace-app .stat,
-#workspace-app .panel,
-#workspace-app .account-card,
-#workspace-app .image-studio-panel,
-#workspace-app .image-gallery-card,
-#workspace-app .image-preview,
-#workspace-app .chat-compose-box,
-#public-site .feature,
-#public-site .visual-card,
-#public-site .tool,
-#public-site .auth-wrap{
-  box-shadow:
-    0 12px 30px #80633b1c,
-    0 0 0 1px #b9dce733,
-    0 0 24px 5px #24b8e03b,
-    0 0 42px 10px #24b8e020!important;
-}
-/* Stronger, soft blue aura around the dashboard's icon tiles, behind their frames. */
-#workspace-app .app-tool .feature-icon,
-#workspace-app .dashboard-tools-panel .dashboard-tool-icon,
-#workspace-app .dashboard-shortcut .feature-icon,
-#public-site .feature-icon,
-#public-site #studios .tool .feature-icon{
-  background:linear-gradient(145deg,#e7f8fc 0%,#c6edf8 70%,#e4f3f5 100%)!important;
-  border:1px solid #79c9e2!important;
-  box-shadow:
-    0 0 0 1px #ffffffa8,
-    0 0 22px 5px #22b7e05c,
-    0 0 38px 10px #22b7e02e,
-    inset 0 1px 0 #ffffff!important;
-}
-#workspace-app .app-tool .feature-icon svg,
-#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg,
-#workspace-app .dashboard-shortcut .feature-icon svg,
-#public-site .feature-icon svg,
-#public-site #studios .tool .feature-icon svg{
-  color:#087eae!important;
-  stroke:#087eae!important;
-  filter:drop-shadow(0 0 5px #25b9e088)!important;
-}
-/* Dashboard text: dark ink and blue emphasis; no white typography on light surfaces. */
-#workspace-app #page-home,
-#workspace-app #page-home :is(h1,h2,h3,h4,h5,p,span,label,small,strong,b,li,div,a){
-  color:#202d35!important;
-}
-#workspace-app #page-home :is(.muted,.hint,.description,.dashboard-subtitle,.side-label,.eyebrow){
-  color:#52636d!important;
-}
-#workspace-app #page-home :is(.gradient,.accent,.highlight,.count,.stat-value){
-  color:#087eae!important;
-  -webkit-text-fill-color:#087eae!important;
-}
-#workspace-app #page-home svg,
-#workspace-app #page-home svg *{
-  color:#087eae!important;
-  stroke:#087eae!important;
-}
-@media(max-width:680px){
-  html,body,#workspace-app,#public-site{background-attachment:scroll!important}
-}
-
-
-/* --- LOKAL AI: selector-accurate blue + champagne ambient lighting --- */
-/* Keep the public footer and all lower-page footer styling completely untouched. */
-/* Hero brand window: blue/cyan light blended with warm gold, outside the frame. */
-#public-site .lokal-hero-logo{
-  position:relative!important;
-  isolation:isolate!important;
-  border:1px solid #d4b56f!important;
-  background:
-    radial-gradient(ellipse at 50% 0%,#39c7f044 0%,transparent 58%),
-    radial-gradient(ellipse at 92% 92%,#d8a83e3d 0%,transparent 52%),
-    linear-gradient(145deg,#fff9eaf2 0%,#f0dfbded 55%,#fff8e8f2 100%)!important;
-  box-shadow:
-    0 16px 38px #8d6b3428,
-    0 0 0 1px #e5c77b88,
-    0 0 30px 8px #29b9e052,
-    0 0 54px 15px #d5a33c40,
-    0 0 82px 22px #29b9e01c!important;
-}
-#public-site .lokal-hero-logo::before{
-  background:
-    linear-gradient(128deg,transparent 0 34%,#ffffff55 34.2%,transparent 35% 67%,#d6ad5b24 67.3%,transparent 68%),
-    radial-gradient(ellipse at 50% 0%,#32bce52a,transparent 68%)!important;
-}
-#public-site .lokal-hero-logo::after{
-  content:"";
-  position:absolute;
-  z-index:-1;
-  inset:-18px;
-  border-radius:inherit;
-  pointer-events:none;
-  background:
-    radial-gradient(ellipse at 24% 45%,#35c4ed45,transparent 58%),
-    radial-gradient(ellipse at 78% 58%,#d8a83e40,transparent 60%);
-  filter:blur(20px);
-}
-#public-site .lokal-hero-logo svg{
-  filter:drop-shadow(0 0 12px #25bde0aa) drop-shadow(0 0 20px #d5a33c66)!important;
-}
-
-/* Real dashboard structure (dashboard-hero-row / dashboard-overview /
-   dashboard-shortcuts): use the actual selectors present in index.html. */
-#workspace-app #page-home .dashboard-hero-row,
-#workspace-app #page-home .dashboard-overview{
-  position:relative;
-  isolation:isolate;
-}
-#workspace-app #page-home .dashboard-intro{
-  position:relative!important;
-  isolation:isolate!important;
-  border:1px solid #d9bd78!important;
-  background:
-    radial-gradient(ellipse at 8% 8%,#38c2e94a 0%,transparent 52%),
-    radial-gradient(ellipse at 96% 92%,#d9a83c3d 0%,transparent 50%),
-    linear-gradient(125deg,#fffaf0 0%,#f2e3c6 55%,#fff8e8 100%)!important;
-  box-shadow:
-    0 14px 32px #8d6b3424,
-    0 0 0 1px #ffffffa0,
-    0 0 28px 7px #28b9e04a,
-    0 0 48px 12px #d4a23b35!important;
-}
-#workspace-app #page-home .dashboard-intro::after{
-  content:"";
-  position:absolute;
-  z-index:-1;
-  inset:-14px;
-  border-radius:inherit;
-  pointer-events:none;
-  background:linear-gradient(115deg,#25b9e044,#d5a33c3d);
-  filter:blur(20px);
-}
-#workspace-app #page-home .dashboard-shortcuts{
-  display:grid;
-  gap:12px;
-}
-#workspace-app #page-home .dashboard-shortcut,
-#workspace-app #page-home .stat,
-#workspace-app #page-home .dashboard-tools-panel,
-#workspace-app #page-home .app-tool{
-  position:relative!important;
-  isolation:isolate!important;
-  border:1px solid #d8c18d!important;
-  background:
-    radial-gradient(ellipse at 8% 8%,#35bde52b 0%,transparent 54%),
-    radial-gradient(ellipse at 94% 94%,#d6a43a25 0%,transparent 54%),
-    linear-gradient(145deg,#fffaf0f5,#f0e1c5f5)!important;
-  box-shadow:
-    0 10px 26px #80633b20,
-    0 0 0 1px #ffffff8c,
-    0 0 22px 5px #28b9e03a,
-    0 0 38px 9px #d4a23b22!important;
-}
-#workspace-app #page-home .dashboard-shortcut::after,
-#workspace-app #page-home .stat::after,
-#workspace-app #page-home .dashboard-tools-panel::after,
-#workspace-app #page-home .app-tool::after{
-  content:"";
-  position:absolute;
-  z-index:-1;
-  inset:-9px;
-  border-radius:inherit;
-  pointer-events:none;
-  background:
-    radial-gradient(ellipse at 10% 20%,#32bde54a,transparent 62%),
-    radial-gradient(ellipse at 90% 85%,#d8a83c38,transparent 62%);
-  filter:blur(15px);
-}
-#workspace-app #page-home .dashboard-shortcut>span,
-#workspace-app #page-home .app-tool .feature-icon,
-#workspace-app #page-home .dashboard-tool-icon{
-  color:#087eae!important;
-  background:
-    radial-gradient(circle at 28% 18%,#ffffffed,transparent 44%),
-    linear-gradient(145deg,#e4f8fc 0%,#bde9f5 65%,#f4e6c8 100%)!important;
-  border:1px solid #75c9e3!important;
-  border-radius:14px;
-  box-shadow:
-    0 0 0 1px #ffffffa8,
-    0 0 18px 4px #24b9e05c,
-    0 0 30px 8px #d4a23b35,
-    inset 0 1px 0 #fff!important;
-  text-shadow:0 0 8px #25b9e099!important;
-}
-#workspace-app #page-home .app-tool svg,
-#workspace-app #page-home .app-tool svg *{
-  stroke:#087eae!important;
-  color:#087eae!important;
-  filter:drop-shadow(0 0 5px #28bde099)!important;
-}
-#workspace-app #page-home .dashboard-shortcut strong,
-#workspace-app #page-home .dashboard-shortcut small,
-#workspace-app #page-home .app-tool h4,
-#workspace-app #page-home .app-tool p,
-#workspace-app #page-home .stat span,
-#workspace-app #page-home .stat b{
-  color:#202d35!important;
-}
-#workspace-app #page-home .dashboard-section-head p{
-  color:#52636d!important;
-}
-
-/* Extend the same blue/gold backlight to workspace windows and icon tiles,
-   without changing the fixed mobile bottom navigation or public footer. */
-#workspace-app :is(.panel,.account-card,.image-studio-panel,.image-preview,
-  .image-gallery-card,.compiler-review,.chat-compose-box,.chat-message.assistant,
-  .dashboard-info-card,.dashboard-tools-panel){
-  box-shadow:
-    0 12px 28px #80633b20,
-    0 0 22px 5px #28b9e033,
-    0 0 38px 9px #d4a23b20!important;
-}
-#workspace-app :is(.feature-icon,.dashboard-tool-icon,.image-studio-panel .feature-icon){
-  box-shadow:
-    0 0 18px 4px #28b9e052,
-    0 0 28px 7px #d4a23b30,
-    inset 0 1px 0 #fff!important;
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
