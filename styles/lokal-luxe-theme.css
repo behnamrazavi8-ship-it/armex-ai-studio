@@ -222,3 +222,97 @@ html,body,body#app-body{
  #workspace-app .mobile-nav,.mobile-nav{backdrop-filter:blur(18px) saturate(140%)}
  .app-layout{background:transparent}
 }
+
+/* --- LOKAL AI: luminous blue-gold refinement --- */
+:root{
+ --lokal-ink:#242b33;
+ --lokal-ink-soft:#46515d;
+ --lokal-blue:#20aee0;
+ --lokal-blue-bright:#48c9f1;
+ --lokal-violet:#9271c8;
+}
+/* Restore readable dark typography on the light champagne surfaces. */
+#public-site :is(h1,h2,h3,h4,h5,p,span,label,small,strong,b,li,summary,div),
+#workspace-app :is(h1,h2,h3,h4,h5,p,span,label,small,strong,b,li,summary){
+ color:var(--lokal-ink);
+}
+#public-site :is(.hero p,.feature p,.tool p,.step p,.section-head p,.hero-note,.lokal-hero-caption),
+#workspace-app :is(.welcome p,.side-label,.muted,.hint,.description,.dashboard-subtitle){
+ color:var(--lokal-ink-soft)!important;
+}
+#public-site .lokal-hero-wordmark,#public-site .gradient,
+#workspace-app .gradient{ -webkit-text-fill-color:transparent; }
+#public-site .btn,#workspace-app .btn,.btn{color:#352608!important}
+#public-site .btn-ghost,#workspace-app .btn-ghost,.btn-ghost{color:#34404b!important}
+#workspace-app :is(input,textarea,select),
+#public-site :is(input,textarea,select){color:#242b33!important}
+#workspace-app :is(input,textarea)::placeholder,
+#public-site :is(input,textarea)::placeholder{color:#77818a!important}
+
+/* Fine luminous traces: low-contrast diagonal filaments, not noisy stripes. */
+html,body,body#app-body,#public-site,#workspace-app{
+ background-image:
+  radial-gradient(ellipse at 12% 14%,#27b8e51c,transparent 28%),
+  radial-gradient(ellipse at 88% 24%,#9271c81a,transparent 30%),
+  repeating-linear-gradient(128deg,transparent 0 74px,#38bce00b 75px,#38bce00b 76px,transparent 77px 148px),
+  repeating-linear-gradient(38deg,transparent 0 112px,#9b7bd009 113px,#9b7bd009 114px,transparent 115px 226px);
+ background-attachment:fixed;
+}
+#public-site :is(.hero,.visual-card,.feature,.tool,.auth-wrap),
+#workspace-app :is(.dashboard-intro,.dash-hero,.sidebar,.panel,.stat,.app-tool,.dashboard-shortcut,.dashboard-tools-panel,.dashboard-info-card,.image-studio-panel,.chat-compose-box,.chat-message){
+ position:relative;
+ isolation:isolate;
+}
+#public-site :is(.visual-card,.feature,.tool,.auth-wrap)::after,
+#workspace-app :is(.dashboard-intro,.dash-hero,.sidebar,.panel,.stat,.app-tool,.dashboard-shortcut,.dashboard-tools-panel,.dashboard-info-card,.image-studio-panel,.chat-compose-box)::after{
+ content:"";
+ position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+ background:
+  linear-gradient(132deg,transparent 0 32%,#35bce00b 32.2%,transparent 32.7% 67%,#9b79c90a 67.2%,transparent 67.8%),
+  radial-gradient(ellipse at 8% 8%,#31bce51c,transparent 48%),
+  radial-gradient(ellipse at 94% 92%,#9271c81a,transparent 46%);
+}
+
+/* Blue is the icon lead color; violet stays a small ambient accent only. */
+#public-site .feature-icon,#public-site #studios .tool .feature-icon,
+#workspace-app .app-tool .feature-icon,
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon,
+#workspace-app .nav-btn svg,.feature-icon,.dashboard-tool-icon{
+ background:
+  radial-gradient(circle at 28% 18%,#ffffffd9,transparent 42%),
+  linear-gradient(145deg,#d8f4fc 0%,#a9e2f4 72%,#d9d0f0 100%)!important;
+ border:1px solid #69c3e0!important;
+ box-shadow:0 0 20px #20b4e04d,0 0 30px #9271c81a,inset 0 1px 0 #fff!important;
+}
+#public-site .feature-icon svg,#workspace-app .app-tool .feature-icon svg,
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg,
+#workspace-app .nav-btn svg,.feature-icon svg,.dashboard-tool-icon svg{
+ color:#087eae!important;
+ stroke:#087eae!important;
+ filter:drop-shadow(0 0 5px #25b9e077)!important;
+}
+#workspace-app .nav-btn.active svg{color:#087eae!important;stroke:#087eae!important}
+#workspace-app :is(.dashboard-intro,.dash-hero,.panel,.stat,.app-tool,.dashboard-shortcut,.dashboard-tools-panel,.dashboard-info-card,.image-studio-panel,.chat-compose-box),
+#public-site :is(.visual-card,.feature,.tool,.auth-wrap){
+ box-shadow:0 16px 38px #8d6b3420,0 0 28px #24b8e02b,0 0 38px #8c70c31b!important;
+ border-color:#b9d6df!important;
+}
+#workspace-app .dashboard-intro,#workspace-app .dash-hero{
+ background:
+  radial-gradient(ellipse at 8% 8%,#39c4ed42,transparent 46%),
+  radial-gradient(ellipse at 94% 92%,#9271c82b,transparent 45%),
+  linear-gradient(120deg,#fffaf0,#f0e2c9)!important;
+}
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon,
+#workspace-app .dashboard-shortcut .feature-icon{color:#087eae!important}
+#workspace-app .nav-btn.active{
+ background:linear-gradient(90deg,#32bce52b,#9271c81a)!important;
+ color:#263540!important;
+ box-shadow:inset -2px 0 #20aee0,0 0 18px #20aee01c!important;
+}
+#workspace-app .nav-btn:hover{background:#32bce51a!important;color:#263540!important}
+@media(max-width:680px){
+ html,body,#workspace-app{background-attachment:scroll}
+ #workspace-app :is(.dashboard-intro,.dash-hero,.panel,.app-tool,.dashboard-shortcut){box-shadow:0 12px 28px #8d6b3420,0 0 22px #24b8e025!important}
+}
+
