@@ -524,3 +524,99 @@ body:before{
 @media(prefers-reduced-motion:reduce){
  #workspace-app .bot-stage,#workspace-app .bot-antenna i{animation:none!important}
 }
+
+
+/* LOKAL AI — visual correction pass from mobile reference review (2026-11-18)
+   Hero becomes a cinematic feature frame; every tool tile adopts the same glass language. */
+#public-site .hero-copy>.lokal-hero-logo{display:none!important}
+#public-site .hero-desktop-panel{
+  display:flex!important;min-height:clamp(390px,48vw,590px);isolation:isolate;
+  border-radius:26px;padding:clamp(22px,3vw,34px);
+  border:1px solid rgba(235,239,241,.22);
+  background:
+    linear-gradient(180deg,rgba(7,10,13,.06) 0%,rgba(7,10,13,.12) 35%,rgba(7,10,13,.88) 100%),
+    radial-gradient(ellipse at 50% 30%,rgba(255,174,112,.22),transparent 42%),
+    linear-gradient(118deg,#4b5558 0%,#303b40 30%,#1c282d 63%,#10171c 100%);
+  box-shadow:0 34px 90px rgba(0,0,0,.48),0 0 70px rgba(69,178,211,.12),inset 0 1px rgba(255,255,255,.23);
+  backdrop-filter:blur(24px) saturate(135%);-webkit-backdrop-filter:blur(24px) saturate(135%);
+}
+#public-site .hero-desktop-panel:before{
+  content:"";position:absolute;z-index:-1;inset:0;opacity:.9;pointer-events:none;
+  background:
+   linear-gradient(90deg,transparent 0 8%,rgba(9,14,17,.75) 8.3% 9.2%,transparent 9.5% 25%,rgba(8,13,16,.72) 25.3% 27%,transparent 27.3% 44%,rgba(8,13,16,.82) 44.3% 46.2%,transparent 46.5% 67%,rgba(8,13,16,.72) 67.3% 69%,transparent 69.3%),
+   linear-gradient(0deg,rgba(5,9,12,.9),transparent 48%),
+   repeating-linear-gradient(90deg,transparent 0 46px,rgba(255,255,255,.045) 47px,transparent 49px 91px);
+  clip-path:polygon(0 15%,8% 15%,8% 4%,20% 4%,20% 19%,31% 19%,31% 0,47% 0,47% 12%,60% 12%,60% 5%,76% 5%,76% 17%,88% 17%,88% 2%,100% 2%,100% 100%,0 100%);
+}
+#public-site .hero-desktop-panel:after{
+  content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 18% 18%,rgba(94,207,228,.2),transparent 38%),radial-gradient(ellipse at 88% 92%,rgba(255,126,77,.19),transparent 42%),linear-gradient(120deg,transparent 35%,rgba(255,255,255,.075) 48%,transparent 59%);
+}
+#public-site .hero-panel-kicker{display:inline-flex;align-items:center;gap:8px;width:max-content;max-width:100%;padding:9px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:rgba(225,231,232,.14);color:#ffb17f;font-size:10px;letter-spacing:2px;backdrop-filter:blur(18px)}
+#public-site .hero-desktop-panel h2{max-width:590px;font-size:clamp(25px,3.1vw,42px);line-height:1.38;text-shadow:0 3px 24px #0009}
+#public-site .hero-desktop-panel p{max-width:520px;color:#d0d5d5;font-size:13px;line-height:2}
+#public-site .hero-desktop-panel .btn{border-radius:999px;background:rgba(238,243,244,.13);border:1px solid rgba(255,255,255,.3);color:#f6f0e8!important;box-shadow:0 8px 30px #0003;backdrop-filter:blur(18px)}
+#public-site .hero-panel-foot{gap:8px}
+#public-site .hero-panel-foot span{padding:7px 11px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(240,245,246,.09);color:#d4d9da;backdrop-filter:blur(14px)}
+/* Consistent tactile glass tiles and icon capsules across landing + workspace. */
+#public-site .feature,#public-site .tool,#public-site .step,#public-site .auth-wrap,
+#workspace-app .dashboard-shortcut,#workspace-app .stat,#workspace-app .panel,
+#workspace-app .app-tool,#workspace-app .sidebar,#workspace-app .dashboard-bot-wrap,
+#workspace-app .image-studio-panel,#workspace-app .image-preview,
+#workspace-app .image-gallery-card,#workspace-app .compiler-review{
+  position:relative;isolation:isolate;overflow:hidden;
+  border:1px solid rgba(220,235,242,.17)!important;
+  background:linear-gradient(145deg,rgba(215,230,237,.105),rgba(20,29,36,.62) 46%,rgba(10,15,20,.82))!important;
+  box-shadow:0 18px 48px rgba(0,0,0,.23),inset 0 1px rgba(255,255,255,.11),inset 0 -1px rgba(255,255,255,.025);
+  backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);
+}
+#public-site .feature:before,#public-site .tool:before,#public-site .step:before,
+#workspace-app .dashboard-shortcut:before,#workspace-app .stat:before,
+#workspace-app .panel:before,#workspace-app .app-tool:before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse at 0 0,rgba(84,191,218,.13),transparent 55%),radial-gradient(ellipse at 100% 100%,rgba(255,135,83,.09),transparent 52%);
+}
+#public-site .feature:hover,#public-site .tool:hover,#workspace-app .dashboard-shortcut:hover,#workspace-app .app-tool:hover{
+  transform:translateY(-3px);border-color:rgba(255,174,124,.48)!important;
+  box-shadow:0 24px 58px rgba(0,0,0,.3),0 0 30px rgba(73,185,218,.09),inset 0 1px rgba(255,255,255,.16);
+}
+#public-site .feature-icon,#workspace-app .app-tool .feature-icon{
+  position:relative;display:grid;place-items:center;flex:none;
+  width:54px;height:54px;border-radius:17px;
+  border:1px solid rgba(190,225,237,.27)!important;
+  background:linear-gradient(145deg,rgba(112,207,225,.22),rgba(24,43,53,.68) 58%,rgba(255,132,82,.14))!important;
+  box-shadow:0 8px 25px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.24),0 0 24px rgba(76,190,218,.12);
+}
+#public-site .feature-icon svg,#public-site .feature-icon svg *,
+#workspace-app .feature-icon svg,#workspace-app .feature-icon svg *{
+  stroke:#a9e8f3!important;filter:drop-shadow(0 0 7px rgba(99,208,232,.36));
+}
+#public-site .feature-icon svg [fill]:not([fill="none"]),
+#workspace-app .feature-icon svg [fill]:not([fill="none"]){fill:#f3a477!important}
+#workspace-app .dashboard-shortcut>span{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;border:1px solid rgba(183,225,238,.24);background:linear-gradient(145deg,rgba(95,192,219,.2),rgba(255,133,80,.12));color:#b9eaf2;font-size:20px;box-shadow:inset 0 1px #ffffff24,0 8px 20px #0003}
+#workspace-app .app-tool{min-height:166px}
+#workspace-app .app-tool .tag,#public-site .tag{border-color:rgba(220,232,239,.2);background:rgba(230,239,242,.08);color:#c9dce1;backdrop-filter:blur(12px)}
+#workspace-app .nav-btn.active{background:linear-gradient(100deg,rgba(81,190,218,.17),rgba(255,134,82,.08))!important;color:#d6f3f5!important;box-shadow:inset -2px 0 #7ed4e4,0 8px 24px #0002}
+#workspace-app .nav-btn{border:1px solid transparent}
+#workspace-app .nav-btn:hover{border-color:rgba(220,235,242,.14);background:rgba(230,240,244,.07)}
+#public-site .brand-mark,#workspace-app .brand-mark{background:linear-gradient(145deg,rgba(94,196,221,.22),rgba(22,35,44,.8))!important;border:1px solid rgba(170,224,237,.34)!important;color:#d8f4f7!important;box-shadow:0 0 28px rgba(67,181,213,.16),inset 0 1px rgba(255,255,255,.2)}
+@media(max-width:700px){
+ #public-site .hero{padding:25px 0 38px}
+ #public-site .hero-copy{
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-areas:"eyebrow" "heading" "media" "description" "actions" "note"!important;
+  row-gap:13px!important;min-height:0!important
+ }
+ #public-site .hero-copy>.lokal-hero-logo{display:none!important}
+ #public-site .hero-desktop-panel{
+  display:flex!important;grid-area:media!important;min-height:clamp(390px,112vw,500px);
+  width:100%;margin:5px 0 8px;padding:22px 20px;border-radius:25px;
+  justify-content:flex-end;gap:10px
+ }
+ #public-site .hero-desktop-panel h2{font-size:clamp(25px,7vw,34px);max-width:100%}
+ #public-site .hero-desktop-panel p{font-size:12px;line-height:1.95}
+ #public-site .hero-panel-foot{gap:6px;margin-top:14px}
+ #public-site .hero-panel-foot span{font-size:8px;padding:6px 8px}
+ #public-site .feature-icon{width:52px;height:52px}
+ #workspace-app .app-tool{min-height:156px}
+}
