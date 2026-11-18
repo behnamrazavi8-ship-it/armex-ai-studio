@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { supabaseAuthHeaders } from "./supabase-auth.mjs";
+import { normalizeImageForFlux } from "./image-normalizer.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -102,12 +103,25 @@ async function runImageEditProvider(job) {
     const error = new Error("IMAGE_EDIT_INPUT_TYPE_INVALID"); error.retryable = false; throw error;
   }
 
+  let normalizedInput;
+  try {
+    normalizedInput = await normalizeImageForFlux(inputBytes);
+  } catch {
+    const error = new Error("IMAGE_EDIT_INPUT_DECODE_FAILED");
+    error.retryable = false;
+    throw error;
+  }
+
   const form = new FormData();
   form.append(
     "prompt",
     "Apply only the changes requested below. Preserve the original subject identity and recognizable features, proportions, pose, framing, and every unmentioned detail as faithfully as possible. Do not add or remove objects unless explicitly requested. User edit request: " + job.prompt,
   );
-  form.append("input_image_0", new Blob([inputBytes], { type: inputType }), "input." + (inputType === "image/png" ? "png" : inputType === "image/webp" ? "webp" : "jpg"));
+  form.append(
+    "input_image_0",
+    new Blob([normalizedInput.bytes], { type: normalizedInput.mimeType }),
+    "input." + normalizedInput.extension,
+  );
   const url = "https://api.cloudflare.com/client/v4/accounts/" + CLOUDFLARE_ACCOUNT_ID +
     "/ai/run/@cf/black-forest-labs/flux-2-klein-4b";
   const response = await fetch(url, {
