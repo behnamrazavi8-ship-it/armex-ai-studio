@@ -1560,10 +1560,9 @@ const handle = async (request: Request): Promise<Response> => {
   if (!requestId) return fail("A UUID request_id is required for idempotent billing", 400, cors);
 
   const attemptId = crypto.randomUUID();
-  const chatCreditCost = Number(Deno.env.get("CHAT_CREDIT_COST") ?? "1");
-  if (!Number.isSafeInteger(chatCreditCost) || chatCreditCost !== 1) {
-    return fail("Chat billing configuration must be CHAT_CREDIT_COST=1", 503, cors);
-  }
+  // Smart Chat and analysis are free to users. Provider cost is still tracked
+  // in armex_usage.actual_cost_usd for internal economics and reconciliation.
+  const chatCreditCost = 0;
 
   const { data: priorUsage, error: priorUsageError } = await db
     .from("armex_usage")
@@ -1727,12 +1726,13 @@ const handle = async (request: Request): Promise<Response> => {
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   let debitAttempted = false;
-  let debitOutcomeKnown = false;
+  let debitOutcomeKnown = chatCreditCost === 0;
   let debitCompleted = false;
   let providerRequestStarted = false;
   try {
-    debitAttempted = true;
-    const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
+    if (chatCreditCost > 0) {
+      debitAttempted = true;
+      const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
       p_user_id: userId,
       p_amount: chatCreditCost,
       p_idempotency_key: "ai_request:" + requestId,
@@ -1767,17 +1767,18 @@ const handle = async (request: Request): Promise<Response> => {
         return fail("Insufficient credits", 402, cors);
       }
       debitCompleted = true;
+      }
     }
 
-    // Persist the confirmed debit before contacting the provider. If this write
-    // cannot be confirmed, do not submit a billable provider request.
+    // Record the billing state before contacting the provider. Free chat never
+    // reserves wallet credits; this durable marker prevents ambiguous retries.
     const { data: debitEvidenceSaved, error: debitEvidenceError } = await db.rpc(
       "armex_record_chat_provider_evidence",
       {
         p_user_id: userId,
         p_request_id: requestId,
         p_provider_outcome: "not_started",
-        p_debit_outcome: "debited",
+        p_debit_outcome: chatCreditCost > 0 ? "debited" : "not_charged",
         p_provider_http_status: null,
         p_provider_response_payload: null,
         p_diagnostic_code: null,
@@ -1787,7 +1788,7 @@ const handle = async (request: Request): Promise<Response> => {
       debitCompleted = false;
       return json({
         success: true, pending: true, request_id: requestId,
-        message: "Credit reservation is confirmed but its recovery record could not be saved; the provider was not called",
+        message: "Chat request billing state could not be recorded; the provider was not called",
       }, 202, cors);
     }
 
@@ -1839,7 +1840,7 @@ const handle = async (request: Request): Promise<Response> => {
         debitCompleted = false;
         return json({
           success: true, pending: true, request_id: requestId,
-          message: "The provider response was received but its evidence could not be saved; billing remains held",
+          message: "The provider response was received but its evidence could not be saved; this request remains pending",
         }, 202, cors);
       }
       console.error("OpenRouter request failed", {
@@ -1953,7 +1954,7 @@ const handle = async (request: Request): Promise<Response> => {
           p_user_id: userId,
           p_request_id: requestId,
           p_provider_outcome: "unknown",
-          p_debit_outcome: debitOutcomeKnown && debitCompleted ? "debited" : "unknown",
+          p_debit_outcome: chatCreditCost === 0 ? "not_charged" : (debitOutcomeKnown && debitCompleted ? "debited" : "unknown"),
           p_provider_http_status: null,
           p_provider_response_payload: null,
           p_diagnostic_code: error instanceof Error && error.name === "AbortError"
