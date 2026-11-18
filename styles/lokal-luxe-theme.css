@@ -76,7 +76,7 @@ a{color:inherit}
 #public-site .hero-copy>h1{grid-area:heading;font-size:clamp(38px,5vw,66px);line-height:1.4;letter-spacing:-1.7px;margin:8px 0 0;max-width:680px;color:#f5f2ec}
 #public-site .hero-copy>.lokal-hero-logo{grid-area:brand;display:flex;align-items:center;justify-content:flex-start;gap:12px;
  margin:0;padding:0;width:auto;border:0;border-radius:0;background:none;box-shadow:none}
-#public-site .lokal-hero-logo svg{width:52px;height:52px;filter:none}
+#public-site .lokal-hero-logo svg{width:52px;height:52px;filter:hue-rotate(105deg) saturate(1.08)}
 #public-site .lokal-hero-wordmark{font-size:20px;letter-spacing:2px;font-weight:900;color:#f4f1eb;background:none;-webkit-text-fill-color:#f4f1eb}
 #public-site .lokal-hero-caption{color:#929da6;font-size:8px;letter-spacing:2.5px;margin-top:3px}
 #public-site .hero-desktop-panel{
