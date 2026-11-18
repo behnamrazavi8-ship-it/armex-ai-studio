@@ -986,3 +986,50 @@ body:before{
  #workspace-app .glass-orbit-one{width:84%;height:43%}
  #workspace-app .glass-orbit-two{width:62%;height:65%}
 }
+
+
+/* Minimal dashboard glass: only the LOKAL brand remains visible. */
+#workspace-app .dashboard-glass-concept{
+ min-height:245px!important;
+ background:
+  radial-gradient(ellipse at 50% 48%,rgba(86,190,211,.20),transparent 48%),
+  linear-gradient(125deg,rgba(24,48,59,.64),rgba(9,18,28,.70) 58%,rgba(34,29,47,.62))!important;
+}
+#workspace-app .dashboard-glass-backdrop{
+ background:
+  radial-gradient(ellipse at 50% 50%,rgba(102,204,221,.14),transparent 42%),
+  linear-gradient(115deg,rgba(255,255,255,.055),transparent 48%,rgba(179,157,224,.065));
+}
+#workspace-app .glass-word-shadow{
+ position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+ font:900 clamp(82px,19vw,190px)/.8 Arial,sans-serif;letter-spacing:.13em;
+ white-space:nowrap;color:rgba(210,239,246,.095);
+ text-shadow:0 8px 38px rgba(105,204,222,.20);
+ filter:blur(1.2px);user-select:none;
+}
+#workspace-app .dashboard-glass-content{
+ min-height:245px!important;padding:24px!important;
+ display:flex;align-items:center;justify-content:center;
+ background:linear-gradient(180deg,rgba(7,14,22,.04),rgba(7,14,22,.12));
+}
+#workspace-app .dashboard-glass-brand{
+ position:relative;display:block;padding:18px 30px;
+ color:rgba(242,251,253,.96);
+ font:800 clamp(29px,5vw,43px)/1 Arial,sans-serif;
+ letter-spacing:.28em;text-indent:.28em;
+ text-shadow:0 3px 22px rgba(0,0,0,.62),0 0 32px rgba(111,211,224,.30);
+}
+#workspace-app .dashboard-glass-brand:before{
+ content:"";position:absolute;inset:0 -4px;
+ border:1px solid rgba(214,243,248,.19);border-radius:18px;
+ background:linear-gradient(135deg,rgba(225,248,250,.09),rgba(111,164,190,.025) 55%,rgba(190,167,229,.07));
+ box-shadow:0 14px 35px rgba(0,0,0,.16),inset 0 1px rgba(255,255,255,.20);
+ -webkit-backdrop-filter:blur(14px) saturate(155%);backdrop-filter:blur(14px) saturate(155%);
+ z-index:-1;
+}
+@media(max-width:700px){
+ #workspace-app .dashboard-glass-concept{min-height:205px!important;border-radius:23px}
+ #workspace-app .dashboard-glass-content{min-height:205px!important;padding:18px!important}
+ #workspace-app .glass-word-shadow{font-size:clamp(75px,22vw,120px)}
+ #workspace-app .dashboard-glass-brand{font-size:30px;letter-spacing:.24em;text-indent:.24em}
+}
