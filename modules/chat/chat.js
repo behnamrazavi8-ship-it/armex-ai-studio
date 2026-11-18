@@ -179,6 +179,25 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   if(!response.ok)throw new Error("دریافت تصویر پیوست برای ویرایش ناموفق بود.");
   return imageBlobToPayload(await response.blob());
  };
+
+ const persistEditedImageInConversation=async(session,imageUrl)=>{
+  const conversationId=await ensureConversationForAttachment(session);
+  const response=await fetch(imageUrl,{cache:"no-store"});
+  if(!response.ok)throw new Error("ذخیره خروجی ویرایش در تاریخچه گفتگو ناموفق بود.");
+  const blob=await response.blob();
+  const mimeType=["image/jpeg","image/png","image/webp"].includes(blob.type)?blob.type:"image/jpeg";
+  const filename="lokal-ai-edited-image."+({ "image/png":"png","image/webp":"webp" }[mimeType]||"jpg");
+  const init=await callArmexApi(session,"",{action:"create_media_upload",conversation_id:conversationId,
+   mime_type:mimeType,filename,size_bytes:blob.size});
+  if(init.success!==true||!init.attachment_id||!init.path||!init.token||!init.bucket)throw new Error("آماده‌سازی ذخیره خروجی ویرایش ناموفق بود.");
+  const {error:uploadError}=await supabase.storage.from(init.bucket).uploadToSignedUrl(
+   init.path,init.token,blob,{contentType:mimeType,cacheControl:"3600"}
+  );
+  if(uploadError)throw new Error("ذخیره خروجی ویرایش انجام نشد: "+uploadError.message);
+  const completed=await callArmexApi(session,"",{action:"complete_media_upload",attachment_id:init.attachment_id});
+  if(completed.success!==true||!completed.attachment?.signed_url)throw new Error("تأیید ذخیره خروجی ویرایش ناموفق بود.");
+  return completed.attachment;
+ };
  const runChatImageEdit=async(session,prompt,attachment)=>{
   setChatStatus("در حال آماده‌سازی تصویر برای موتور ویرایش…");
   const prepared=await prepareChatImageForEdit(attachment);
@@ -217,10 +236,10 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    if(imageForEdit&&String(imageForEdit.mime_type||"").startsWith("image/")&&isImageEditRequest(typedMessage)){
     addChatMessage("user",message,imageForEdit);
     const outputUrl=await runChatImageEdit(session,typedMessage,imageForEdit);
-    addChatMessage("assistant","ویرایش تصویر با موفقیت انجام شد. خروجی آماده است:",{
-     signed_url:outputUrl,mime_type:"image/jpeg",original_filename:"lokal-ai-edited-image.jpg"
-    });
-    lastImageContext={signed_url:outputUrl,mime_type:"image/jpeg",original_filename:"lokal-ai-edited-image.jpg"};
+    setChatStatus("در حال ذخیره نتیجه در تاریخچه گفتگو…");
+    const savedOutput=await persistEditedImageInConversation(session,outputUrl);
+    addChatMessage("assistant","انجام شد؛ این نسخه هم به تاریخچه گفتگوت اضافه شد.",savedOutput);
+    lastImageContext=savedOutput;
     chatInput.value="";clearSelectedImage();
     setChatStatus("ویرایش تصویر کامل شد · بدون مصرف اعتبار چت.");
     await loadChatHistoryList(session);
