@@ -135,6 +135,33 @@ begin
     raise exception 'completed duplicate claim did not return cached response: %',claim;
   end if;
 
+  -- Image-edit prompts and their completion notes are persisted in conversation history.
+  declare
+    v_conversation_id uuid := (response->>'conversation_id')::uuid;
+    v_user_message_id uuid;
+    v_assistant_message_id uuid;
+  begin
+    v_user_message_id := public.armex_save_chat_message(
+      u1,v_conversation_id,'30000000-0000-4000-8000-000000000001',
+      'user','پس‌زمینه عکس را سفید کن.','openai/gpt-4o-mini'
+    );
+    if v_user_message_id is null then raise exception 'edit prompt was not saved'; end if;
+    if public.armex_save_chat_message(
+      u1,v_conversation_id,'30000000-0000-4000-8000-000000000001',
+      'user','پس‌زمینه عکس را سفید کن.','openai/gpt-4o-mini'
+    ) <> v_user_message_id then raise exception 'duplicate edit prompt was not idempotent'; end if;
+
+    v_assistant_message_id := public.armex_save_chat_message(
+      u1,v_conversation_id,'30000000-0000-4000-8000-000000000001',
+      'assistant','ویرایش تصویر کامل شد.','openai/gpt-4o-mini'
+    );
+    if v_assistant_message_id is null then raise exception 'edit completion note was not saved'; end if;
+    if (select count(*) from public.armex_messages
+        where request_id='30000000-0000-4000-8000-000000000001') <> 2 then
+      raise exception 'edit prompt and completion note were not saved exactly once';
+    end if;
+  end;
+
   -- A failed pre-provider request stays terminal and can be retried only with a fresh UUID.
   claim := public.armex_claim_chat_request(u1,r2);
   if claim->>'outcome' <> 'claimed' then raise exception 'second request claim failed'; end if;
@@ -170,6 +197,12 @@ begin
   end if;
   if not has_function_privilege('service_role','public.armex_claim_chat_request(uuid,uuid)','EXECUTE') then
     raise exception 'service_role cannot execute chat claim RPC';
+  end if;
+  if has_function_privilege('anon','public.armex_save_chat_message(uuid,uuid,uuid,text,text,text)','EXECUTE') then
+    raise exception 'anon can execute chat message persistence RPC';
+  end if;
+  if not has_function_privilege('service_role','public.armex_save_chat_message(uuid,uuid,uuid,text,text,text)','EXECUTE') then
+    raise exception 'service_role cannot execute chat message persistence RPC';
   end if;
   if has_table_privilege('anon','public.armex_chat_requests','SELECT') then
     raise exception 'anon can read private chat request recovery rows';
