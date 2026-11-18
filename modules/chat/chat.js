@@ -233,7 +233,13 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    await ensureSecureApi(session);
    const attachment=await uploadSelectedImage(session);
    const imageForEdit=attachment||lastImageContext;
-   if(imageForEdit&&String(imageForEdit.mime_type||"").startsWith("image/")&&isImageEditRequest(typedMessage)){
+   const wantsImageEdit=isImageEditRequest(typedMessage);
+   if(wantsImageEdit&&(!imageForEdit||!String(imageForEdit.mime_type||"").startsWith("image/"))){
+    addChatMessage("assistant","حتماً؛ فقط عکس رو هم بفرست تا ویرایشش کنم.");
+    setChatStatus("برای ویرایش تصویر، عکس لازمه. این پیام به چت متنی ارسال نشد و اعتباری مصرف نکرد.");
+    return;
+   }
+   if(wantsImageEdit){
     addChatMessage("user",message,imageForEdit);
     const outputUrl=await runChatImageEdit(session,typedMessage,imageForEdit);
     setChatStatus("در حال ذخیره نتیجه در تاریخچه گفتگو…");
