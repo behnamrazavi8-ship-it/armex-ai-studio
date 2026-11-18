@@ -18,7 +18,7 @@ test("Smart Chat recognizes Persian follow-up image edit requests", () => {
 });
 
 test("Smart Chat reuses and restores the latest image context", () => {
-  assert.match(chat, /lastImageContext\s*=\s*historicalImages\[historicalImages\.length-1\]/);
+  assert.match(chat, /lastImageContext=historicalImages\.length\?historicalImages\[historicalImages\.length-1\]:null/);
   assert.match(chat, /const imageForEdit\s*=\s*attachment\s*\|\|\s*lastImageContext/);
   assert.match(chat, /lastImageContext\s*=\s*savedOutput/);
   assert.match(chat, /persistEditedImageInConversation/);
