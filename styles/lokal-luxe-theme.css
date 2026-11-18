@@ -1122,3 +1122,37 @@ body:before{
  #workspace-app .dashboard-art-brand{top:15px;left:14px;padding:8px 11px;font-size:10px}
  #workspace-app .dashboard-art-cta{top:13px;right:13px;padding:10px 14px;font-size:11px}
 }
+
+
+/* LOKAL AI supplied binary-code wallpaper — shared page background. */
+html{
+ background-color:#08090b!important;
+}
+body,body#app-body{
+ background-color:#08090b!important;
+ background-image:
+  linear-gradient(180deg,rgba(4,8,13,.70),rgba(4,8,13,.82)),
+  url("../assets/lokal-ai-binary-wallpaper.webp")!important;
+ background-position:center top;
+ background-size:cover;
+ background-repeat:no-repeat;
+ background-attachment:fixed;
+}
+@media(max-width:680px){
+ body,body#app-body{background-attachment:scroll}
+}
+
+/* Keep the supplied dashboard artwork cinematic and readable beneath the glass CTA. */
+#workspace-app .art-city-photo{
+ object-position:center 48%;
+ filter:saturate(.96) contrast(1.06) brightness(.82);
+}
+#workspace-app .art-city-overlay{
+ background:
+  linear-gradient(180deg,rgba(4,8,13,.34),transparent 38%,rgba(4,8,13,.32)),
+  linear-gradient(90deg,rgba(4,8,13,.24),transparent 48%,rgba(4,8,13,.22)),
+  linear-gradient(135deg,rgba(22,69,91,.10),transparent 48%,rgba(255,153,82,.12));
+}
+@media(max-width:700px){
+ #workspace-app .art-city-photo{object-position:center center}
+}
