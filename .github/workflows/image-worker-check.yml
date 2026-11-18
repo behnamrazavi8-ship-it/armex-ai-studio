@@ -1,0 +1,32 @@
+name: Image Worker Checks
+
+on:
+  push:
+    branches:
+      - feat/lokal-medium-image-worker
+    paths:
+      - "worker/**"
+      - "Dockerfile"
+      - ".github/workflows/image-worker-check.yml"
+  pull_request:
+    paths:
+      - "worker/**"
+      - "Dockerfile"
+      - ".github/workflows/image-worker-check.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: worker/package.json
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm install --no-audit --no-fund
+      - name: Run worker tests
+        working-directory: worker
+        run: npm test
