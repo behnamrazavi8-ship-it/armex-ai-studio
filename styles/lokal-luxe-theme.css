@@ -385,3 +385,90 @@ html,body,body#app-body,#workspace-app,#workspace-app #page-home{
 @media(max-width:680px){
   html,body,#workspace-app,#workspace-app #page-home{background-attachment:scroll!important}
 }
+
+
+/* --- FINAL VISUAL CORRECTION: light must sit BEHIND surfaces, not paint over them --- */
+/* A separate atmospheric layer adds visible silky filaments to the cream base. */
+html,body,body#app-body,#public-site,#workspace-app{
+  background-color:#f3e8d2!important;
+  background-image:
+    radial-gradient(ellipse 48% 34% at 8% 18%,#58c9ed26 0%,transparent 72%),
+    radial-gradient(ellipse 42% 30% at 92% 36%,#68bde91e 0%,transparent 72%),
+    radial-gradient(ellipse 50% 32% at 62% 96%,#d7ad5b20 0%,transparent 75%),
+    repeating-linear-gradient(118deg,transparent 0 118px,#ffffff30 119px,#ffffff30 120px,transparent 121px 238px),
+    repeating-linear-gradient(28deg,transparent 0 166px,#c6a35b17 167px,#c6a35b17 168px,transparent 169px 334px),
+    linear-gradient(135deg,#fbf3e3 0%,#efe0c3 48%,#f8efdf 100%)!important;
+  background-attachment:fixed!important;
+}
+/* Keep the app canvas translucent so the luminous base and fine streaks remain visible. */
+#public-site,#workspace-app{
+  background-color:transparent!important;
+  background-image:none!important;
+}
+/* Give each card/window a real external blue backlight via outer shadows.
+   No blue overlay is placed inside the card content. */
+#workspace-app .dashboard-intro,
+#workspace-app .app-tool,
+#workspace-app .dashboard-shortcut,
+#workspace-app .dashboard-tools-panel,
+#workspace-app .dashboard-info-card,
+#workspace-app .stat,
+#workspace-app .panel,
+#workspace-app .account-card,
+#workspace-app .image-studio-panel,
+#workspace-app .image-gallery-card,
+#workspace-app .image-preview,
+#workspace-app .chat-compose-box,
+#public-site .feature,
+#public-site .visual-card,
+#public-site .tool,
+#public-site .auth-wrap{
+  box-shadow:
+    0 12px 30px #80633b1c,
+    0 0 0 1px #b9dce733,
+    0 0 24px 5px #24b8e03b,
+    0 0 42px 10px #24b8e020!important;
+}
+/* Stronger, soft blue aura around the dashboard's icon tiles, behind their frames. */
+#workspace-app .app-tool .feature-icon,
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon,
+#workspace-app .dashboard-shortcut .feature-icon,
+#public-site .feature-icon,
+#public-site #studios .tool .feature-icon{
+  background:linear-gradient(145deg,#e7f8fc 0%,#c6edf8 70%,#e4f3f5 100%)!important;
+  border:1px solid #79c9e2!important;
+  box-shadow:
+    0 0 0 1px #ffffffa8,
+    0 0 22px 5px #22b7e05c,
+    0 0 38px 10px #22b7e02e,
+    inset 0 1px 0 #ffffff!important;
+}
+#workspace-app .app-tool .feature-icon svg,
+#workspace-app .dashboard-tools-panel .dashboard-tool-icon svg,
+#workspace-app .dashboard-shortcut .feature-icon svg,
+#public-site .feature-icon svg,
+#public-site #studios .tool .feature-icon svg{
+  color:#087eae!important;
+  stroke:#087eae!important;
+  filter:drop-shadow(0 0 5px #25b9e088)!important;
+}
+/* Dashboard text: dark ink and blue emphasis; no white typography on light surfaces. */
+#workspace-app #page-home,
+#workspace-app #page-home :is(h1,h2,h3,h4,h5,p,span,label,small,strong,b,li,div,a){
+  color:#202d35!important;
+}
+#workspace-app #page-home :is(.muted,.hint,.description,.dashboard-subtitle,.side-label,.eyebrow){
+  color:#52636d!important;
+}
+#workspace-app #page-home :is(.gradient,.accent,.highlight,.count,.stat-value){
+  color:#087eae!important;
+  -webkit-text-fill-color:#087eae!important;
+}
+#workspace-app #page-home svg,
+#workspace-app #page-home svg *{
+  color:#087eae!important;
+  stroke:#087eae!important;
+}
+@media(max-width:680px){
+  html,body,#workspace-app,#public-site{background-attachment:scroll!important}
+}
