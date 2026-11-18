@@ -257,14 +257,15 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    if(attachment?.id)payload.attachment_id=attachment.id;
    const result=await callArmexApi(session,"",payload);
    if(result.success!==true||!result.answer||!result.conversation_id){
-    if(result.pending)throw new Error("درخواست برای بررسی وضعیت مالی در صف تطبیق قرار گرفت؛ پیام را دوباره ارسال نکن.");
+    if(result.pending)throw new Error("درخواستت در حال بررسی است؛ برای جلوگیری از اجرای تکراری، پیام را دوباره ارسال نکن.");
     throw new Error(result.error||"پاسخ معتبر از سرویس چت دریافت نشد.");
    }
    activeChatConversationId=result.conversation_id;
    addChatMessage("user",message,attachment);
    addChatMessage("assistant",result.answer);
    chatInput.value="";clearSelectedImage();chatTitle.textContent="گفتگو";
-   setChatStatus("پاسخ آماده شد · "+Number(result.usage?.credits_charged||1).toLocaleString("fa-IR")+" اعتبار مصرف شد.");
+   const creditsCharged=Number(result.usage?.credits_charged??0);
+   setChatStatus(creditsCharged===0?"پاسخ آماده شد · چت رایگان بود.":"پاسخ آماده شد · "+creditsCharged.toLocaleString("fa-IR")+" اعتبار مصرف شد.");
    await Promise.all([loadWalletBalance(session),loadChatHistoryList(session)]);
   }catch(error){
    setChatStatus(String(error?.message||"ارسال پیام ناموفق بود."),true);
