@@ -675,3 +675,63 @@ body:before{
  #workspace-app .mobile-nav button:active{transform:scale(.96)}
  #workspace-app .mobile-nav button.mobile-nav-create:active{transform:translateY(-10px) scale(.96)}
 }
+
+
+/* Dashboard art hero — replaces the generic welcome headline with a crafted visual. */
+#workspace-app .dashboard-art-hero{
+ position:relative;min-height:260px;display:flex;align-items:flex-end;justify-content:flex-start;
+ overflow:hidden;isolation:isolate;padding:18px 22px;
+ border:1px solid rgba(174,222,237,.25)!important;border-radius:25px;
+ background:radial-gradient(ellipse at 50% 40%,rgba(70,184,220,.15),transparent 45%),linear-gradient(125deg,rgba(24,42,51,.96),rgba(10,17,24,.96) 58%,rgba(32,25,26,.94))!important;
+ box-shadow:0 22px 56px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.16),inset 0 -1px rgba(255,255,255,.04)
+}
+#workspace-app .dashboard-art-hero:before{
+ content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.55;
+ background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.07) 48%,transparent 67%),repeating-linear-gradient(90deg,transparent 0 34px,rgba(180,224,239,.035) 35px,transparent 36px 70px)
+}
+#workspace-app .dashboard-art-scene{
+ position:relative;width:100%;height:205px;display:grid;place-items:center;isolation:isolate;
+}
+#workspace-app .art-halo{
+ position:absolute;width:min(58vw,250px);aspect-ratio:1;border-radius:50%;
+ background:radial-gradient(circle,rgba(98,205,228,.24),rgba(76,129,180,.09) 42%,transparent 70%);
+ filter:blur(9px);z-index:-1
+}
+#workspace-app .art-orbit{position:absolute;width:220px;height:76px;border:1px solid rgba(145,220,236,.27);border-radius:50%;transform:rotate(-24deg);box-shadow:0 0 20px rgba(87,194,221,.09),inset 0 0 18px rgba(87,194,221,.05)}
+#workspace-app .art-orbit-two{width:270px;height:100px;transform:rotate(31deg);border-color:rgba(255,177,132,.22)}
+#workspace-app .art-crystal{position:relative;width:min(68vw,290px);height:100%;overflow:visible;filter:drop-shadow(0 8px 28px rgba(82,190,221,.22))}
+#workspace-app .art-label{position:absolute;font:700 8px/1 Arial,sans-serif;letter-spacing:3px;color:rgba(203,231,238,.68)}
+#workspace-app .art-label-top{top:12px;left:12%}
+#workspace-app .art-label-side{right:8%;top:52%;color:rgba(255,190,151,.75)}
+#workspace-app .art-label-bottom{bottom:8px;left:50%;transform:translateX(-50%);white-space:nowrap}
+#workspace-app .dashboard-art-cta{position:relative;z-index:2;align-self:center;margin:0 auto 1px;padding:12px 21px;border-radius:999px}
+#workspace-app .dashboard-art-cta span{margin-right:8px}
+#workspace-app .app-tool .feature-icon{
+ background:linear-gradient(145deg,rgba(195,239,248,.25),rgba(75,145,169,.14) 38%,rgba(255,255,255,.045) 68%,rgba(255,154,111,.13))!important;
+ border:1px solid rgba(202,237,247,.34)!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.34),inset 0 -10px 22px rgba(88,174,200,.08),0 9px 24px rgba(0,0,0,.24),0 0 22px rgba(86,193,220,.12)
+}
+#workspace-app .app-tool .feature-icon:after{
+ content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;
+ background:linear-gradient(145deg,rgba(255,255,255,.15),transparent 42%);opacity:.85
+}
+#workspace-app .app-tool .feature-icon svg{position:relative;z-index:1}
+@media(max-width:700px){
+ #workspace-app .dashboard-art-hero{min-height:245px;padding:12px 14px;border-radius:23px}
+ #workspace-app .dashboard-art-scene{height:194px}
+ #workspace-app .art-orbit{width:190px;height:68px}
+ #workspace-app .art-orbit-two{width:235px;height:88px}
+ #workspace-app .art-crystal{width:min(72vw,260px)}
+ #workspace-app .dashboard-art-cta{margin-bottom:4px}
+ /* Keep the glass appearance while avoiding costly backdrop compositing during scroll. */
+ html{scroll-behavior:auto!important}
+ #workspace-app .app-tool,#workspace-app .stat,#workspace-app .panel,
+ #workspace-app .dashboard-shortcut,#workspace-app .image-gallery-card,
+ #workspace-app .image-preview,#workspace-app .image-studio-panel{
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  box-shadow:0 10px 25px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.12)!important;
+ }
+ #workspace-app .app-tool{transition:border-color .15s ease,background-color .15s ease!important}
+ #workspace-app .app-tool:hover,#workspace-app .dashboard-shortcut:hover{transform:none!important}
+ #workspace-app .feature-icon{box-shadow:inset 0 1px rgba(255,255,255,.34),0 6px 16px rgba(0,0,0,.2)!important}
+}
