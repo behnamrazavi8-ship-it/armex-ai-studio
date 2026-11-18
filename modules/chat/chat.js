@@ -240,14 +240,22 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
     return;
    }
    if(wantsImageEdit){
+    const conversationId=await ensureConversationForAttachment(session);
+    const editMessageRequestId=crypto.randomUUID();
+    const savedPrompt=await callArmexApi(session,"",{action:"save_chat_message",conversation_id:conversationId,
+     request_id:editMessageRequestId,role:"user",content:typedMessage,model:"openai/gpt-4o-mini",attachment_id:imageForEdit.id});
+    if(savedPrompt?.success!==true)throw new Error(savedPrompt?.error||"ثبت درخواست ویرایش در تاریخچه گفتگو ناموفق بود.");
     addChatMessage("user",message,imageForEdit);
     const outputUrl=await runChatImageEdit(session,typedMessage,imageForEdit);
     setChatStatus("در حال ذخیره نتیجه در تاریخچه گفتگو…");
     const savedOutput=await persistEditedImageInConversation(session,outputUrl);
-    addChatMessage("assistant","انجام شد؛ این نسخه هم به تاریخچه گفتگوت اضافه شد.",savedOutput);
+    const completionNote="انجام شد؛ این نسخه هم به تاریخچه گفتگوت اضافه شد.";
+    const savedNote=await callArmexApi(session,"",{action:"save_chat_message",conversation_id:conversationId,
+     request_id:editMessageRequestId,role:"assistant",content:completionNote,model:"openai/gpt-4o-mini",attachment_id:savedOutput.id});
+    addChatMessage("assistant",completionNote,savedOutput);
     lastImageContext=savedOutput;
     chatInput.value="";clearSelectedImage();
-    setChatStatus("ویرایش تصویر کامل شد · بدون مصرف اعتبار چت.");
+    setChatStatus(savedNote?.success===true?"ویرایش تصویر کامل شد · درخواست و نتیجه در تاریخچه ذخیره شدند.":"تصویر ذخیره شد؛ ثبت متن نتیجه در تاریخچه کامل نشد.");
     await loadChatHistoryList(session);
     return;
    }
