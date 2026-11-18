@@ -1830,7 +1830,7 @@ const handle = async (request: Request): Promise<Response> => {
           p_user_id: userId,
           p_request_id: requestId,
           p_provider_outcome: providerIsDefinitiveRejection ? "rejected" : "unknown",
-          p_debit_outcome: "debited",
+          p_debit_outcome: chatCreditCost > 0 ? "debited" : "not_charged",
           p_provider_http_status: providerResponse.status,
           p_provider_response_payload: null,
           p_diagnostic_code: "openrouter_http_" + providerResponse.status,
@@ -1854,8 +1854,10 @@ const handle = async (request: Request): Promise<Response> => {
         debitCompleted = false;
         if (refunded) await markChatRequestFailed(db, userId, requestId, "provider_rejected_" + providerResponse.status);
         return fail(
-          refunded ? "AI provider rejected the request; the charged credit was returned" : "AI provider rejected the request but the credit refund could not be confirmed",
-          refunded ? 502 : 500,
+          chatCreditCost === 0
+            ? "AI provider rejected the request"
+            : (refunded ? "AI provider rejected the request; the charged credit was returned" : "AI provider rejected the request but the credit refund could not be confirmed"),
+          chatCreditCost === 0 || refunded ? 502 : 500,
           cors,
         );
       }
@@ -1875,7 +1877,7 @@ const handle = async (request: Request): Promise<Response> => {
         p_user_id: userId,
         p_request_id: requestId,
         p_provider_outcome: "accepted",
-        p_debit_outcome: "debited",
+        p_debit_outcome: chatCreditCost > 0 ? "debited" : "not_charged",
         p_provider_http_status: providerResponse.status,
         p_provider_response_payload: result,
         p_diagnostic_code: null,
@@ -1990,8 +1992,8 @@ const handle = async (request: Request): Promise<Response> => {
     debitCompleted = false;
     return fail(
       timedOut
-        ? (refunded ? "AI request timed out before provider submission; the charged credit was returned" : "AI request timed out and the credit refund could not be confirmed")
-        : (refunded ? "Internal server error before provider submission" : "Internal server error; the credit refund could not be confirmed"),
+        ? (chatCreditCost === 0 ? "AI request timed out before provider submission" : (refunded ? "AI request timed out before provider submission; the charged credit was returned" : "AI request timed out and the credit refund could not be confirmed"))
+        : (chatCreditCost === 0 ? "Internal server error before provider submission" : (refunded ? "Internal server error before provider submission" : "Internal server error; the credit refund could not be confirmed")),
       timedOut ? 504 : 500,
       cors,
     );
