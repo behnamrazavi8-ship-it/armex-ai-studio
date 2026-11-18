@@ -104,6 +104,7 @@
  function showPage(name,options={}){
   const target=workspacePages.has(name)?name:'home';
   if(target!=='home'&&workspaceRoot?.dataset.authenticated!=='true'){window.dispatchEvent(new CustomEvent('lokal:require-auth',{detail:{page:target}}));return;}
+  if(target!=='home'&&workspaceRoot?.hidden){window.dispatchEvent(new CustomEvent('lokal:show-workspace',{detail:{page:target}}));return;}
   const current=$('.page.active')?.id.replace('page-','');
   if(current===target)return;
   $$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));
@@ -454,7 +455,7 @@ else{
  document.getElementById("workspace-signout")?.addEventListener("click",()=>document.getElementById("auth-signout")?.click());
  document.querySelectorAll('[data-open-workspace]').forEach(button=>button.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('lokal:open-workspace'))));
  document.querySelectorAll('.menu-toggle').forEach(button=>button.addEventListener('click',()=>{const menu=document.getElementById('account-menu');if(!menu)return;const open=menu.hidden;menu.hidden=!open;document.querySelectorAll('.menu-toggle').forEach(x=>x.setAttribute('aria-expanded',String(open)));}));
- document.querySelectorAll('[data-menu-action]').forEach(button=>button.addEventListener('click',()=>{const menu=document.getElementById('account-menu');if(menu)menu.hidden=true;const action=button.dataset.menuAction;if(action==='home')window.dispatchEvent(new CustomEvent('lokal:open-workspace'));if(action==='account')window.lokalShowPage?.('account');if(action==='help'){location.hash='how';document.getElementById('how')?.scrollIntoView({behavior:'smooth'});}if(action==='signout')document.getElementById('auth-signout')?.click();}));
+ document.querySelectorAll('[data-menu-action]').forEach(button=>button.addEventListener('click',()=>{const menu=document.getElementById('account-menu');if(menu)menu.hidden=true;const action=button.dataset.menuAction;if(action==='home')window.dispatchEvent(new CustomEvent('lokal:open-workspace'));if(action==='account')window.dispatchEvent(new CustomEvent('lokal:show-workspace',{detail:{page:'account'}}));if(action==='help'){location.hash='how';document.getElementById('how')?.scrollIntoView({behavior:'smooth'});}if(action==='signout')document.getElementById('auth-signout')?.click();}));
  document.addEventListener('click',event=>{if(!event.target.closest('.menu-toggle,.account-menu')){const menu=document.getElementById('account-menu');if(menu)menu.hidden=true;document.querySelectorAll('.menu-toggle').forEach(x=>x.setAttribute('aria-expanded','false'));}});
 
  document.getElementById("account-set-password")?.addEventListener("click",async()=>{
