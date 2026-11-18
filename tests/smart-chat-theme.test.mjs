@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 
 const chat = await readFile(new URL("../modules/chat/chat.js", import.meta.url), "utf8");
 const theme = await readFile(new URL("../styles/lokal-luxe-theme.css", import.meta.url), "utf8");
+const edge = await readFile(new URL("../supabase/functions/armex-api/index.ts", import.meta.url), "utf8");
+const chatMigration = await readFile(new URL("../supabase/migrations/20261118180000_lokal_free_chat_idempotency.sql", import.meta.url), "utf8");
 
 test("Smart Chat recognizes Persian follow-up image edit requests", () => {
   const match = chat.match(/return \/(.+)\/i\.test\(text\);/);
@@ -33,4 +35,15 @@ test("LOKAL AI theme uses champagne gold, not pure black, and retains blue/viole
   assert.match(theme, /#9a65df38/i);
   assert.match(theme, /#42bde735/i);
   assert.doesNotMatch(theme, /#000000|#070709|#05080b/i);
+});
+
+test("Smart Chat is free without disabling provider-cost accounting", () => {
+  assert.match(edge, /const chatCreditCost = 0;/);
+  assert.match(edge, /if \(chatCreditCost > 0\)/);
+  assert.match(edge, /p_debit_outcome: chatCreditCost > 0 \? "debited" : "not_charged"/);
+  assert.match(chatMigration, /credits_charged, request_id/);
+  assert.match(chatMigration, /p_actual_cost_usd, 0, p_request_id/);
+  assert.match(chatMigration, /constraint armex_chat_requests_free_chat_only check \(credits = 0 and debit_outcome = 'not_charged'\)/);
+  assert.match(chatMigration, /on conflict \(request_id\) do nothing/i);
+  assert.match(chatMigration, /provider_response_payload = coalesce\(p_provider_response_payload, provider_response_payload\)/);
 });
