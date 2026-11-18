@@ -54,7 +54,7 @@ test("Smart Chat is free without disabling provider-cost accounting", () => {
 test("Current image edit and chat media APIs remain wired into the feature backend", () => {
   assert.match(edge, /import \{ handleImageEditApi \} from "\.\/image-edit-api\.ts"/);
   assert.match(edge, /const CHAT_MEDIA_BUCKET = "lokal-chat-media"/);
-  assert.match(edge, /action") === "conversation"/);
+  assert.ok(edge.includes('url.searchParams.get("action") === "conversation"'));
   assert.match(edge, /body\.action === "create_media_upload"/);
   assert.match(edge, /body\.action === "complete_media_upload"/);
   assert.match(edge, /body\.action === "edit_image"/);
