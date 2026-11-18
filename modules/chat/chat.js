@@ -149,7 +149,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
 
  const isImageEditRequest=(message)=>{
   const text=String(message||"").toLowerCase().replace(/[ي]/g,"ی").replace(/[ك]/g,"ک");
-  return /(ویرایش|ادیت|تغییر|عوض کن|تبدیل کن|سفید کن|سیاه کن|روشن کن|تیره کن|حذف کن|پاک کن|جایگزین کن|اضافه کن|برش بده|کراپ|روتوش|پس\s*زمینه|بک\s*گراند|background|retouch|\bedit\b|\bremove\b|\breplace\b)/i.test(text);
+  return /(ویرایش|ادیت|تغییر|عوض کن|تبدیل کن|سفید کن|سیاه کن|روشن کن|تیره کن|حذف کن|پاک کن|جایگزین کن|اضافه کن|برش بده|کراپ|روتوش|اصلاح کن|اصلاحش|درستش کن|پس\\s*زمینه|بک\\s*گراند|تصویر قبلی|عکس قبلی|خروجی قبلی|همون عکس|همون تصویر|background|retouch|\\bedit\\b|\\bremove\\b|\\breplace\\b)/i.test(text);
  };
  const imageBlobToPayload=async(blob)=>{
   const bitmap=await createImageBitmap(blob);
