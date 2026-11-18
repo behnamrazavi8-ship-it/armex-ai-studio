@@ -866,3 +866,35 @@ body:before{
  #workspace-app .art-caption-left{top:16px;left:18px}
  #workspace-app .art-caption-right{right:18px;bottom:18px}
 }
+
+
+/* Glass v2 — stronger visible glass tint; geometry and spacing remain unchanged. */
+#public-site .feature,
+#workspace-app .app-tool{
+  background:
+    radial-gradient(ellipse at 12% 0%,rgba(167,222,237,.30),transparent 62%),
+    linear-gradient(145deg,rgba(177,211,224,.30),rgba(74,101,119,.58) 48%,rgba(28,39,50,.72))!important;
+  border:1px solid rgba(225,244,250,.34)!important;
+  box-shadow:
+    0 16px 38px rgba(0,0,0,.24),
+    inset 0 1px rgba(255,255,255,.30),
+    inset 0 -1px rgba(255,255,255,.08),
+    0 0 24px rgba(92,183,211,.09)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(165%)!important;
+  backdrop-filter:blur(24px) saturate(165%)!important;
+}
+#public-site .feature:hover,
+#workspace-app .app-tool:hover{
+  background:
+    radial-gradient(ellipse at 12% 0%,rgba(184,231,243,.34),transparent 62%),
+    linear-gradient(145deg,rgba(190,222,233,.34),rgba(83,113,131,.62) 48%,rgba(31,43,54,.72))!important;
+}
+#workspace-app .art-city-photo{
+  filter:saturate(.92) contrast(1.04) brightness(.84);
+}
+#workspace-app .art-city-overlay{
+  background:
+    linear-gradient(90deg,rgba(4,10,16,.58),rgba(4,10,16,.10) 56%,rgba(4,10,16,.24)),
+    linear-gradient(0deg,rgba(4,9,14,.52),transparent 62%),
+    linear-gradient(135deg,rgba(41,117,145,.10),transparent 48%,rgba(210,133,91,.08));
+}
