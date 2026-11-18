@@ -6,6 +6,7 @@ const chat = await readFile(new URL("../modules/chat/chat.js", import.meta.url),
 const theme = await readFile(new URL("../styles/lokal-luxe-theme.css", import.meta.url), "utf8");
 const edge = await readFile(new URL("../supabase/functions/armex-api/index.ts", import.meta.url), "utf8");
 const chatMigration = await readFile(new URL("../supabase/migrations/20261118180000_lokal_free_chat_idempotency.sql", import.meta.url), "utf8");
+const imageEditApi = await readFile(new URL("../supabase/functions/armex-api/image-edit-api.ts", import.meta.url), "utf8");
 
 test("Smart Chat recognizes Persian follow-up image edit requests", () => {
   const match = chat.match(/return \/(.+)\/i\.test\(text\);/);
@@ -48,4 +49,24 @@ test("Smart Chat is free without disabling provider-cost accounting", () => {
   assert.match(chatMigration, /constraint armex_chat_requests_free_chat_only check \(credits = 0 and debit_outcome = 'not_charged'\)/);
   assert.match(chatMigration, /on conflict \(request_id\) do nothing/i);
   assert.match(chatMigration, /provider_response_payload = coalesce\(p_provider_response_payload, provider_response_payload\)/);
+});
+
+test("Current image edit and chat media APIs remain wired into the feature backend", () => {
+  assert.match(edge, /import \{ handleImageEditApi \} from "\.\/image-edit-api\.ts"/);
+  assert.match(edge, /const CHAT_MEDIA_BUCKET = "lokal-chat-media"/);
+  assert.match(edge, /action") === "conversation"/);
+  assert.match(edge, /body\.action === "create_media_upload"/);
+  assert.match(edge, /body\.action === "complete_media_upload"/);
+  assert.match(edge, /body\.action === "edit_image"/);
+  assert.match(edge, /body\.action === "save_chat_message"/);
+  assert.match(edge, /listChatAttachments\(db, userId, conversationId\)/);
+  assert.match(imageEditApi, /armex_enqueue_image_edit/);
+});
+
+test("Image-edit prompt and completion are saved to the same conversation", () => {
+  assert.match(chat, /action:"save_chat_message"/);
+  assert.match(chat, /role:"user",content:typedMessage/);
+  assert.match(chat, /role:"assistant",content:completionNote/);
+  assert.match(chat, /attachment_id:imageForEdit\.id/);
+  assert.match(chat, /attachment_id:savedOutput\.id/);
 });
