@@ -28,3 +28,5 @@ jobs:
       - name: Run worker tests
         working-directory: worker
         run: npm test
+      - name: Build production Docker image
+        run: docker build --tag lokal-ai-image-worker-check .
