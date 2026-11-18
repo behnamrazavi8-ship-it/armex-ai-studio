@@ -5,6 +5,7 @@ on:
     paths:
       - "index.html"
       - "modules/chat/**"
+      - "modules/image-editor/**"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
       - "supabase/migrations/**"
@@ -12,7 +13,7 @@ on:
       - "Dockerfile"
       - "tests/**"
   push:
-    branches: [main, "feat/lokal-medium-image-worker", "feat/staging-semantic-ir-image-pipeline"]
+    branches: [main, "feat/lokal-medium-image-worker", "feat/staging-semantic-ir-image-pipeline", "fix/image-editor-api-readiness-guard"]
     paths:
       - "index.html"
       - "modules/chat/**"
@@ -39,7 +40,7 @@ jobs:
       - name: Syntax-check image worker
         run: node --check worker/src/worker.mjs
       - name: Test Supabase worker auth headers and private chat media contract
-        run: node --test tests/worker-auth-headers.test.mjs tests/chat-media-contract.test.mjs
+        run: node --test tests/worker-auth-headers.test.mjs tests/chat-media-contract.test.mjs tests/image-editor-api-contract.test.mjs
       - name: Build worker container
         run: docker build --pull -t lokal-ai-image-worker:ci .
       - name: Syntax-check browser JavaScript
@@ -76,6 +77,7 @@ jobs:
           node --check /tmp/lokal-inline-0.js
           node --check /tmp/lokal-inline-1.mjs
           node --check modules/chat/chat.js
+          node --check modules/image-editor/image-editor.js
           node --check modules/auth/preview-return.js
           node --test tests/auth-preview-return.test.mjs
 
