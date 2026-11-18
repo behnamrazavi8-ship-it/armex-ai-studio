@@ -15,6 +15,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  let selectedImageFile=null;
  let selectedImageUrl="";
  let uploadedAttachment=null;
+ let lastImageContext=null;
 
  const style=document.createElement("style");
  style.id="lokal-chat-attachment-styles";
@@ -111,7 +112,10 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    const result=await callArmexApi(session,"?action=conversation&id="+encodeURIComponent(id));
    if(result.success!==true||!Array.isArray(result.messages))throw new Error("پاسخ تاریخچه معتبر نیست.");
    activeChatConversationId=id;chatTitle.textContent=result.conversation?.title||"گفتگو";
-   clearSelectedImage();renderChatHistory(result.messages,result.attachments||[]);
+   clearSelectedImage();
+   const historicalImages=(result.attachments||[]).filter(item=>item?.signed_url&&String(item.mime_type||"").startsWith("image/"));
+   lastImageContext=historicalImages.length?historicalImages[historicalImages.length-1]:null;
+   renderChatHistory(result.messages,result.attachments||[]);
    await loadChatHistoryList(session);setChatStatus("");
   }catch(error){setChatStatus("بارگذاری گفتگو انجام نشد: "+String(error?.message||error),true)}
  };
@@ -209,12 +213,14 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   try{
    await ensureSecureApi(session);
    const attachment=await uploadSelectedImage(session);
-   if(attachment&&String(attachment.mime_type||"").startsWith("image/")&&isImageEditRequest(typedMessage)){
-    addChatMessage("user",message,attachment);
-    const outputUrl=await runChatImageEdit(session,typedMessage,attachment);
+   const imageForEdit=attachment||lastImageContext;
+   if(imageForEdit&&String(imageForEdit.mime_type||"").startsWith("image/")&&isImageEditRequest(typedMessage)){
+    addChatMessage("user",message,imageForEdit);
+    const outputUrl=await runChatImageEdit(session,typedMessage,imageForEdit);
     addChatMessage("assistant","ویرایش تصویر با موفقیت انجام شد. خروجی آماده است:",{
      signed_url:outputUrl,mime_type:"image/jpeg",original_filename:"lokal-ai-edited-image.jpg"
     });
+    lastImageContext={signed_url:outputUrl,mime_type:"image/jpeg",original_filename:"lokal-ai-edited-image.jpg"};
     chatInput.value="";clearSelectedImage();
     setChatStatus("ویرایش تصویر کامل شد · بدون مصرف اعتبار چت.");
     await loadChatHistoryList(session);
@@ -244,7 +250,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  };
  document.getElementById("chat-new")?.addEventListener("click",()=>{
   if(uploadedAttachment){setChatStatus("تصویر بارگذاری‌شده هنوز ارسال نشده است؛ ابتدا همان پیام را ارسال کن.",true);return}
-  activeChatConversationId=null;chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
+  activeChatConversationId=null;lastImageContext=null;chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
   setChatStatus("");chatHistoryList?.querySelectorAll(".chat-history-item").forEach(item=>item.classList.remove("active"));chatInput?.focus();
  });
  chatHistoryList?.addEventListener("click",async event=>{
@@ -271,7 +277,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  }));
  supabase.auth.onAuthStateChange((event,session)=>{
   if(event==="SIGNED_IN"&&session)void loadChatHistoryList(session);
-  if(event==="SIGNED_OUT"){activeChatConversationId=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
+  if(event==="SIGNED_OUT"){activeChatConversationId=null;lastImageContext=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
  });
  void supabase.auth.getSession().then(({data:{session}})=>{if(session)void loadChatHistoryList(session)});
 }
