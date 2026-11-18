@@ -310,12 +310,71 @@ begin
 end;
 $$;
 
+create or replace function public.armex_save_chat_message(
+  p_user_id uuid,
+  p_conversation_id uuid,
+  p_request_id uuid,
+  p_role text,
+  p_content text,
+  p_model text
+) returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $
+declare
+  v_message_id uuid;
+  v_existing_content text;
+begin
+  if p_user_id is null or p_conversation_id is null or p_request_id is null
+     or p_role not in ('user', 'assistant')
+     or nullif(trim(p_content), '') is null
+     or char_length(p_content) > 12000 then
+    raise exception 'Invalid chat message persistence parameters';
+  end if;
+
+  perform 1
+  from public.armex_conversations
+  where id = p_conversation_id and user_id = p_user_id
+  for update;
+  if not found then
+    raise exception 'Conversation not found for chat message';
+  end if;
+
+  insert into public.armex_messages(
+    conversation_id, user_id, role, content, model, request_id
+  ) values (
+    p_conversation_id, p_user_id, p_role, p_content, p_model, p_request_id
+  )
+  on conflict (user_id, request_id, role) where request_id is not null
+  do nothing
+  returning id into v_message_id;
+
+  if v_message_id is null then
+    select id, content into v_message_id, v_existing_content
+    from public.armex_messages
+    where user_id = p_user_id and request_id = p_request_id and role = p_role;
+    if v_existing_content is distinct from p_content then
+      raise exception 'Chat message request ID was already used with different content';
+    end if;
+  end if;
+
+  update public.armex_conversations
+  set updated_at = now()
+  where id = p_conversation_id and user_id = p_user_id;
+
+  return v_message_id;
+end;
+$;
+
+revoke all on function public.armex_save_chat_message(uuid, uuid, uuid, text, text, text) from public, anon, authenticated;
 revoke all on function public.armex_claim_chat_request(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.armex_set_chat_recovery_metadata(uuid, uuid, text, text, uuid, bigint, uuid, numeric, numeric, integer) from public, anon, authenticated;
 revoke all on function public.armex_record_chat_provider_evidence(uuid, uuid, text, text, integer, jsonb, text) from public, anon, authenticated;
 revoke all on function public.armex_fail_chat_request(uuid, uuid, text) from public, anon, authenticated;
 revoke all on function public.armex_persist_chat_response_atomic(uuid, uuid, uuid, text, text, integer, integer, integer, numeric, text) from public, anon, authenticated;
 
+grant execute on function public.armex_save_chat_message(uuid, uuid, uuid, text, text, text) to service_role;
 grant execute on function public.armex_claim_chat_request(uuid, uuid) to service_role;
 grant execute on function public.armex_set_chat_recovery_metadata(uuid, uuid, text, text, uuid, bigint, uuid, numeric, numeric, integer) to service_role;
 grant execute on function public.armex_record_chat_provider_evidence(uuid, uuid, text, text, integer, jsonb, text) to service_role;
