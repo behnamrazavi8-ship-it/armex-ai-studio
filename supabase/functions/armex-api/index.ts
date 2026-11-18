@@ -1568,6 +1568,7 @@ const handle = async (request: Request): Promise<Response> => {
     .from("armex_usage")
     .select("request_id,conversation_id,model,input_tokens,output_tokens,total_tokens,actual_cost_usd,credits_charged,created_at")
     .eq("request_id", requestId)
+    .eq("user_id", userId)
     .maybeSingle();
   if (priorUsageError) {
     return fail("Could not verify request idempotency", 500, cors);
@@ -1864,7 +1865,7 @@ const handle = async (request: Request): Promise<Response> => {
       debitCompleted = false;
       return json({
         success: true, pending: true, request_id: requestId,
-        message: "The provider returned an ambiguous server response; billing and request status are held for reconciliation",
+        message: "The provider returned an ambiguous server response; the request is held for reconciliation",
       }, 202, cors);
     }
 
@@ -1981,8 +1982,8 @@ const handle = async (request: Request): Promise<Response> => {
       return json({
         success: true, pending: true, request_id: requestId,
         message: timedOut
-          ? "The AI request timed out with an uncertain provider outcome; billing reconciliation is required"
-          : "The request outcome is uncertain and has been held for reconciliation",
+          ? "The AI request timed out with an uncertain provider outcome; do not resubmit this request"
+          : "The request outcome is uncertain and has been held; do not resubmit this request",
       }, 202, cors);
     }
     const refunded = debitCompleted
