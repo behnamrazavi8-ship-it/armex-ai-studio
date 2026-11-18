@@ -316,3 +316,72 @@ html,body,body#app-body,#public-site,#workspace-app{
  #workspace-app :is(.dashboard-intro,.dash-hero,.panel,.app-tool,.dashboard-shortcut){box-shadow:0 12px 28px #8d6b3420,0 0 22px #24b8e025!important}
 }
 
+
+
+/* --- Dashboard finish: visible blue light, lively champagne, true ink typography --- */
+:root{
+  --lokal-ink:#182a35;
+  --lokal-ink-soft:#465967;
+  --lokal-blue:#159dcc;
+  --lokal-blue-deep:#087eae;
+  --lokal-blue-glow:#36c5f2;
+}
+/* Make the cream canvas feel luminous, with barely-there flowing filaments. */
+html,body,body#app-body,#workspace-app,#workspace-app #page-home{
+  background-color:#f4ead5!important;
+  background-image:
+    radial-gradient(ellipse at 12% 12%,#54c9ed30 0%,transparent 31%),
+    radial-gradient(ellipse at 88% 22%,#65c8e922 0%,transparent 34%),
+    radial-gradient(ellipse at 74% 88%,#d9b35a20 0%,transparent 38%),
+    repeating-linear-gradient(122deg,transparent 0 92px,#28aeda0c 93px,#28aeda0c 94px,transparent 95px 184px),
+    repeating-linear-gradient(32deg,transparent 0 138px,#c6a45d0b 139px,#c6a45d0b 140px,transparent 141px 278px),
+    linear-gradient(135deg,#fbf4e7 0%,#f0e2c7 52%,#faf2e3 100%)!important;
+  background-attachment:fixed!important;
+}
+/* Dark ink only on dashboard: never use white text on champagne surfaces. */
+#workspace-app #page-home,
+#workspace-app #page-home :is(h1,h2,h3,h4,h5,p,span,label,small,strong,b,li,div,a,button){
+  color:#182a35!important;
+}
+#workspace-app #page-home :is(.muted,.hint,.description,.dashboard-subtitle,.side-label,.eyebrow){
+  color:#526573!important;
+}
+#workspace-app #page-home :is(.gradient,.accent,.highlight,.count,.stat-value){
+  color:#087eae!important;
+}
+/* Force every dashboard icon glyph to blue, overriding legacy violet rules and inline styles. */
+#workspace-app #page-home svg,
+#workspace-app #page-home svg *,
+#workspace-app #page-home :is(i,.icon,[class*="icon"]):not(button){
+  color:#087eae!important;
+  stroke:#087eae!important;
+}
+#workspace-app #page-home svg{
+  filter:drop-shadow(0 0 4px #31bce077) drop-shadow(0 0 9px #31bce044)!important;
+}
+#workspace-app #page-home :is(.feature-icon,.dashboard-tool-icon,.app-tool-icon,.tool-icon,[class*="icon-wrap"],[class*="icon-box"]){
+  background:
+    radial-gradient(circle at 30% 20%,#ffffffed 0%,#ffffff00 46%),
+    linear-gradient(145deg,#e7f9ff 0%,#c4edfa 62%,#e2f4f7 100%)!important;
+  border:1px solid #80cfe8!important;
+  box-shadow:0 0 18px #28b9e052,0 0 34px #28b9e02e,inset 0 1px 0 #fff!important;
+}
+/* Give every dashboard surface a soft blue backlight, not a purple wash. */
+#workspace-app #page-home :is(.dashboard-intro,.dash-hero,.panel,.stat,.app-tool,.dashboard-shortcut,.dashboard-tools-panel,.dashboard-info-card,.card,.tool,.feature,.image-studio-panel,.chat-compose-box){
+  background-image:
+    radial-gradient(ellipse at 8% 8%,#36c5f22b 0%,transparent 48%),
+    radial-gradient(ellipse at 96% 94%,#6bcde91c 0%,transparent 46%),
+    linear-gradient(135deg,#fffaf0f5,#f0e2c9f5)!important;
+  border-color:#c4dce2!important;
+  box-shadow:0 14px 34px #8d6b341c,0 0 24px #27b8e02b,0 0 42px #27b8e018!important;
+}
+#workspace-app #page-home :is(.dashboard-intro,.dash-hero){
+  box-shadow:0 18px 42px #8d6b3420,0 0 34px #27b8e03a,0 0 58px #27b8e01c!important;
+}
+#workspace-app #page-home :is(.nav-btn.active,.dashboard-shortcut:hover,.app-tool:hover){
+  background-color:#e2f5fa!important;
+  border-color:#73c6e2!important;
+}
+@media(max-width:680px){
+  html,body,#workspace-app,#workspace-app #page-home{background-attachment:scroll!important}
+}
