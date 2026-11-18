@@ -26,6 +26,8 @@ test("Smart Chat reuses and restores the latest image context", () => {
   assert.match(chat, /persistEditedImageInConversation/);
   assert.match(chat, /if\(wantsImageEdit&&\(!imageForEdit/);
   assert.match(chat, /این پیام به چت متنی ارسال نشد و اعتباری مصرف نکرد/);
+  assert.match(chat, /result\.usage\?\.credits_charged\?\?0/);
+  assert.match(chat, /پاسخ آماده شد · چت رایگان بود/);
 });
 
 test("LOKAL AI theme uses champagne gold, not pure black, and retains blue/violet glow", () => {
