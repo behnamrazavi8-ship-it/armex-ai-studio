@@ -321,7 +321,7 @@ create or replace function public.armex_save_chat_message(
 language plpgsql
 security definer
 set search_path = public, pg_temp
-as $
+as $$
 declare
   v_message_id uuid;
   v_existing_content text;
@@ -365,7 +365,7 @@ begin
 
   return v_message_id;
 end;
-$;
+$$;
 
 revoke all on function public.armex_save_chat_message(uuid, uuid, uuid, text, text, text) from public, anon, authenticated;
 revoke all on function public.armex_claim_chat_request(uuid, uuid) from public, anon, authenticated;
