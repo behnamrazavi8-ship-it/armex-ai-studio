@@ -31,13 +31,15 @@ test("Smart Chat reuses and restores the latest image context", () => {
   assert.match(chat, /پاسخ آماده شد · چت رایگان بود/);
 });
 
-test("LOKAL AI theme uses champagne gold, not pure black, and retains blue/violet glow", () => {
-  assert.match(theme, /color-scheme\s*:\s*light/);
-  assert.match(theme, /--bg\s*:\s*#f4ead5/i);
-  assert.match(theme, /--gold\s*:\s*#d4a13d/i);
-  assert.match(theme, /#9a65df38/i);
-  assert.match(theme, /#42bde735/i);
-  assert.doesNotMatch(theme, /#000000|#070709|#05080b/i);
+test("LOKAL AI has a coherent cinematic dark studio system with restrained warm accents", () => {
+  assert.match(theme, /color-scheme\s*:\s*dark/);
+  assert.match(theme, /--bg\s*:\s*#08090b/i);
+  assert.match(theme, /--accent\s*:\s*#ff6538/i);
+  assert.match(theme, /#4db8d8/i);
+  assert.match(theme, /\.hero-desktop-panel/);
+  assert.match(theme, /\.dashboard-intro/);
+  assert.match(theme, /@media\(max-width:700px\)/);
+  assert.doesNotMatch(theme, /#f4ead5|#fffaf0|champagne/i);
 });
 
 test("Smart Chat is free without disabling provider-cost accounting", () => {
