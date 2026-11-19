@@ -211,7 +211,7 @@ export async function handleImageEditApi(
   const paths: string[] = [];
   for (let index = 0; index < decodedImages.length; index++) {
     const item = decodedImages[index];
-    const path = userId + "/edit/" + requestId + "-input-" + index + "." + item.extension;
+    const path = userId + "/edit/" + requestId + "-" + crypto.randomUUID() + "-input-" + index + "." + item.extension;
     const { error: uploadError } = await db.storage.from(BUCKET).upload(path, item.bytes, {
       contentType: item.mime, upsert: true, cacheControl: "3600",
     });
