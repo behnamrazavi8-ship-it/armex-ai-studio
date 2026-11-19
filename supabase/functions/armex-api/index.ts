@@ -219,6 +219,13 @@ const generateImage = async (
       if (!response.ok) throw new Error("PROMPT_COMPILER_HTTP_" + response.status);
       const result = await response.json();
       const content = result.choices?.[0]?.message?.content;
+      console.log("Image prompt compiled", {
+        requestId,
+        model: "openai/gpt-4o-mini",
+        inputTokens: Number(result.usage?.prompt_tokens || 0),
+        outputTokens: Number(result.usage?.completion_tokens || 0),
+        providerCostUsd: Number.isFinite(Number(result.usage?.cost)) ? Number(result.usage.cost) : null,
+      });
       compiledPrompt = typeof content === "string"
         ? content.replace(/^\s*```(?:text)?\s*/i, "").replace(/\s*```\s*$/, "").trim()
         : "";
