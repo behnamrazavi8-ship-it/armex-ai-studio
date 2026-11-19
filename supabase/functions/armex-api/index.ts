@@ -30,7 +30,7 @@ const allowedOrigins = (): string[] => {
     .map((value) => value.trim())
     .filter(Boolean);
   // Explicitly allow the active LOKAL AI Preview origin for authenticated browser testing.
-  return [...new Set([...configured, "https://feat-prompt-intelligence-pro.armex-ai-studio.pages.dev"])];
+  return [...new Set([...configured, "https://preview.lokal-ai.net", "https://feat-lokal-popcorn-visual-on.armex-ai-studio.pages.dev", "https://feat-prompt-intelligence-pro.armex-ai-studio.pages.dev"])];
 };
 
 const corsFor = (origin: string | null): HeadersInit => {
@@ -655,7 +655,11 @@ const handle = async (request: Request): Promise<Response> => {
     return await handleImageEditApi(db, userId, "edit_image", body, "", cors);
   }
 
-  const message = typeof body.message === "string" ? body.message.trim() : "";
+  const submittedMessage = typeof body.message === "string" ? body.message.trim() : "";
+  const attachmentOnlyRequest = isUuid(body.attachment_id) && isUuid(body.conversation_id);
+  const message = submittedMessage || (attachmentOnlyRequest
+    ? "Please inspect the attached media and describe what is visible."
+    : "");
   if (!message || message.length > MAX_MESSAGE_CHARS) {
     return fail("A message between 1 and " + MAX_MESSAGE_CHARS + " characters is required", 400, cors);
   }
