@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "index.html"
+      - "modules/chat/**"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
       - "supabase/migrations/**"
@@ -43,6 +44,7 @@ jobs:
           api = Path("supabase/functions/armex-api/index.ts").read_text(encoding="utf-8")
           migration = Path("supabase/migrations/20261115000000_lokal_chat_media.sql").read_text(encoding="utf-8")
           html = Path("index.html").read_text(encoding="utf-8")
+          chat = Path("modules/chat/chat.js").read_text(encoding="utf-8")
           checks = {
               "signed upload endpoint": "create_media_upload",
               "upload finalization endpoint": "complete_media_upload",
@@ -54,7 +56,7 @@ jobs:
               "image attachment to multimodal model": "image_url: { url: imageSignedUrl }",
               "signed browser upload": "uploadToSignedUrl",
           }
-          sources = {"api": api, "migration": migration, "html": html}
+          sources = {"api": api, "migration": migration, "html": html, "chat module": chat}
           for label, token in checks.items():
               if not any(token in source for source in sources.values()):
                   raise SystemExit("Missing media security contract: " + label)
