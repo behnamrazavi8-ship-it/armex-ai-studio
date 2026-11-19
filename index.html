@@ -153,7 +153,7 @@
  }));
  function buildPrompt(){const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return ''}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;const labels={image:'Create a high-quality image based on this concept:',video:'Create a cinematic video based on this concept:',design:'Create a polished graphic design based on this concept:',social:'Create engaging social media content based on this concept:'};const en=labels[type]+' '+idea+'. Visual direction: '+style+'. Composition: '+ratio+'. Use clear subject hierarchy, refined lighting, professional production quality, coherent perspective and intentional color grading. Avoid visual clutter, distorted anatomy, random text, watermarks and unwanted logos.';const fa='بر اساس این ایده '+(type==='video'?'یک ویدیوی سینمایی':type==='design'?'یک طراحی گرافیکی حرفه‌ای':type==='social'?'یک محتوای جذاب شبکه اجتماعی':'یک تصویر باکیفیت')+' خلق کن: '+idea+'؛ سبک بصری: '+style+'؛ کادر: '+ratio+'؛ ترکیب‌بندی حرفه‌ای، نورپردازی دقیق، جزئیات منسجم و کیفیت خروجی بالا. از شلوغی بصری، نوشته‌های تصادفی، واترمارک و لوگوهای ناخواسته پرهیز کن.';return lang==='fa'?fa:en}
  $('#generatePrompt').addEventListener('click',()=>{output=buildPrompt();if(!output)return;$('#promptResult').textContent=output;$('#promptResult').style.display='block';$('#resultActions').style.display='flex'});
- $('#generateAIPrompt').addEventListener('click',()=>{const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;window.dispatchEvent(new CustomEvent('lokal:generate-ai-prompt',{detail:{prompt:idea,mediaType:type,style,aspectRatio:ratio,language:lang,imageBase64:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_base64||'',imageMimeType:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_mime_type||'',imageUrl:window.LOKAL_PROMPT_REFERENCE_IMAGE_URL||'',imageUrls:window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS||[]}}))});
+ $('#generateAIPrompt').addEventListener('click',()=>{const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;window.dispatchEvent(new CustomEvent('lokal:generate-ai-prompt',{detail:{prompt:idea,mediaType:type,style,aspectRatio:ratio,language:lang,imageBase64:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_base64||'',imageMimeType:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_mime_type||'',imageUrl:window.LOKAL_PROMPT_REFERENCE_IMAGE_URL||'',imageUrls:window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS||[],imageAttachmentIds:window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS||[],conversationId:window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID||''}}))});
  window.addEventListener('lokal:ai-prompt-result',event=>{const d=event.detail||{};if(d.answer){output=d.answer;$('#promptResult').textContent=output;$('#promptResult').style.display='block';$('#resultActions').style.display='flex';toast('پرامپت هوشمند آماده شد.')}else if(d.error)toast(d.error)});
  $('#copyResult').addEventListener('click',async()=>{if(!output)return;try{await navigator.clipboard.writeText(output);toast('پرامپت کپی شد.')}catch{toast('امکان کپی خودکار نیست؛ متن را انتخاب کن.')}});
  $('#savePrompt').addEventListener('click',async()=>{output=buildPrompt();if(!output)return;const item={id:crypto.randomUUID(),title:$('#idea').value.trim().slice(0,55),prompt:output,created:new Date().toISOString()};const p=readProjects();p.unshift(item);if(!writeProjects(p)){toast('ذخیره‌سازی مرورگر در دسترس نیست.');return}renderProjects();if(window.lokalCloudProjectSave){const saved=await window.lokalCloudProjectSave(item);if(saved){writeProjects(readProjects().filter(x=>x.id!==item.id));toast('پروژه در حساب کاربری ذخیره و همگام شد.')}else toast('نسخه محلی ذخیره شد؛ همگام‌سازی ابری هنوز آماده نیست.')}else toast('پروژه فعلاً در همین مرورگر ذخیره شد.');renderProjects()});
@@ -434,15 +434,18 @@ else{
   const imageBase64=String(d.imageBase64||""),imageMimeType=String(d.imageMimeType||"");
   let imageUrls=Array.isArray(d.imageUrls)?d.imageUrls.filter(url=>typeof url==="string"&&url.trim()).slice(0,3):[];
   if(!imageUrls.length&&d.imageUrl)imageUrls=[String(d.imageUrl)];
-  if(imageBase64)imageUrls=[];
+  let imageAttachmentIds=Array.isArray(d.imageAttachmentIds)?d.imageAttachmentIds.filter(id=>typeof id==="string").slice(0,3):[];
+  if(imageBase64){imageUrls=[];imageAttachmentIds=[]}
+  else if(imageAttachmentIds.length)imageUrls=[];
   const requestKey=JSON.stringify({
    idea,mediaType,style:d.style||"",aspectRatio:d.aspectRatio||"",language:d.language||"en",
-   imageRefs:imageUrls.map(url=>url.split("?")[0]),hasImage:Boolean(imageBase64||imageUrls.length)
+   imageRefs:imageUrls.map(url=>url.split("?")[0]),imageAttachmentIds,conversationId:d.conversationId||"",
+   hasImage:Boolean(imageBase64||imageUrls.length||imageAttachmentIds.length)
   });
   if(!pendingPromptRequest||pendingPromptRequest.key!==requestKey)pendingPromptRequest={key:requestKey,requestId:crypto.randomUUID()};
   aiButton.disabled=true;
   if(aiStatus){
-   aiStatus.textContent=(imageBase64||imageUrls.length)?"در حال تحلیل متن و "+(imageUrls.length||1)+" تصویر مرجع…":"در حال تحلیل معنایی و ساخت پرامپت هوشمند…";
+   aiStatus.textContent=(imageBase64||imageUrls.length||imageAttachmentIds.length)?"در حال تحلیل متن و "+(imageAttachmentIds.length||imageUrls.length||1)+" تصویر مرجع…":"در حال تحلیل معنایی و ساخت پرامپت هوشمند…";
    aiStatus.style.display="block";
   }
   try{
@@ -452,6 +455,10 @@ else{
     output_language:d.language==="fa"?"fa":"en",visual_style:String(d.style||""),aspect_ratio:String(d.aspectRatio||"")
    };
    if(imageBase64){requestBody.image_base64=imageBase64;requestBody.image_mime_type=imageMimeType}
+   else if(imageAttachmentIds.length){
+    if(!d.conversationId)throw new Error("شناسه گفتگوی تصویر مرجع در دسترس نیست؛ دوباره تصویر را در چت ارسال کن.");
+    requestBody.image_attachment_ids=imageAttachmentIds;requestBody.conversation_id=d.conversationId;
+   }
    else if(imageUrls.length===1)requestBody.image_url=imageUrls[0];
    else if(imageUrls.length>1)requestBody.image_urls=imageUrls;
    const response=await fetch(config.supabaseUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding",{
