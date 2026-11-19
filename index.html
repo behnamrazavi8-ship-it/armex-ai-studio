@@ -163,7 +163,6 @@
 <script src="./lokal-config.js"></script>
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { initImageEditor } from "./modules/image-editor/image-editor.js";
 const config=window.LOKAL_CONFIG||{},message=document.getElementById("auth-message"),formCard=document.getElementById("auth-form-card"),sessionCard=document.getElementById("auth-session-card"),publicSite=document.getElementById("public-site"),workspace=document.getElementById("workspace-app"),emailInput=document.getElementById("auth-email"),passwordInput=document.getElementById("auth-password");
 let landingView=!location.hash.startsWith('#workspace-');let activeSession=null;let routeInitialized=false;
 const setMessage=(text,isError=false)=>{if(!message)return;message.textContent=text;message.style.borderColor=isError?"#8a3545":"#31574e";message.style.background=isError?"#28131a":"#10251f";message.style.color=isError?"#ffc0ca":"#c8ead8"};
@@ -214,139 +213,21 @@ else{
  };
 
 
-  // Secure chat media: uploads are issued by armex-api, bytes go directly to
-  // the private bucket using a short-lived signed token, then the API verifies
-  // file signatures and returns a short-lived private preview URL.
-  const chatList=document.getElementById("chat-list"),chatMessages=document.getElementById("chat-messages");
-  const chatInput=document.getElementById("chat-input"),chatSend=document.getElementById("chat-send");
-  const chatStatus=document.getElementById("chat-status"),chatTitle=document.getElementById("chat-title");
-  const chatFileInput=document.getElementById("chat-media-input"),chatFileNote=document.getElementById("chat-file-note");
-  let activeConversationId=null,chatBusy=false,selectedLocalMedia=null;
-  const setChatStatus=(value,isError=false)=>{if(!chatStatus)return;chatStatus.textContent=value;chatStatus.style.color=isError?"#ffb8c2":"#91aaa9"};
-  const addChatBubble=(role,content,meta="")=>{
-   const bubble=document.createElement("div");bubble.className="chat-bubble "+(role==="user"?"user":"assistant");
-   bubble.textContent=String(content||"");
-   if(meta){const small=document.createElement("small");small.textContent=meta;bubble.append(small)}
-   chatMessages.append(bubble);chatMessages.scrollTop=chatMessages.scrollHeight;
-  };
-  const renderChatAttachment=item=>{
-   if(!item?.signed_url)return;
-   const card=document.createElement("article");card.className="chat-attachment-card";
-   if(String(item.mime_type||"").startsWith("image/")){
-    const img=document.createElement("img");img.src=item.signed_url;img.alt="پیوست تصویری گفتگو";img.loading="lazy";card.append(img);
-   }else if(String(item.mime_type||"").startsWith("video/")){
-    const video=document.createElement("video");video.src=item.signed_url;video.controls=true;video.preload="metadata";card.append(video);
-   }
-   const caption=document.createElement("div");caption.className="media-caption";
-   caption.textContent=String(item.original_filename||"رسانه پیوست‌شده")+" · "+(Number(item.size_bytes||0)/1024/1024).toFixed(1)+" MB";
-   const link=document.createElement("a");link.href=item.signed_url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="باز کردن فایل";
-   card.append(caption,link);chatMessages.append(card);chatMessages.scrollTop=chatMessages.scrollHeight;
-  };
-  const renderChatMessages=(rows,attachments=[])=>{
-   chatMessages.replaceChildren();
-   if(!rows?.length&&!attachments?.length){const empty=document.createElement("div");empty.className="chat-empty";const title=document.createElement("b");title.textContent="سلام! من دستیار LOKAL AI هستم.";empty.append(title,document.createTextNode("ایده، سؤال یا درخواستت را بنویس تا با هم شروع کنیم."));chatMessages.append(empty);return}
-   (rows||[]).forEach(row=>addChatBubble(row.role,row.content,row.model||""));
-   (attachments||[]).forEach(renderChatAttachment);
-  };
-  const loadChatList=async session=>{
-   if(!chatList||!session)return;
-   chatList.replaceChildren();const loading=document.createElement("div");loading.className="empty";loading.textContent="در حال دریافت گفتگوها…";chatList.append(loading);
-   try{
-    const result=await callArmexApi(session,"?action=conversations");
-    chatList.replaceChildren();
-    if(!Array.isArray(result.conversations)||!result.conversations.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="هنوز گفتگویی نداری.";chatList.append(empty);return}
-    result.conversations.forEach(item=>{
-     const button=document.createElement("button");button.type="button";button.className="chat-list-item"+(item.id===activeConversationId?" active":"");button.dataset.conversationId=item.id;
-     button.textContent=item.title||"گفتگوی جدید";chatList.append(button);
-    });
-   }catch(error){chatList.replaceChildren();const empty=document.createElement("div");empty.className="empty";empty.textContent="دریافت تاریخچه گفتگوها ممکن نشد.";chatList.append(empty);console.warn("Chat list unavailable",error)}
-  };
-  const openChatConversation=async(id,session)=>{
-   setChatStatus("در حال بارگذاری گفتگو…");
-   try{
-    const result=await callArmexApi(session,"?action=conversation&id="+encodeURIComponent(id));
-    activeConversationId=result.conversation.id;chatTitle.textContent=result.conversation.title||"گفتگو";
-    renderChatMessages(result.messages||[],result.attachments||[]);await loadChatList(session);setChatStatus("");
-   }catch(error){setChatStatus("بارگذاری گفتگو انجام نشد: "+String(error.message||error),true)}
-  };
-  window.addEventListener("lokal:open-chat",async()=>{
-   const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}
-   await loadChatList(session);
-  });
-  document.getElementById("chat-new")?.addEventListener("click",()=>{
-   activeConversationId=null;chatTitle.textContent="گفتگوی جدید";renderChatMessages([]);setChatStatus("");chatInput?.focus();
-   chatList?.querySelectorAll(".chat-list-item").forEach(item=>item.classList.remove("active"));
-  });
-  chatList?.addEventListener("click",async event=>{
-   const button=event.target.closest("[data-conversation-id]");if(!button)return;
-   const {data:{session}}=await supabase.auth.getSession();if(session)await openChatConversation(button.dataset.conversationId,session);
-  });
-  chatFileInput?.addEventListener("change",()=>{
-   selectedLocalMedia=chatFileInput.files?.[0]||null;
-   if(!selectedLocalMedia){chatFileNote.textContent="عکس تا ۲۰ مگابایت · ویدئو تا ۵۰ مگابایت";return}
-   const isImage=selectedLocalMedia.type.startsWith("image/");
-   const max=isImage?20*1024*1024:50*1024*1024;
-   if(!["image/jpeg","image/png","image/webp","video/mp4","video/webm","video/quicktime"].includes(selectedLocalMedia.type)||selectedLocalMedia.size>max){
-    setChatStatus("نوع فایل پشتیبانی نمی‌شود یا حجم آن بیش از حد مجاز است.",true);selectedLocalMedia=null;chatFileInput.value="";chatFileNote.textContent="فایل معتبر انتخاب نشده است.";return;
-   }
-   chatFileNote.textContent="آماده ارسال: "+selectedLocalMedia.name+" ("+(selectedLocalMedia.size/1024/1024).toFixed(1)+" MB)";
-   setChatStatus("فایل هنوز ارسال نشده؛ با زدن دکمه ارسال، آپلود خصوصی و بررسی محتوای فایل انجام می‌شود.");
-  });
-  const uploadChatMedia=async(session,conversationId,file)=>{
-   const init=await callArmexApi(session,"",{
-    action:"create_media_upload",conversation_id:conversationId,filename:file.name,
-    mime_type:file.type,size_bytes:file.size
-   });
-   const {error:uploadError}=await supabase.storage.from("lokal-chat-media")
-    .uploadToSignedUrl(init.path,init.token,file,{contentType:file.type,upsert:false});
-   if(uploadError)throw new Error("آپلود فایل انجام نشد: "+uploadError.message);
-   const completed=await callArmexApi(session,"",{action:"complete_media_upload",attachment_id:init.attachment_id});
-   if(completed.success!==true||!completed.attachment?.signed_url)throw new Error("بررسی امنیتی فایل کامل نشد.");
-   return completed.attachment;
-  };
-  const sendChatMessage=async()=>{
-   const typed=chatInput?.value?.trim()||"",file=selectedLocalMedia;
-   if((!typed&&!file)||chatBusy)return;
-   const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}
-   chatBusy=true;chatSend.disabled=true;chatInput.disabled=true;chatFileInput.disabled=true;
-   let attachment=null;
-   try{
-    if(file){
-     setChatStatus("در حال آماده‌سازی گفتگوی امن…");
-     if(!activeConversationId){
-      const created=await callArmexApi(session,"",{action:"create_conversation",title:typed||file.name});
-      activeConversationId=created.conversation.id;chatTitle.textContent=created.conversation.title||"گفتگو";
-     }
-     setChatStatus("در حال آپلود خصوصی و بررسی محتوای فایل…");
-     attachment=await uploadChatMedia(session,activeConversationId,file);
-     renderChatAttachment(attachment);
-     selectedLocalMedia=null;chatFileInput.value="";chatFileNote.textContent="فایل با موفقیت در فضای خصوصی ذخیره شد.";
-     await loadChatList(session);
-    }
-    const message=typed||(attachment?.mime_type?.startsWith("image/")?"لطفاً این تصویر را بررسی کن و برای ویرایش آن راهنمایی بده.":"ویدئوی پیوست‌شده را برای ویرایش آماده کن.");
-    addChatBubble("user",message,attachment?("پیوست: "+attachment.original_filename):"");
-    chatInput.value="";
-    setChatStatus(attachment?.mime_type?.startsWith("video/")?"ویدئو ذخیره شد؛ پاسخ متنی ارسال می‌شود، اما تحلیل و ویرایش ویدئو هنوز فعال نیست.":"در حال دریافت پاسخ هوش مصنوعی…");
-    const payload={request_id:crypto.randomUUID(),message,model:"openai/gpt-4o-mini",max_tokens:1200};
-    if(activeConversationId)payload.conversation_id=activeConversationId;
-    if(attachment)payload.attachment_id=attachment.id;
-    const result=await callArmexApi(session,"",payload);
-    if(result.success!==true||!result.answer||!result.conversation_id)throw new Error("پاسخ معتبر از سرویس چت دریافت نشد.");
-    activeConversationId=result.conversation_id;chatTitle.textContent="گفتگو";
-    addChatBubble("assistant",result.answer,result.model||"");
-    setChatStatus("پاسخ آماده شد · "+Number(result.usage?.credits_charged||1).toLocaleString("fa-IR")+" اعتبار مصرف شد.");
-    await Promise.all([loadWalletBalance(session),loadChatList(session)]);
-   }catch(error){
-    const raw=String(error?.message||"");const friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول برای ارسال پیام کافی نیست.":/Authentication required|Invalid or expired session/i.test(raw)?"نشست ورود منقضی شده است؛ دوباره وارد شو.":raw||"ارسال پیام ناموفق بود.";
-    setChatStatus(friendly,true);await loadWalletBalance(session);
-   }finally{chatBusy=false;chatSend.disabled=false;chatInput.disabled=false;chatFileInput.disabled=false;chatInput.focus()}
-  };
-  chatSend?.addEventListener("click",sendChatMessage);
-  chatInput?.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendChatMessage()}});
-
- const { initSmartChat } = await import("./modules/chat/chat.js?v=lokal-smart-chat-1");
- initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensureSecureApi });
- initImageEditor({ supabase, callArmexApi });
+  // Optional feature modules must not block core auth and workspace controls.
+  try {
+    const { initSmartChat } = await import("./modules/chat/chat.js?v=lokal-smart-chat-2");
+    initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensureSecureApi });
+  } catch (error) {
+    console.error("Smart Chat initialization failed", error);
+    setMessage("ماژول چت بارگذاری نشد؛ سایر بخش‌های برنامه همچنان در دسترس‌اند.", true);
+  }
+  try {
+    const { initImageEditor } = await import("./modules/image-editor/image-editor.js?v=lokal-image-editor-2");
+    initImageEditor({ supabase, callArmexApi });
+  } catch (error) {
+    console.error("Image Editor initialization failed", error);
+    setMessage("ویرایشگر تصویر بارگذاری نشد؛ سایر بخش‌های برنامه همچنان در دسترس‌اند.", true);
+  }
 
  const imageButton=document.getElementById("generateImage");
  const imageStatus=document.getElementById("imageStatus");
