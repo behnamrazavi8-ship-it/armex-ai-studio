@@ -846,7 +846,8 @@ const handle = async (request: Request): Promise<Response> => {
     if (attachmentError || !attachments || attachments.length !== attachmentIds.length) {
       return fail("One or more attachments were not found or are not ready", 404, cors);
     }
-    verifiedAttachments.push(...attachments as Array<Record<string, unknown>>);
+    const attachmentById = new Map((attachments as Array<Record<string, unknown>>).map((item) => [String(item.id), item]));
+    verifiedAttachments.push(...(attachmentIds as string[]).map((id) => attachmentById.get(id)).filter(Boolean) as Array<Record<string, unknown>>);
     const imageAttachments = verifiedAttachments.filter((item) => String(item.mime_type).startsWith("image/"));
     if (imageAttachments.length !== verifiedAttachments.length && verifiedAttachments.length !== 1) {
       return fail("Only images can be combined in one chat message", 400, cors);
