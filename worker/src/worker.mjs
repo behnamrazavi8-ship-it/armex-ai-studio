@@ -83,31 +83,11 @@ async function heartbeatImageEdit(jobId) {
 }
 
 async function runImageEditProvider(job) {
-  const encodedPath = String(job.input_storage_path || "").split("/").map(encodeURIComponent).join("/");
-  const inputResponse = await fetch(
-    SUPABASE_URL + "/storage/v1/object/" + IMAGE_BUCKET + "/" + encodedPath,
-    { headers: supabaseAuthHeaders(SUPABASE_API_KEY), signal: AbortSignal.timeout(30000) },
-  );
-  if (!inputResponse.ok) {
-    const error = new Error("IMAGE_EDIT_INPUT_HTTP_" + inputResponse.status);
-    error.retryable = inputResponse.status === 408 || inputResponse.status === 429 || inputResponse.status >= 500;
-    error.status = inputResponse.status;
-    throw error;
-  }
-  const inputBytes = new Uint8Array(await inputResponse.arrayBuffer());
-  if (!inputBytes.length || inputBytes.length > 5 * 1024 * 1024) {
-    const error = new Error("IMAGE_EDIT_INPUT_SIZE_INVALID"); error.retryable = false; throw error;
-  }
-  const inputType = inputResponse.headers.get("content-type")?.split(";")[0] || "image/jpeg";
-  if (!["image/jpeg", "image/png", "image/webp"].includes(inputType)) {
-    const error = new Error("IMAGE_EDIT_INPUT_TYPE_INVALID"); error.retryable = false; throw error;
-  }
-
-  let normalizedInput;
-  try {
-    normalizedInput = await normalizeImageForFlux(inputBytes);
-  } catch {
-    const error = new Error("IMAGE_EDIT_INPUT_DECODE_FAILED");
+  const inputPaths = Array.isArray(job.input_storage_paths) && job.input_storage_paths.length
+    ? job.input_storage_paths
+    : [job.input_storage_path];
+  if (inputPaths.length < 1 || inputPaths.length > 3) {
+    const error = new Error("IMAGE_EDIT_INPUT_COUNT_INVALID");
     error.retryable = false;
     throw error;
   }
@@ -115,13 +95,51 @@ async function runImageEditProvider(job) {
   const form = new FormData();
   form.append(
     "prompt",
-    "Apply only the changes requested below. Preserve the original subject identity and recognizable features, proportions, pose, framing, and every unmentioned detail as faithfully as possible. Do not add or remove objects unless explicitly requested. User edit request: " + job.prompt,
+    "Use the provided reference images in their numbered order (image 0, image 1, image 2). Follow the user's edit instructions precisely. Preserve the identity, recognizable features, proportions, and unmentioned details of the referenced subjects. When combining references, use each source only for the element described by the user. Do not add unrelated objects or alter unmentioned details. User edit request: " + job.prompt,
   );
-  form.append(
-    "input_image_0",
-    new Blob([normalizedInput.bytes], { type: normalizedInput.mimeType }),
-    "input." + normalizedInput.extension,
-  );
+
+  for (let index = 0; index < inputPaths.length; index++) {
+    const path = String(inputPaths[index] || "");
+    if (!path.startsWith(String(job.user_id) + "/edit/")) {
+      const error = new Error("IMAGE_EDIT_INPUT_PATH_INVALID");
+      error.retryable = false;
+      throw error;
+    }
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+    const inputResponse = await fetch(
+      SUPABASE_URL + "/storage/v1/object/" + IMAGE_BUCKET + "/" + encodedPath,
+      { headers: supabaseAuthHeaders(SUPABASE_API_KEY), signal: AbortSignal.timeout(30000) },
+    );
+    if (!inputResponse.ok) {
+      const error = new Error("IMAGE_EDIT_INPUT_HTTP_" + inputResponse.status);
+      error.retryable = inputResponse.status === 408 || inputResponse.status === 429 || inputResponse.status >= 500;
+      error.status = inputResponse.status;
+      throw error;
+    }
+    const inputBytes = new Uint8Array(await inputResponse.arrayBuffer());
+    if (!inputBytes.length || inputBytes.length > 5 * 1024 * 1024) {
+      const error = new Error("IMAGE_EDIT_INPUT_SIZE_INVALID"); error.retryable = false; throw error;
+    }
+    const inputType = inputResponse.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+    if (!["image/jpeg", "image/png", "image/webp"].includes(inputType)) {
+      const error = new Error("IMAGE_EDIT_INPUT_TYPE_INVALID"); error.retryable = false; throw error;
+    }
+
+    let normalizedInput;
+    try {
+      normalizedInput = await normalizeImageForFlux(inputBytes);
+    } catch {
+      const error = new Error("IMAGE_EDIT_INPUT_DECODE_FAILED");
+      error.retryable = false;
+      throw error;
+    }
+    form.append(
+      "input_image_" + index,
+      new Blob([normalizedInput.bytes], { type: normalizedInput.mimeType }),
+      "input-" + index + "." + normalizedInput.extension,
+    );
+  }
+
   const url = "https://api.cloudflare.com/client/v4/accounts/" + CLOUDFLARE_ACCOUNT_ID +
     "/ai/run/@cf/black-forest-labs/flux-2-klein-4b";
   const response = await fetch(url, {
