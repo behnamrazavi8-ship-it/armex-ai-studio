@@ -20,6 +20,24 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  const style=document.createElement("style");
  style.id="lokal-chat-attachment-styles";
  style.textContent=`
+  .chat-workspace{display:grid;grid-template-columns:minmax(220px,.32fr) minmax(0,.68fr);gap:16px;min-height:620px}
+  .chat-history-panel,.chat-conversation{min-width:0;padding:16px;border:1px solid var(--border,#263c49);border-radius:18px;background:var(--panel,#0b1218)}
+  .chat-history-list{display:flex;flex-direction:column;gap:7px;margin-top:12px;max-height:520px;overflow:auto}
+  .chat-history-item{width:100%;padding:11px;text-align:right;border:1px solid transparent;border-radius:10px;background:#101a21;color:inherit;cursor:pointer}
+  .chat-history-item.active{border-color:#287d91;background:#10232a}
+  .chat-conversation{display:flex;flex-direction:column;min-height:620px}
+  .chat-conversation-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:12px;border-bottom:1px solid #20343e}
+  .chat-transcript{flex:1;min-height:300px;max-height:560px;overflow:auto;padding:16px 4px}
+  .chat-message{max-width:min(88%,680px);padding:12px 14px;margin:8px 0;border:1px solid #263b45;border-radius:14px;background:#101b22;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.9}
+  .chat-message.user{margin-right:auto;background:#10242a;border-color:#28505b}
+  .chat-message.assistant{margin-left:auto}
+  .chat-empty-state{display:grid;gap:8px;place-content:center;min-height:260px;text-align:center;color:#9eb4bd}
+  .chat-empty-state b{color:#e1f1f4}
+  .chat-compose-box{border:1px solid #29434d;border-radius:14px;padding:12px;background:#0c171d}
+  .chat-compose-box textarea{width:100%;min-height:92px;resize:vertical;border:0;outline:0;background:transparent;color:inherit}
+  .chat-live-status{min-height:24px;padding:7px 3px;color:#9db5bc;font-size:11px}
+  #chat-exit{font-size:11px}
+  @media(max-width:760px){.chat-workspace{grid-template-columns:1fr;min-height:0}.chat-history-panel{order:2}.chat-conversation{min-height:560px}.chat-transcript{max-height:420px}.chat-history-list{max-height:180px}}
   .chat-compose-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .chat-compose-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
   #chat-attach{min-height:38px}
