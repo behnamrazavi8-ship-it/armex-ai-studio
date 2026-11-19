@@ -7,6 +7,7 @@ on:
       - "modules/chat/**"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
+      - "supabase/staging/**"
       - "supabase/migrations/**"
   push:
     branches: [main]
@@ -61,6 +62,34 @@ jobs:
               if not any(token in source for source in sources.values()):
                   raise SystemExit("Missing media security contract: " + label)
           PY
+
+      - name: Verify Staging Prompt Intelligence image bridge
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          fn = Path("supabase/staging/functions/prompt-understanding/index.ts").read_text(encoding="utf-8")
+          html = Path("index.html").read_text(encoding="utf-8")
+          config = Path("lokal-config.js").read_text(encoding="utf-8")
+          checks = {
+              "Production token verification": "verifyProductionUser",
+              "Staging quota only": "consume_prompt_intelligence_quota",
+              "base64 image input": "image_base64",
+              "multimodal signed image URLs": "imageUrls.map((url)",
+              "signed URL host restriction": "znendbwkmcldttugvwnr.supabase.co",
+              "private chat bucket restriction": "lokal-chat-media",
+              "frontend Staging endpoint": "config.promptIntelligenceUrl",
+              "Staging public key": "promptIntelligenceAnonKey",
+              "no Production prompt endpoint": "config.supabaseUrl.replace" not in html[html.find('window.addEventListener("lokal:generate-ai-prompt"'):],
+              "no wallet charge after analysis": "از اعتبار کیف پول مصرف نشد" in html,
+              "Staging project URL": "https://pismnyrbbdrreugpxjcj.supabase.co" in config,
+          }
+          for label, valid in checks.items():
+              if not valid:
+                  raise SystemExit("Missing Staging image bridge contract: " + label)
+          PY
+
+      - name: Type-check Staging Prompt Intelligence
+        run: deno check supabase/staging/functions/prompt-understanding/index.ts
 
       - name: Type-check armex-api
         run: deno check supabase/functions/armex-api/index.ts
