@@ -338,8 +338,10 @@ else{
   }
   document.getElementById("imageMeta").textContent=String(job.model||"FLUX.1 Schnell")+" · "+Number(job.credits_charged||20).toLocaleString("fa-IR")+" اعتبار مصرف شد";
   setImageStatus("مرحله ۳ از ۳ · در حال به‌روزرسانی گالری و کیف پول…");
-  await Promise.all([loadWalletBalance(session),loadImageGallery(session)]);
-  setImageStatus("تصویر آماده شد و در گالری خصوصی ذخیره شد.");
+  const refreshResults=await Promise.allSettled([loadWalletBalance(session),loadImageGallery(session)]);
+  setImageStatus(refreshResults.some(item=>item.status==="rejected")
+   ?"تصویر ساخته و ذخیره شد؛ به‌روزرسانی گالری کامل نشد. دوباره وارد Image Studio شو."
+   :"تصویر آماده شد و در گالری خصوصی ذخیره شد.");
   try{localStorage.removeItem(pendingImageJobKey(session))}catch{}
  };
  const pollImageJob=async(session,jobId,{resume=false}={})=>{
