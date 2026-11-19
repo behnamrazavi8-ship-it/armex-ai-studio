@@ -368,11 +368,24 @@ else{
   }
  };
  const resumePendingImageJob=async session=>{
-  let jobId="";
-  try{jobId=localStorage.getItem(pendingImageJobKey(session))||""}catch{}
-  if(!jobId)return false;
+  let pending=null;
+  try{
+   const raw=localStorage.getItem(pendingImageJobKey(session))||"";
+   if(!raw)return false;
+   try{pending=JSON.parse(raw)}catch{pending={job_id:raw}}
+  }catch{return false}
   setImageStatus("در حال بازیابی درخواست قبلی تصویر…");
-  return pollImageJob(session,jobId,{resume:true});
+  if(pending?.job_id)return pollImageJob(session,pending.job_id,{resume:true});
+  if(!pending?.request_id||!pending?.prompt)return false;
+  try{
+   const recovered=await callArmexApi(session,"",{action:"generate_image",request_id:pending.request_id,prompt:pending.prompt,aspect_ratio:"1:1",resolution:"1K"});
+   if(recovered.success!==true||!recovered.job?.id)throw new Error(recovered.error||"بازیابی درخواست ساخت تصویر ممکن نشد.");
+   try{localStorage.setItem(pendingImageJobKey(session),JSON.stringify({...pending,job_id:recovered.job.id}))}catch{}
+   return pollImageJob(session,recovered.job.id,{resume:true});
+  }catch(error){
+   setImageStatus("درخواست قبلی هنوز قابل بازیابی نیست؛ شناسهٔ امن آن نگه داشته شده تا دوباره‌کاری ایجاد نشود. "+String(error?.message||""),true);
+   return null;
+  }
  };
  imageButton?.addEventListener("click",async()=>{
   const prompt=document.getElementById("imagePrompt")?.value?.trim()||"";
@@ -385,17 +398,19 @@ else{
    try{existingJob=localStorage.getItem(pendingImageJobKey(session))||""}catch{}
    if(existingJob){
     setImageStatus("یک درخواست قبلی هنوز ثبت شده؛ ابتدا همان درخواست را پیگیری می‌کنم تا تصویر تکراری ساخته نشود.");
-    await pollImageJob(session,existingJob);
+    await resumePendingImageJob(session);
     return;
    }
    setImageStatus("مرحله ۱ از ۳ · در حال رزرو اعتبار و ثبت درخواست ساخت تصویر…");
    const requestId=crypto.randomUUID();
+   const pending={request_id:requestId,prompt,job_id:""};
+   try{localStorage.setItem(pendingImageJobKey(session),JSON.stringify(pending))}catch{}
    const result=await callArmexApi(session,"",{
     action:"generate_image",request_id:requestId,prompt,
     aspect_ratio:"1:1",resolution:"1K"
    });
    if(result.success!==true||!result.job?.id)throw new Error(result.error||"درخواست ساخت تصویر در صف ثبت نشد.");
-   try{localStorage.setItem(pendingImageJobKey(session),result.job.id)}catch{}
+   try{localStorage.setItem(pendingImageJobKey(session),JSON.stringify({...pending,job_id:result.job.id}))}catch{}
    setImageStatus("مرحله ۲ از ۳ · درخواست ثبت شد؛ موتور هوش مصنوعی در حال ساخت تصویر است…");
    await pollImageJob(session,result.job.id);
   }catch(error){
