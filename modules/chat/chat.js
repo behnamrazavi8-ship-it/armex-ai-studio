@@ -132,7 +132,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    activeChatConversationId=id;chatTitle.textContent=result.conversation?.title||"گفتگو";
    clearSelectedImage();
    const historicalImages=(result.attachments||[]).filter(item=>item?.signed_url&&String(item.mime_type||"").startsWith("image/"));
-   lastImageContext=historicalImages.length?historicalImages[historicalImages.length-1]:null;
+   lastImageContext=historicalImages.length?historicalImages[historicalImages.length-1]:null;window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=lastImageContext?.signed_url||"";
    renderChatHistory(result.messages,result.attachments||[]);
    await loadChatHistoryList(session);setChatStatus("");
   }catch(error){setChatStatus("بارگذاری گفتگو انجام نشد: "+String(error?.message||error),true)}
@@ -162,6 +162,8 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   const completed=await callArmexApi(session,"",{action:"complete_media_upload",attachment_id:init.attachment_id});
   if(completed.success!==true||!completed.attachment?.id)throw new Error("تأیید امن تصویر انجام نشد.");
   uploadedAttachment=completed.attachment;
+  window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=uploadedAttachment?.signed_url||"";
+  window.LOKAL_PROMPT_REFERENCE_IMAGE=null;
   return uploadedAttachment;
  };
 
@@ -305,7 +307,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  document.getElementById("chat-exit")?.addEventListener("click",()=>document.querySelector('[data-page="home"]')?.click());
  document.getElementById("chat-new")?.addEventListener("click",()=>{
   if(uploadedAttachment){setChatStatus("تصویر بارگذاری‌شده هنوز ارسال نشده است؛ ابتدا همان پیام را ارسال کن.",true);return}
-  activeChatConversationId=null;lastImageContext=null;chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
+  activeChatConversationId=null;lastImageContext=null;window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
   setChatStatus("");chatHistoryList?.querySelectorAll(".chat-history-item").forEach(item=>item.classList.remove("active"));chatInput?.focus();
  });
  chatHistoryList?.addEventListener("click",async event=>{
@@ -332,7 +334,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  }));
  supabase.auth.onAuthStateChange((event,session)=>{
   if(event==="SIGNED_IN"&&session)void loadChatHistoryList(session);
-  if(event==="SIGNED_OUT"){activeChatConversationId=null;lastImageContext=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
+  if(event==="SIGNED_OUT"){activeChatConversationId=null;lastImageContext=null;window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
  });
  void supabase.auth.getSession().then(({data:{session}})=>{if(session)void loadChatHistoryList(session)});
 }
