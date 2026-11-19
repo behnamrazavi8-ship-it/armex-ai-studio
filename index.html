@@ -153,7 +153,7 @@
  }));
  function buildPrompt(){const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return ''}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;const labels={image:'Create a high-quality image based on this concept:',video:'Create a cinematic video based on this concept:',design:'Create a polished graphic design based on this concept:',social:'Create engaging social media content based on this concept:'};const en=labels[type]+' '+idea+'. Visual direction: '+style+'. Composition: '+ratio+'. Use clear subject hierarchy, refined lighting, professional production quality, coherent perspective and intentional color grading. Avoid visual clutter, distorted anatomy, random text, watermarks and unwanted logos.';const fa='بر اساس این ایده '+(type==='video'?'یک ویدیوی سینمایی':type==='design'?'یک طراحی گرافیکی حرفه‌ای':type==='social'?'یک محتوای جذاب شبکه اجتماعی':'یک تصویر باکیفیت')+' خلق کن: '+idea+'؛ سبک بصری: '+style+'؛ کادر: '+ratio+'؛ ترکیب‌بندی حرفه‌ای، نورپردازی دقیق، جزئیات منسجم و کیفیت خروجی بالا. از شلوغی بصری، نوشته‌های تصادفی، واترمارک و لوگوهای ناخواسته پرهیز کن.';return lang==='fa'?fa:en}
  $('#generatePrompt').addEventListener('click',()=>{output=buildPrompt();if(!output)return;$('#promptResult').textContent=output;$('#promptResult').style.display='block';$('#resultActions').style.display='flex'});
- $('#generateAIPrompt').addEventListener('click',()=>{const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;window.dispatchEvent(new CustomEvent('lokal:generate-ai-prompt',{detail:{prompt:idea,mediaType:type,style,aspectRatio:ratio,language:lang,imageBase64:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_base64||'',imageMimeType:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_mime_type||'',imageUrl:window.LOKAL_PROMPT_REFERENCE_IMAGE_URL||''}}))});
+ $('#generateAIPrompt').addEventListener('click',()=>{const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;window.dispatchEvent(new CustomEvent('lokal:generate-ai-prompt',{detail:{prompt:idea,mediaType:type,style,aspectRatio:ratio,language:lang,imageBase64:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_base64||'',imageMimeType:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_mime_type||'',imageUrl:window.LOKAL_PROMPT_REFERENCE_IMAGE_URL||'',imageUrls:window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS||[]}}))});
  window.addEventListener('lokal:ai-prompt-result',event=>{const d=event.detail||{};if(d.answer){output=d.answer;$('#promptResult').textContent=output;$('#promptResult').style.display='block';$('#resultActions').style.display='flex';toast('پرامپت هوشمند آماده شد.')}else if(d.error)toast(d.error)});
  $('#copyResult').addEventListener('click',async()=>{if(!output)return;try{await navigator.clipboard.writeText(output);toast('پرامپت کپی شد.')}catch{toast('امکان کپی خودکار نیست؛ متن را انتخاب کن.')}});
  $('#savePrompt').addEventListener('click',async()=>{output=buildPrompt();if(!output)return;const item={id:crypto.randomUUID(),title:$('#idea').value.trim().slice(0,55),prompt:output,created:new Date().toISOString()};const p=readProjects();p.unshift(item);if(!writeProjects(p)){toast('ذخیره‌سازی مرورگر در دسترس نیست.');return}renderProjects();if(window.lokalCloudProjectSave){const saved=await window.lokalCloudProjectSave(item);if(saved){writeProjects(readProjects().filter(x=>x.id!==item.id));toast('پروژه در حساب کاربری ذخیره و همگام شد.')}else toast('نسخه محلی ذخیره شد؛ همگام‌سازی ابری هنوز آماده نیست.')}else toast('پروژه فعلاً در همین مرورگر ذخیره شد.');renderProjects()});
@@ -425,7 +425,58 @@ else{
  });
 
  const authRedirectUrl=()=>new URL(window.location.pathname,window.location.origin).toString();
- window.addEventListener("lokal:generate-ai-prompt",async event=>{const d=event.detail||{},idea=String(d.prompt||"").trim();if(!idea||!aiButton)return;const {data:{session}}=await supabase.auth.getSession();if(!session){location.hash="auth-section";return}const mediaType=({image:"image",video:"video",design:"design",social:"design"})[d.mediaType]||"image";const imageBase64=String(d.imageBase64||""),imageMimeType=String(d.imageMimeType||""),imageUrl=String(d.imageUrl||"");const requestKey=JSON.stringify({idea,mediaType,style:d.style||"",aspectRatio:d.aspectRatio||"",language:d.language||"en",imageRef:imageUrl.split("?")[0],hasImage:Boolean(imageBase64||imageUrl)});if(!pendingPromptRequest||pendingPromptRequest.key!==requestKey)pendingPromptRequest={key:requestKey,requestId:crypto.randomUUID()};aiButton.disabled=true;if(aiStatus){aiStatus.textContent=(imageBase64||imageUrl)?"در حال تحلیل معنایی متن و تصویر مرجع…":"در حال تحلیل معنایی و ساخت پرامپت هوشمند…";aiStatus.style.display="block"}try{await ensureSecureApi(session);const response=await fetch(config.supabaseUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding",{method:"POST",headers:{"apikey":config.supabaseAnonKey,"Authorization":"Bearer "+session.access_token,"Content-Type":"application/json"},body:JSON.stringify({request_id:pendingPromptRequest.requestId,prompt:idea,media_type:mediaType,output_language:d.language==="fa"?"fa":"en",visual_style:String(d.style||""),aspect_ratio:String(d.aspectRatio||""),...(imageBase64?{image_base64:imageBase64,image_mime_type:imageMimeType}:{}),...(imageUrl?{image_url:imageUrl}:{})})});const result=await response.json().catch(()=>({}));if(!response.ok||result.success!==true||!result.ir)throw new Error(result.error||("Prompt analysis HTTP "+response.status));const answer=renderPromptFromIR(result.ir,idea,d.language==="fa"?"fa":"en");pendingPromptRequest=null;window.LOKAL_PROMPT_REFERENCE_IMAGE=null;window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";if(aiStatus)aiStatus.textContent="انجام شد · "+Number(result.usage?.credits_charged||1).toLocaleString("fa-IR")+" اعتبار مصرف شد.";window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{answer}}));await loadWalletBalance(session)}catch(e){const raw=String(e?.message||""),friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول کافی نیست.":/Invalid or expired session/i.test(raw)?"نشست ورود منقضی شده است؛ دوباره وارد شو.":/PROMPT_IR_BLOCKED:/.test(raw)?"درخواست ابهام مهمی دارد؛ لطفاً توضیح دقیق‌تری وارد کن.":/PROMPT_TOO_LONG/.test(raw)?"پرامپت نهایی بیش از حد مجاز است؛ توضیح را کوتاه‌تر کن.":raw||"تحلیل هوشمند ناموفق بود؛ دوباره تلاش کن.";if(!/still processing|already processing|failed to fetch|networkerror|load failed/i.test(raw))pendingPromptRequest=null;if(aiStatus){aiStatus.textContent=friendly;aiStatus.style.display="block"}window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{error:friendly}}));await loadWalletBalance(session)}finally{aiButton.disabled=false}});
+ window.addEventListener("lokal:generate-ai-prompt",async event=>{
+  const d=event.detail||{},idea=String(d.prompt||"").trim();
+  if(!idea||!aiButton)return;
+  const {data:{session}}=await supabase.auth.getSession();
+  if(!session){location.hash="auth-section";return}
+  const mediaType=({image:"image",video:"video",design:"design",social:"design"})[d.mediaType]||"image";
+  const imageBase64=String(d.imageBase64||""),imageMimeType=String(d.imageMimeType||"");
+  let imageUrls=Array.isArray(d.imageUrls)?d.imageUrls.filter(url=>typeof url==="string"&&url.trim()).slice(0,3):[];
+  if(!imageUrls.length&&d.imageUrl)imageUrls=[String(d.imageUrl)];
+  if(imageBase64)imageUrls=[];
+  const requestKey=JSON.stringify({
+   idea,mediaType,style:d.style||"",aspectRatio:d.aspectRatio||"",language:d.language||"en",
+   imageRefs:imageUrls.map(url=>url.split("?")[0]),hasImage:Boolean(imageBase64||imageUrls.length)
+  });
+  if(!pendingPromptRequest||pendingPromptRequest.key!==requestKey)pendingPromptRequest={key:requestKey,requestId:crypto.randomUUID()};
+  aiButton.disabled=true;
+  if(aiStatus){
+   aiStatus.textContent=(imageBase64||imageUrls.length)?"در حال تحلیل متن و "+(imageUrls.length||1)+" تصویر مرجع…":"در حال تحلیل معنایی و ساخت پرامپت هوشمند…";
+   aiStatus.style.display="block";
+  }
+  try{
+   await ensureSecureApi(session);
+   const requestBody={
+    request_id:pendingPromptRequest.requestId,prompt:idea,media_type:mediaType,
+    output_language:d.language==="fa"?"fa":"en",visual_style:String(d.style||""),aspect_ratio:String(d.aspectRatio||"")
+   };
+   if(imageBase64){requestBody.image_base64=imageBase64;requestBody.image_mime_type=imageMimeType}
+   else if(imageUrls.length===1)requestBody.image_url=imageUrls[0];
+   else if(imageUrls.length>1)requestBody.image_urls=imageUrls;
+   const response=await fetch(config.supabaseUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding",{
+    method:"POST",headers:{"apikey":config.supabaseAnonKey,"Authorization":"Bearer "+session.access_token,"Content-Type":"application/json"},
+    body:JSON.stringify(requestBody)
+   });
+   const result=await response.json().catch(()=>({}));
+   if(!response.ok||result.success!==true||!result.ir)throw new Error(result.error||("Prompt analysis HTTP "+response.status));
+   const answer=renderPromptFromIR(result.ir,idea,d.language==="fa"?"fa":"en");
+   pendingPromptRequest=null;
+   window.LOKAL_PROMPT_REFERENCE_IMAGE=null;
+   window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";
+   window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=[];
+   if(aiStatus)aiStatus.textContent="انجام شد · "+Number(result.usage?.credits_charged||1).toLocaleString("fa-IR")+" اعتبار مصرف شد.";
+   window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{answer}}));
+   await loadWalletBalance(session);
+  }catch(e){
+   const raw=String(e?.message||"");
+   const friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول کافی نیست.":/Invalid or expired session/i.test(raw)?"نشست ورود منقضی شده است؛ دوباره وارد شو.":/PROMPT_IR_BLOCKED:/.test(raw)?"درخواست ابهام مهمی دارد؛ لطفاً توضیح دقیق‌تری وارد کن.":/PROMPT_TOO_LONG/.test(raw)?"پرامپت نهایی بیش از حد مجاز است؛ توضیح را کوتاه‌تر کن.":raw||"تحلیل هوشمند ناموفق بود؛ دوباره تلاش کن.";
+   if(!/still processing|already processing|failed to fetch|networkerror|load failed/i.test(raw))pendingPromptRequest=null;
+   if(aiStatus){aiStatus.textContent=friendly;aiStatus.style.display="block"}
+   window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{error:friendly}}));
+   await loadWalletBalance(session);
+  }finally{aiButton.disabled=false}
+ });
  const credentials=()=>{const email=emailInput.value.trim(),password=passwordInput.value;if(!email||!emailInput.checkValidity()){setMessage("یک ایمیل معتبر وارد کن.",true);emailInput.focus();return null}if(password.length<8){setMessage("رمز عبور باید حداقل ۸ کاراکتر باشد.",true);passwordInput.focus();return null}return{email,password}};
  document.getElementById("auth-signup").addEventListener("click",async()=>{const c=credentials();if(!c)return;setMessage("در حال ساخت حساب جدید...");const {data,error}=await supabase.auth.signUp({...c,options:{emailRedirectTo:authRedirectUrl()}});if(error){const raw=String(error.message||"");if(/Invalid login credentials/i.test(raw))return setMessage("پاسخ نامعتبر از مسیر ثبت‌نام دریافت شد؛ صفحه را کامل تازه‌سازی کن و دوباره «ساخت حساب» را بزن. اگر تکرار شد، تنظیمات Supabase Auth را بررسی می‌کنیم.",true);if(/already registered|already been registered|user exists/i.test(raw))return setMessage("این ایمیل قبلاً حساب دارد؛ از دکمه ورود یا بازیابی رمز استفاده کن.",true);return setMessage("ثبت‌نام انجام نشد: "+translateError(error),true)}if(data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0)return setMessage("این ایمیل قبلاً با یک روش دیگر، مثل Google، حساب دارد. با همان روش وارد شو؛ سپس در «حساب و کیف پول» برای همین حساب رمز عبور تنظیم کن.",true);if(data.session){renderSession(data.session);setMessage("حساب ساخته شد و وارد شدی.")}else setMessage("درخواست ساخت حساب پذیرفته شد. ایمیل تأیید را باز کن و لینک فعال‌سازی را بزن؛ سپس وارد شو.")});
  document.getElementById("auth-signin").addEventListener("click",async()=>{const c=credentials();if(!c)return;setMessage("در حال بررسی اطلاعات ورود...");const {data,error}=await supabase.auth.signInWithPassword(c);if(error)return setMessage("ورود ناموفق بود: "+translateError(error),true);renderSession(data.session)});
