@@ -804,19 +804,24 @@ const handle = async (request: Request): Promise<Response> => {
     const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
     const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
 
-    const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
-      p_user_id: userId,
-      p_amount: chatCreditCost,
-      p_idempotency_key: "ai_request:" + requestId + ":" + attemptId,
-      p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
-      p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation?.id ?? null },
-    });
-    if (debitError) {
-      console.error("Credit debit failed", { requestId, code: debitError.code });
-      return fail("Could not reserve credits", 500, cors);
+    // Smart Chat and Prompt Lab are free (chatCreditCost = 0).
+    // Never call armex_debit_credits with zero: the database RPC correctly
+    // rejects non-positive amounts and was causing P0001 / "Could not reserve credits".
+    if (chatCreditCost > 0) {
+      const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
+        p_user_id: userId,
+        p_amount: chatCreditCost,
+        p_idempotency_key: "ai_request:" + requestId + ":" + attemptId,
+        p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
+        p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation?.id ?? null },
+      });
+      if (debitError) {
+        console.error("Credit debit failed", { requestId, code: debitError.code });
+        return fail("Could not reserve credits", 500, cors);
+      }
+      if (debited !== true) return fail("Insufficient credits", 402, cors);
+      debitCompleted = true;
     }
-    if (debited !== true) return fail("Insufficient credits", 402, cors);
-    debitCompleted = true;
 
     const providerMessages = [
       { role: "system", content: SYSTEM_PROMPT },
