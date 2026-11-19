@@ -10,6 +10,26 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  const attachButton=document.getElementById("chat-attach");
  const attachmentInput=document.getElementById("chat-attachment-input");
  const attachmentPreview=document.getElementById("chat-attachment-preview");
+ const historyDrawer=document.getElementById("chat-history-drawer");
+ const historyToggle=document.getElementById("chat-history-toggle");
+ const historyClose=document.getElementById("chat-history-close");
+ const closeHistoryDrawer=()=>{
+  if(historyDrawer)historyDrawer.hidden=true;
+  historyToggle?.setAttribute("aria-expanded","false");
+ };
+ historyToggle?.addEventListener("click",()=>{
+  if(!historyDrawer)return;
+  historyDrawer.hidden=false;
+  historyToggle.setAttribute("aria-expanded","true");
+ });
+ historyClose?.addEventListener("click",closeHistoryDrawer);
+ historyDrawer?.addEventListener("click",event=>{
+  if(event.target?.matches?.("[data-chat-history-close]"))closeHistoryDrawer();
+ });
+ document.addEventListener("click",event=>{
+  const nav=event.target?.closest?.("[data-page]");
+  if(nav)document.body.classList.toggle("lokal-chat-active",nav.dataset.page==="chat");
+ });
  let activeChatConversationId=null;
  let chatRequestBusy=false;
  let selectedImageFile=null;
@@ -50,6 +70,27 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   .chat-attachment-history a{display:flex;align-items:center;gap:7px;color:#a8e7eb;font-size:10px;text-decoration:none;max-width:100%}
   .chat-attachment-history img{width:54px;height:54px;object-fit:cover;border-radius:8px}
   @media(max-width:560px){.chat-compose-actions{align-items:stretch}.chat-compose-actions .muted-copy{width:100%}.chat-compose-tools{width:100%}#chat-attach{flex:1}}
+  .chat-workspace{display:block;height:calc(100dvh - 220px);min-height:0}
+  .chat-conversation{height:100%;min-height:0;overflow:hidden}
+  .chat-transcript{flex:1;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain}
+  .chat-compose-box{flex:0 0 auto}
+  .chat-history-drawer{position:fixed;inset:0;z-index:70;display:flex;align-items:stretch;justify-content:flex-start}
+  .chat-history-drawer[hidden]{display:none}
+  .chat-history-backdrop{position:absolute;inset:0;background:#02070bd9}
+  .chat-history-drawer .chat-history-panel{position:relative;z-index:1;width:min(380px,90vw);height:100%;margin:0;border-radius:0 18px 18px 0;overflow:auto}
+  .chat-history-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  body.lokal-chat-active{overflow:hidden}
+  body.lokal-chat-active .app-layout{height:calc(100dvh - 70px);overflow:hidden}
+  body.lokal-chat-active #page-chat{height:100%;display:flex;flex-direction:column;overflow:hidden}
+  body.lokal-chat-active #page-chat .welcome{flex:0 0 auto}
+  body.lokal-chat-active #page-chat .chat-workspace{flex:1;min-height:0;height:auto}
+  body.lokal-chat-active #page-chat .chat-conversation{min-height:0}
+  @media(max-width:760px){
+   .chat-workspace{height:calc(100dvh - 190px)}
+   body.lokal-chat-active .app-layout{height:calc(100dvh - 62px);padding-bottom:78px}
+   body.lokal-chat-active #page-chat{min-height:0}
+   .chat-history-drawer .chat-history-panel{width:min(340px,88vw);border-radius:0 16px 16px 0}
+  }
  `;
  if(!document.getElementById(style.id))document.head.append(style);
 
@@ -306,6 +347,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  };
  document.getElementById("chat-exit")?.addEventListener("click",()=>document.querySelector('[data-page="home"]')?.click());
  document.getElementById("chat-new")?.addEventListener("click",()=>{
+  closeHistoryDrawer();
   if(uploadedAttachment){setChatStatus("تصویر بارگذاری‌شده هنوز ارسال نشده است؛ ابتدا همان پیام را ارسال کن.",true);return}
   activeChatConversationId=null;lastImageContext=null;window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
   setChatStatus("");chatHistoryList?.querySelectorAll(".chat-history-item").forEach(item=>item.classList.remove("active"));chatInput?.focus();
@@ -313,7 +355,8 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  chatHistoryList?.addEventListener("click",async event=>{
   const button=event.target.closest("[data-conversation-id]");if(!button)return;
   if(uploadedAttachment){setChatStatus("ابتدا تصویر پیوست‌شده را ارسال کن؛ سپس می‌توانی گفتگوی دیگری باز کنی.",true);return}
-  const {data:{session}}=await supabase.auth.getSession();if(session)await openChatHistory(button.dataset.conversationId,session);
+  const {data:{session}}=await supabase.auth.getSession();
+  if(session){await openChatHistory(button.dataset.conversationId,session);closeHistoryDrawer()}
  });
  attachButton?.addEventListener("click",()=>{
   if(uploadedAttachment){setChatStatus("ابتدا تصویر پیوست‌شده را ارسال کن.",true);return}
