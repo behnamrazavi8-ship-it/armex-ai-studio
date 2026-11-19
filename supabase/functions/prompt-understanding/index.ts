@@ -92,18 +92,22 @@ const handle = async (request: Request): Promise<Response> => {
   const aspectRatio = typeof body.aspect_ratio === "string" ? body.aspect_ratio.trim().slice(0, 30) : "";
 
   let imageDataUrl = "";
-  let imageUrl = "";
-  const suppliedImageUrl = typeof body.image_url === "string" ? body.image_url.trim() : "";
-  if (suppliedImageUrl) {
+  const suppliedImageUrls = Array.isArray(body.image_urls)
+    ? body.image_urls
+    : typeof body.image_url === "string" && body.image_url.trim() ? [body.image_url.trim()] : [];
+  if (suppliedImageUrls.length > 3) return fail("At most three reference images are supported", 400, cors);
+  const imageUrls: string[] = [];
+  for (const supplied of suppliedImageUrls) {
+    if (typeof supplied !== "string" || !supplied.trim()) return fail("Reference image URL is invalid", 400, cors);
     try {
-      const parsed = new URL(suppliedImageUrl);
+      const parsed = new URL(supplied.trim());
       const projectUrl = new URL(Deno.env.get("SUPABASE_URL") || "");
       const allowedPath = parsed.pathname.startsWith("/storage/v1/object/sign/lokal-chat-media/") ||
         parsed.pathname.startsWith("/storage/v1/object/sign/lokal-ai-images/");
       if (parsed.origin !== projectUrl.origin || !allowedPath || !parsed.searchParams.has("token")) {
         return fail("Reference image URL is not a valid private LOKAL AI attachment", 400, cors);
       }
-      imageUrl = suppliedImageUrl;
+      imageUrls.push(supplied.trim());
     } catch {
       return fail("Reference image URL is invalid", 400, cors);
     }
@@ -111,6 +115,7 @@ const handle = async (request: Request): Promise<Response> => {
   const encodedImage = typeof body.image_base64 === "string" ? body.image_base64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "") : "";
   const imageMime = typeof body.image_mime_type === "string" ? body.image_mime_type.toLowerCase() : "";
   if (encodedImage) {
+    if (imageUrls.length) return fail("Send either pasted image data or private image URLs, not both", 400, cors);
     if (!["image/jpeg", "image/png", "image/webp"].includes(imageMime) ||
         encodedImage.length > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 8 ||
         !/^[A-Za-z0-9+/]+={0,2}$/.test(encodedImage)) {
@@ -150,7 +155,7 @@ const handle = async (request: Request): Promise<Response> => {
     p_amount: PROMPT_CREDIT_COST,
     p_idempotency_key: "prompt_understanding:" + requestId,
     p_description: "تحلیل هوشمند و ساخت پرامپت",
-    p_metadata: { request_id: requestId, media_type: mediaType },
+    p_metadata: { request_id: requestId, media_type: mediaType, reference_image_count: imageDataUrl ? 1 : imageUrls.length },
   });
   if (debitError || debited !== true) {
     await db.from("armex_prompt_intelligence_requests").update({ status: "failed", error_code: debitError?.code || "insufficient_credits", updated_at: new Date().toISOString() })
@@ -174,16 +179,19 @@ const handle = async (request: Request): Promise<Response> => {
     style ? "Requested visual style: " + style : "",
     aspectRatio ? "Requested aspect ratio: " + aspectRatio : "",
     "User request:\n" + prompt,
-    (imageDataUrl || imageUrl) ? "A reference image is attached. Describe only relevant visible visual information and preserve the user's written constraints." : "",
+    (imageDataUrl || imageUrls.length) ? "Reference image(s) are attached in the supplied order. Analyze all of them, distinguish what is visible in each, and preserve the user's written constraints. Do not assume objects are shared between images unless the user asks to combine them." : "",
   ].filter(Boolean).join("\n\n");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const startedAt = Date.now();
   try {
-    const referenceImage = imageDataUrl || imageUrl;
-    const userContent = referenceImage
-      ? [{ type: "text", text: userText }, { type: "image_url", image_url: { url: referenceImage } }]
+    const referenceImages = imageDataUrl ? [imageDataUrl] : imageUrls;
+    const userContent = referenceImages.length
+      ? [
+          { type: "text", text: userText },
+          ...referenceImages.map((url) => ({ type: "image_url", image_url: { url } })),
+        ]
       : userText;
     const response = await fetch(OPENROUTER_URL + "/chat/completions", {
       method: "POST",
