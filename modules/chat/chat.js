@@ -90,15 +90,21 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   body.lokal-chat-active{overflow:hidden}
   body.lokal-chat-active .app-layout{height:calc(100dvh - 70px);overflow:hidden}
   body.lokal-chat-active .main{height:100%;min-height:0}
-  body.lokal-chat-active #page-chat{height:100%;display:flex;flex-direction:column;overflow:hidden}
-  body.lokal-chat-active #page-chat .welcome{flex:0 0 auto}
-  body.lokal-chat-active #page-chat .chat-workspace{flex:1;min-height:0;height:auto}
-  body.lokal-chat-active #page-chat .chat-conversation{min-height:0}
+  body.lokal-chat-active #page-chat{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  body.lokal-chat-active #page-chat>.welcome,
+  body.lokal-chat-active #page-chat>.notice{display:none!important}
+  body.lokal-chat-active #page-chat .chat-workspace{flex:1 1 auto;min-height:0;height:auto;overflow:hidden}
+  body.lokal-chat-active #page-chat .chat-conversation{flex:1 1 auto;min-height:0;height:100%}
+  body.lokal-chat-active #page-chat .chat-live-status{flex:0 0 auto}
+  body.lokal-chat-active .app-layout{padding-top:8px;padding-bottom:8px}
   @media(max-width:760px){
    .chat-workspace{height:calc(100dvh - 190px)}
-   body.lokal-chat-active .app-layout{height:calc(100dvh - 62px);padding-bottom:78px}
-   body.lokal-chat-active .main{height:100%;min-height:0}
-   body.lokal-chat-active #page-chat{min-height:0}
+   body.lokal-chat-active .app-layout{height:calc(100dvh - 62px);padding:6px 10px calc(78px + env(safe-area-inset-bottom))}
+   body.lokal-chat-active .main{height:100%;min-height:0;overflow:hidden}
+   body.lokal-chat-active #page-chat{min-height:0;height:100%}
+   body.lokal-chat-active #page-chat .chat-conversation{padding:10px}
+   body.lokal-chat-active #page-chat .chat-transcript{min-height:0}
+   body.lokal-chat-active #page-chat .chat-compose-box textarea{min-height:58px;max-height:112px}
    .chat-history-drawer .chat-history-panel{width:min(340px,88vw);border-radius:0 16px 16px 0}
   }
  `;
@@ -227,14 +233,16 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   for(let index=0;index<selectedImageFiles.length;index++){
    if(completedAttachments[index])continue;
    const file=selectedImageFiles[index];
-   setChatStatus("در حال بارگذاری امن تصویر "+(index+1)+" از "+selectedImageFiles.length+"…");
+   setChatStatus("در حال آماده‌سازی مجوز امن تصویر "+(index+1)+" از "+selectedImageFiles.length+"…");
    const init=await callArmexApi(session,"",{action:"create_media_upload",conversation_id:conversationId,
     mime_type:file.type,filename:file.name,size_bytes:file.size});
    if(init.success!==true||!init.attachment_id||!init.path||!init.token||!init.bucket)throw new Error("آماده‌سازی بارگذاری تصویر "+(index+1)+" ناموفق بود.");
+   setChatStatus("در حال انتقال فایل تصویر "+(index+1)+" از "+selectedImageFiles.length+"…");
    const {error:uploadError}=await supabase.storage.from(init.bucket).uploadToSignedUrl(
     init.path,init.token,file,{contentType:file.type,cacheControl:"3600"}
    );
    if(uploadError)throw new Error("آپلود تصویر "+(index+1)+" انجام نشد: "+uploadError.message);
+   setChatStatus("انتقال تصویر انجام شد؛ در حال تأیید امن فایل "+(index+1)+"…");
    const completed=await callArmexApi(session,"",{action:"complete_media_upload",attachment_id:init.attachment_id});
    if(completed.success!==true||!completed.attachment?.id)throw new Error("تأیید امن تصویر "+(index+1)+" انجام نشد.");
    completedAttachments[index]=completed.attachment;
@@ -304,6 +312,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   try{
    await ensureSecureApi(session);
    const attachments=await uploadSelectedImages(session);
+   if(attachments.length)setChatStatus("تصویر با موفقیت بارگذاری شد؛ در حال ارسال پیام به چت…");
    const imageForEdit=attachments.length?attachments:(Array.isArray(lastImageContext)?lastImageContext:lastImageContext?[lastImageContext]:[]);
    const wantsImageEdit=isImageEditRequest(typedMessage);
    if(wantsImageEdit&&!imageForEdit.length){
