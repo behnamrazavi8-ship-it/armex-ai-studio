@@ -1,6 +1,7 @@
 // Smart Chat UI module for the current LOKAL AI workspace.
 // Media uploads use short-lived signed upload tokens issued by armex-api.
 import { isImageEditRequest } from "./image-edit-intent.mjs";
+// Keep intent routing isolated so Persian edit phrases stay covered by regression tests.
 
 export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensureSecureApi }) {
  const chatHistoryList=document.getElementById("chat-history-list");
