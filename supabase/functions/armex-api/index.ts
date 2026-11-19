@@ -680,7 +680,7 @@ const handle = async (request: Request): Promise<Response> => {
 
   const imageEditGetAction = url.searchParams.get("action") || "";
   if (request.method === "GET" && ["image_edit_quota", "image_edit_status", "image_edits"].includes(imageEditGetAction)) {
-    return await handleImageEditApi(db, userId, imageEditGetAction, null, url.searchParams.get("job_id") || "", cors);
+    return await handleImageEditApi(db, userId, imageEditGetAction, null, url.searchParams.get("job_id") || "", openRouterKey, cors);
   }
 
   if (request.method === "GET" && url.searchParams.get("action") === "images") {
@@ -722,7 +722,7 @@ const handle = async (request: Request): Promise<Response> => {
     return await saveChatMessage(db, userId, body, cors);
   }
   if (body.action === "edit_image") {
-    return await handleImageEditApi(db, userId, "edit_image", body, "", cors);
+    return await handleImageEditApi(db, userId, "edit_image", body, "", openRouterKey, cors);
   }
 
   const submittedMessage = typeof body.message === "string" ? body.message.trim() : "";
