@@ -87,24 +87,8 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   .chat-compose-box{flex-shrink:0}
   .chat-compose-tools #chat-send{display:inline-flex;flex:0 0 auto;visibility:visible}
   .chat-selected-attachment span{font-size:11px;overflow-wrap:anywhere;flex:1}.chat-selected-attachment button{border:1px solid #69434a;background:#29151a;color:#ffc5cc;border-radius:8px;padding:7px 9px;font-size:10px;white-space:nowrap}
-  body.lokal-chat-active{overflow:hidden}
-  body.lokal-chat-active .app-layout{height:calc(100dvh - 70px);overflow:hidden}
-  body.lokal-chat-active .main{height:100%;min-height:0}
-  body.lokal-chat-active #page-chat{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-  body.lokal-chat-active #page-chat>.welcome,
-  body.lokal-chat-active #page-chat>.notice{display:none!important}
-  body.lokal-chat-active #page-chat .chat-workspace{flex:1 1 auto;min-height:0;height:auto;overflow:hidden}
-  body.lokal-chat-active #page-chat .chat-conversation{flex:1 1 auto;min-height:0;height:100%}
-  body.lokal-chat-active #page-chat .chat-live-status{flex:0 0 auto}
-  body.lokal-chat-active .app-layout{padding-top:8px;padding-bottom:8px}
   @media(max-width:760px){
-   .chat-workspace{height:calc(100dvh - 190px)}
-   body.lokal-chat-active .app-layout{height:calc(100dvh - 62px);padding:6px 10px calc(78px + env(safe-area-inset-bottom))}
-   body.lokal-chat-active .main{height:100%;min-height:0;overflow:hidden}
-   body.lokal-chat-active #page-chat{min-height:0;height:100%}
-   body.lokal-chat-active #page-chat .chat-conversation{padding:10px}
-   body.lokal-chat-active #page-chat .chat-transcript{min-height:0}
-   body.lokal-chat-active #page-chat .chat-compose-box textarea{min-height:58px;max-height:112px}
+   .chat-compose-box textarea{min-height:58px;max-height:112px}
    .chat-history-drawer .chat-history-panel{width:min(340px,88vw);border-radius:0 16px 16px 0}
   }
  `;
