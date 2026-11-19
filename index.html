@@ -215,7 +215,7 @@ else{
 
   // Optional feature modules must not block core auth and workspace controls.
   try {
-    const { initSmartChat } = await import("./modules/chat/chat.js?v=lokal-smart-chat-2");
+    const { initSmartChat } = await import("./modules/chat/chat.js?v=lokal-smart-chat-3");
     initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensureSecureApi });
   } catch (error) {
     console.error("Smart Chat initialization failed", error);
