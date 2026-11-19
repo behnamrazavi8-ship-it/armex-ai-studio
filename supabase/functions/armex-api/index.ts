@@ -1,5 +1,6 @@
 import { createSupabaseContext } from "npm:@supabase/server@1";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { handleImageEditApi } from "./image-edit-api.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -418,6 +419,48 @@ const listChatAttachments = async (
 };
 
 
+const saveChatMessage = async (
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+): Promise<Response> => {
+  const conversationId = body.conversation_id;
+  const requestId = body.request_id;
+  const role = body.role === "assistant" ? "assistant" : body.role === "user" ? "user" : "";
+  const content = typeof body.content === "string" ? body.content.trim() : "";
+  const attachmentId = body.attachment_id == null ? null : body.attachment_id;
+  const model = typeof body.model === "string" && body.model.trim() ? body.model.trim() : DEFAULT_MODEL;
+  if (!isUuid(conversationId) || !isUuid(requestId) || !role || !content || content.length > MAX_MESSAGE_CHARS) {
+    return fail("Invalid conversation message", 400, cors);
+  }
+  if (attachmentId !== null && !isUuid(attachmentId)) return fail("Invalid attachment_id", 400, cors);
+  if (attachmentId !== null) {
+    const { data: attachment, error } = await db.from("armex_chat_attachments")
+      .select("id").eq("id", attachmentId).eq("user_id", userId)
+      .eq("conversation_id", conversationId).eq("status", "ready").maybeSingle();
+    if (error || !attachment) return fail("Attachment not found or not ready", 404, cors);
+  }
+  const { data: messageId, error: saveError } = await db.rpc("armex_save_chat_message", {
+    p_user_id: userId,
+    p_conversation_id: conversationId,
+    p_request_id: requestId,
+    p_role: role,
+    p_content: content,
+    p_model: model,
+  });
+  if (saveError || !messageId) {
+    console.error("Chat message persistence failed", { requestId, code: saveError?.code });
+    return fail("Could not save conversation message", 500, cors);
+  }
+  if (attachmentId !== null) {
+    const { error: attachmentUpdateError } = await db.from("armex_chat_attachments")
+      .update({ message_id: messageId })
+      .eq("id", attachmentId).eq("user_id", userId).eq("conversation_id", conversationId);
+    if (attachmentUpdateError) {
+      console.error("Chat attachment message link failed", { requestId, code: attachmentUpdateError.code });
+    }
+  }
+  return json({ success: true, message_id: messageId, request_id: requestId }, 200, cors);
+};
+
 const handle = async (request: Request): Promise<Response> => {
   const origin = request.headers.get("Origin");
   const cors = corsFor(origin);
@@ -565,6 +608,11 @@ const handle = async (request: Request): Promise<Response> => {
     return json({ success: true, conversation, messages: (rows ?? []).reverse(), attachments }, 200, cors);
   }
 
+  const imageEditGetAction = url.searchParams.get("action") || "";
+  if (request.method === "GET" && ["image_edit_quota", "image_edit_status", "image_edits"].includes(imageEditGetAction)) {
+    return await handleImageEditApi(db, userId, imageEditGetAction, null, url.searchParams.get("job_id") || "", cors);
+  }
+
   if (request.method === "GET" && url.searchParams.get("action") === "images") {
     return await listGeneratedImages(db, userId, cors);
   }
@@ -599,6 +647,12 @@ const handle = async (request: Request): Promise<Response> => {
   }
   if (body.action === "complete_media_upload") {
     return await completeChatMediaUpload(db, userId, body, cors);
+  }
+  if (body.action === "save_chat_message") {
+    return await saveChatMessage(db, userId, body, cors);
+  }
+  if (body.action === "edit_image") {
+    return await handleImageEditApi(db, userId, "edit_image", body, "", cors);
   }
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
