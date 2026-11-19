@@ -48,7 +48,7 @@ export async function handleImageEditApi(
 
   if (action === "image_edit_status" || action === "image_edits") {
     let query = db.from("armex_image_edit_jobs")
-      .select("id,request_id,prompt,status,error_code,created_at,completed_at,input_storage_path,output_storage_path")
+      .select("id,request_id,prompt,status,error_code,created_at,completed_at,input_storage_path,input_storage_paths,output_storage_path")
       .eq("user_id", userId);
     if (action === "image_edit_status") {
       if (!validUuid(jobId)) return fail("شناسه درخواست معتبر نیست.", 400, cors);
@@ -58,22 +58,29 @@ export async function handleImageEditApi(
     if (error) return fail("تاریخچه ویرایش تصویر بارگذاری نشد.", 500, cors);
     const rows = action === "image_edit_status" ? (data?.[0] ? [data[0]] : []) : (data || []);
     if (action === "image_edit_status" && !rows.length) return fail("درخواست ویرایش پیدا نشد.", 404, cors);
-    const items = await Promise.all(rows.map(async (row) => ({
-      id: row.id, request_id: row.request_id, prompt: row.prompt, status: row.status,
-      error_code: row.error_code, created_at: row.created_at, completed_at: row.completed_at,
-      input_url: await signedUrl(db, row.input_storage_path).catch(() => null),
-      image_url: row.output_storage_path ? await signedUrl(db, row.output_storage_path).catch(() => null) : null,
-    })));
+    const items = await Promise.all(rows.map(async (row) => {
+      const paths = Array.isArray(row.input_storage_paths) && row.input_storage_paths.length
+        ? row.input_storage_paths
+        : [row.input_storage_path];
+      const inputUrls = await Promise.all(paths.map((path: string) => signedUrl(db, path).catch(() => null)));
+      return {
+        id: row.id, request_id: row.request_id, prompt: row.prompt, status: row.status,
+        error_code: row.error_code, created_at: row.created_at, completed_at: row.completed_at,
+        input_url: inputUrls[0] || null, input_urls: inputUrls.filter(Boolean),
+        image_url: row.output_storage_path ? await signedUrl(db, row.output_storage_path).catch(() => null) : null,
+      };
+    }));
     return json(action === "image_edit_status" ? { success: true, job: items[0] } : { success: true, edits: items }, 200, cors);
   }
 
   if (action !== "edit_image" || !body) return fail("عملیات ویرایش تصویر نامعتبر است.", 400, cors);
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   const requestId = validUuid(body.request_id) ? body.request_id : "";
-  const mime = typeof body.mime_type === "string" ? body.mime_type : "";
-  const encoded = typeof body.image_base64 === "string" ? body.image_base64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "") : "";
-  if (encoded.length > Math.ceil(MAX_INPUT_BYTES * 4 / 3) + 8) {
-    return fail("حجم تصویر از سقف مجاز بیشتر است.", 400, cors);
+  const rawImages = Array.isArray(body.images)
+    ? body.images
+    : [{ image_base64: body.image_base64, mime_type: body.mime_type }];
+  if (!Array.isArray(rawImages) || rawImages.length < 1 || rawImages.length > 3) {
+    return fail("برای ویرایش هم‌زمان باید بین ۱ تا ۳ تصویر ارسال شود.", 400, cors);
   }
   if (!prompt || prompt.length > 1600) return fail("پرامپت باید بین ۱ تا ۱۶۰۰ نویسه باشد.", 400, cors);
   if (!requestId) return fail("شناسه یکتای درخواست معتبر نیست.", 400, cors);
@@ -83,32 +90,52 @@ export async function handleImageEditApi(
   if (priorError) return fail("وضعیت درخواست قبلی بررسی نشد.", 500, cors);
   if (prior) return json({ success: true, duplicate: true, job: { id: prior.id, status: prior.status }, model: MODEL }, 202, cors);
 
-  const bytes = decodeImage(encoded, mime);
-  if (!bytes) return fail("فایل تصویر معتبر نیست یا حجم آن بیشتر از ۵ مگابایت است. فرمت‌های JPG، PNG و WebP پشتیبانی می‌شوند.", 400, cors);
-  const extension = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
-  const path = userId + "/edit/" + requestId + "-input." + extension;
-  const { error: uploadError } = await db.storage.from(BUCKET).upload(path, bytes, {
-    contentType: mime, upsert: false, cacheControl: "3600",
-  });
-  if (uploadError) {
-    console.error("Image edit input upload failed", { code: uploadError.name || "storage_error" });
-    return fail("ذخیره امن تصویر ورودی انجام نشد.", 503, cors);
+  const decodedImages: Array<{ bytes: Uint8Array; mime: string; extension: string }> = [];
+  for (const raw of rawImages) {
+    if (!raw || typeof raw !== "object") return fail("اطلاعات یکی از تصاویر معتبر نیست.", 400, cors);
+    const image = raw as Record<string, unknown>;
+    const mime = typeof image.mime_type === "string" ? image.mime_type : "";
+    const encoded = typeof image.image_base64 === "string"
+      ? image.image_base64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "")
+      : "";
+    if (encoded.length > Math.ceil(MAX_INPUT_BYTES * 4 / 3) + 8) {
+      return fail("حجم یکی از تصاویر از سقف مجاز بیشتر است.", 400, cors);
+    }
+    const bytes = decodeImage(encoded, mime);
+    if (!bytes) return fail("یکی از تصاویر معتبر نیست یا حجم آن بیشتر از ۵ مگابایت است. فرمت‌های JPG، PNG و WebP پشتیبانی می‌شوند.", 400, cors);
+    const extension = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
+    decodedImages.push({ bytes, mime, extension });
   }
 
-  const { data, error } = await db.rpc("armex_enqueue_image_edit", {
-    p_user_id: userId, p_request_id: requestId, p_prompt: prompt, p_input_storage_path: path,
+  const paths: string[] = [];
+  for (let index = 0; index < decodedImages.length; index++) {
+    const item = decodedImages[index];
+    const path = userId + "/edit/" + requestId + "-input-" + index + "." + item.extension;
+    const { error: uploadError } = await db.storage.from(BUCKET).upload(path, item.bytes, {
+      contentType: item.mime, upsert: false, cacheControl: "3600",
+    });
+    if (uploadError) {
+      if (paths.length) await db.storage.from(BUCKET).remove(paths);
+      console.error("Image edit input upload failed", { index, code: uploadError.name || "storage_error" });
+      return fail("ذخیره امن تصاویر ورودی انجام نشد.", 503, cors);
+    }
+    paths.push(path);
+  }
+
+  const { data, error } = await db.rpc("armex_enqueue_image_edit_multi", {
+    p_user_id: userId, p_request_id: requestId, p_prompt: prompt, p_input_storage_paths: paths,
   });
   if (error || !data) {
     // A transport error can be ambiguous: the transaction may have committed.
-    // Keep the source object unless Postgres definitively reports a missing schema/function.
+    // Keep the source objects unless Postgres definitively reports a missing schema/function.
     if (error?.code === "PGRST202" || error?.code === "42P01" || error?.code === "42883") {
-      await db.storage.from(BUCKET).remove([path]);
+      await db.storage.from(BUCKET).remove(paths);
     }
     console.error("Image edit enqueue failed", { code: error?.code });
-    return fail("ثبت درخواست ویرایش انجام نشد. ابتدا migration مربوط به ویرایش تصویر باید روی Supabase اعمال شود یا وضعیت درخواست بررسی شود.", 503, cors);
+    return fail("ثبت درخواست ویرایش انجام نشد. ابتدا migration چندتصویری باید روی Supabase اعمال شود یا وضعیت درخواست بررسی شود.", 503, cors);
   }
   if (data.success !== true) {
-    await db.storage.from(BUCKET).remove([path]);
+    await db.storage.from(BUCKET).remove(paths);
     if (data.code === "daily_quota_exceeded") {
       return json({ success: false, code: "daily_quota_exceeded", error: "سهمیه رایگان امروزت تمام شده است.", used: data.used, limit: 5 }, 429, cors);
     }
@@ -118,5 +145,6 @@ export async function handleImageEditApi(
     success: true, duplicate: data.duplicate === true,
     job: { id: data.job_id, status: data.status || "queued" },
     quota: { used: data.used ?? null, limit: 5 }, model: MODEL, credits_charged: 0,
+    input_count: paths.length,
   }, 202, cors);
 }
