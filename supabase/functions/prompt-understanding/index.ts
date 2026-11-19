@@ -101,8 +101,15 @@ const handle = async (request: Request): Promise<Response> => {
       return fail("Reference image must be a valid JPG, PNG, or WebP file up to 5 MB", 400, cors);
     }
     try {
-      const bytes = atob(encodedImage);
-      if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) return fail("Reference image is too large", 413, cors);
+      const binary = atob(encodedImage);
+      if (!binary.length || binary.length > MAX_IMAGE_BYTES) return fail("Reference image is too large", 413, cors);
+      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+      const starts = (...values: number[]) => values.every((value, index) => bytes[index] === value);
+      const ascii = (offset: number, value: string) => value.split("").every((char, index) => bytes[offset + index] === char.charCodeAt(0));
+      const validSignature = imageMime === "image/jpeg" ? starts(0xff, 0xd8, 0xff)
+        : imageMime === "image/png" ? starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
+        : ascii(0, "RIFF") && ascii(8, "WEBP");
+      if (!validSignature) return fail("Reference image contents do not match the declared format", 415, cors);
       imageDataUrl = "data:" + imageMime + ";base64," + encodedImage;
     } catch {
       return fail("Reference image data is invalid", 400, cors);
