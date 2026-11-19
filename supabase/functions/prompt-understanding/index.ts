@@ -23,7 +23,7 @@ const json = (body: Record<string, unknown>, status = 200, headers: HeadersInit 
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers },
   });
 const fail = (error: string, status: number, cors: HeadersInit) => json({ success: false, error }, status, cors);
-const corsFor = (origin: string | null): HeadersInit => {
+const corsFor = (origin: string | null): Record<string, string> => {
   const allowed = (Deno.env.get("ALLOWED_ORIGINS") || "https://lokal-ai.net,https://www.lokal-ai.net,https://preview.lokal-ai.net,https://feat-lokal-popcorn-visual-on.armex-ai-studio.pages.dev")
     .split(",").map((value) => value.trim()).filter(Boolean);
   const accepted = origin && allowed.includes(origin) ? origin : "";
