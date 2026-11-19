@@ -426,17 +426,24 @@ const saveChatMessage = async (
   const requestId = body.request_id;
   const role = body.role === "assistant" ? "assistant" : body.role === "user" ? "user" : "";
   const content = typeof body.content === "string" ? body.content.trim() : "";
-  const attachmentId = body.attachment_id == null ? null : body.attachment_id;
+  const rawAttachmentIds = Array.isArray(body.attachment_ids)
+    ? body.attachment_ids
+    : body.attachment_id == null ? [] : [body.attachment_id];
+  const attachmentIds = rawAttachmentIds as unknown[];
   const model = typeof body.model === "string" && body.model.trim() ? body.model.trim() : DEFAULT_MODEL;
   if (!isUuid(conversationId) || !isUuid(requestId) || !role || !content || content.length > MAX_MESSAGE_CHARS) {
     return fail("Invalid conversation message", 400, cors);
   }
-  if (attachmentId !== null && !isUuid(attachmentId)) return fail("Invalid attachment_id", 400, cors);
-  if (attachmentId !== null) {
-    const { data: attachment, error } = await db.from("armex_chat_attachments")
-      .select("id").eq("id", attachmentId).eq("user_id", userId)
-      .eq("conversation_id", conversationId).eq("status", "ready").maybeSingle();
-    if (error || !attachment) return fail("Attachment not found or not ready", 404, cors);
+  if (attachmentIds.length > 3 || attachmentIds.some((id) => !isUuid(id))) {
+    return fail("One to three valid attachment IDs are supported", 400, cors);
+  }
+  if (attachmentIds.length) {
+    const { data: attachments, error } = await db.from("armex_chat_attachments")
+      .select("id").in("id", attachmentIds as string[]).eq("user_id", userId)
+      .eq("conversation_id", conversationId).eq("status", "ready");
+    if (error || !attachments || attachments.length !== attachmentIds.length) {
+      return fail("One or more attachments were not found or are not ready", 404, cors);
+    }
   }
   const { data: messageId, error: saveError } = await db.rpc("armex_save_chat_message", {
     p_user_id: userId,
@@ -450,10 +457,10 @@ const saveChatMessage = async (
     console.error("Chat message persistence failed", { requestId, code: saveError?.code });
     return fail("Could not save conversation message", 500, cors);
   }
-  if (attachmentId !== null) {
+  if (attachmentIds.length) {
     const { error: attachmentUpdateError } = await db.from("armex_chat_attachments")
       .update({ message_id: messageId })
-      .eq("id", attachmentId).eq("user_id", userId).eq("conversation_id", conversationId);
+      .in("id", attachmentIds as string[]).eq("user_id", userId).eq("conversation_id", conversationId);
     if (attachmentUpdateError) {
       console.error("Chat attachment message link failed", { requestId, code: attachmentUpdateError.code });
     }
@@ -656,12 +663,19 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   const submittedMessage = typeof body.message === "string" ? body.message.trim() : "";
-  const attachmentOnlyRequest = isUuid(body.attachment_id) && isUuid(body.conversation_id);
+  const rawAttachmentIds = Array.isArray(body.attachment_ids)
+    ? body.attachment_ids
+    : body.attachment_id == null ? [] : [body.attachment_id];
+  const attachmentIds = rawAttachmentIds as unknown[];
+  const attachmentOnlyRequest = attachmentIds.length > 0 && isUuid(body.conversation_id);
   const message = submittedMessage || (attachmentOnlyRequest
-    ? "Please inspect the attached media and describe what is visible."
+    ? "Please inspect the attached images and describe what is visible."
     : "");
   if (!message || message.length > MAX_MESSAGE_CHARS) {
     return fail("A message between 1 and " + MAX_MESSAGE_CHARS + " characters is required", 400, cors);
+  }
+  if (attachmentIds.length > 3 || attachmentIds.some((id) => !isUuid(id))) {
+    return fail("One to three valid image attachments are supported", 400, cors);
   }
 
   const model = typeof body.model === "string" && body.model.trim()
@@ -672,9 +686,7 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   const conversationId = body.conversation_id;
-  const attachmentId = body.attachment_id == null ? null : body.attachment_id;
-  if (attachmentId != null && !isUuid(attachmentId)) return fail("Invalid attachment_id", 400, cors);
-  if (attachmentId != null && !conversationId) return fail("An attachment requires an existing conversation", 400, cors);
+  if (attachmentIds.length && !conversationId) return fail("Attachments require an existing conversation", 400, cors);
   if (conversationId != null && !isUuid(conversationId)) {
     return fail("Invalid conversation_id", 400, cors);
   }
@@ -767,20 +779,32 @@ const handle = async (request: Request): Promise<Response> => {
     }).reverse();
   }
 
-  let verifiedAttachment: Record<string, unknown> | null = null;
-  let imageSignedUrl: string | null = null;
-  if (attachmentId) {
-    const { data: attachment, error: attachmentError } = await db.from("armex_chat_attachments")
+  const verifiedAttachments: Array<Record<string, unknown>> = [];
+  const imageSignedUrls: string[] = [];
+  let videoAttachment: Record<string, unknown> | null = null;
+  if (attachmentIds.length) {
+    const { data: attachments, error: attachmentError } = await db.from("armex_chat_attachments")
       .select("id,conversation_id,storage_path,mime_type,original_filename,status")
-      .eq("id", attachmentId).eq("user_id", userId).eq("conversation_id", conversationId)
-      .eq("status", "ready").maybeSingle();
-    if (attachmentError || !attachment) return fail("Attachment not found or not ready", 404, cors);
-    verifiedAttachment = attachment as Record<string, unknown>;
-    if (String(attachment.mime_type).startsWith("image/")) {
-      const { data: signed, error: signingError } = await db.storage.from(CHAT_MEDIA_BUCKET)
-        .createSignedUrl(String(attachment.storage_path), 300);
-      if (signingError || !signed?.signedUrl) return fail("Could not prepare image for the AI model", 503, cors);
-      imageSignedUrl = signed.signedUrl;
+      .in("id", attachmentIds as string[]).eq("user_id", userId).eq("conversation_id", conversationId)
+      .eq("status", "ready");
+    if (attachmentError || !attachments || attachments.length !== attachmentIds.length) {
+      return fail("One or more attachments were not found or are not ready", 404, cors);
+    }
+    verifiedAttachments.push(...attachments as Array<Record<string, unknown>>);
+    const imageAttachments = verifiedAttachments.filter((item) => String(item.mime_type).startsWith("image/"));
+    if (imageAttachments.length !== verifiedAttachments.length && verifiedAttachments.length !== 1) {
+      return fail("Only images can be combined in one chat message", 400, cors);
+    }
+    if (imageAttachments.length) {
+      const signedResults = await Promise.all(imageAttachments.map((item) =>
+        db.storage.from(CHAT_MEDIA_BUCKET).createSignedUrl(String(item.storage_path), 300)
+      ));
+      if (signedResults.some((item) => item.error || !item.data?.signedUrl)) {
+        return fail("Could not prepare all images for the AI model", 503, cors);
+      }
+      imageSignedUrls.push(...signedResults.map((item) => item.data!.signedUrl));
+    } else {
+      videoAttachment = verifiedAttachments[0];
     }
   }
 
@@ -823,14 +847,18 @@ const handle = async (request: Request): Promise<Response> => {
       debitCompleted = true;
     }
 
+    const userContent = imageSignedUrls.length
+      ? [
+          { type: "text", text: message },
+          ...imageSignedUrls.map((url) => ({ type: "image_url", image_url: { url } })),
+        ]
+      : videoAttachment
+      ? message + String.fromCharCode(10, 10) + "[The user attached a video file named " + String(videoAttachment.original_filename) + ". The video is securely stored but video understanding/editing is not available in this release. Do not claim to have viewed or edited it.]"
+      : message;
     const providerMessages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...context,
-      { role: "user", content: imageSignedUrl
-        ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageSignedUrl } }]
-        : verifiedAttachment && String(verifiedAttachment.mime_type).startsWith("video/")
-        ? message + String.fromCharCode(10, 10) + "[The user attached a video file named " + String(verifiedAttachment.original_filename) + ". The video is securely stored but video understanding/editing is not available in this release. Do not claim to have viewed or edited it.]"
-        : message },
+      { role: "user", content: userContent },
     ];
 
     const providerResponse = await fetch(OPENROUTER_URL + "/chat/completions", {
@@ -951,9 +979,9 @@ const handle = async (request: Request): Promise<Response> => {
       );
     }
 
-    if (verifiedAttachment) {
+    if (verifiedAttachments.length) {
       await db.from("armex_chat_attachments").update({ message_id: savedMessages[0]?.id ?? null })
-        .eq("id", attachmentId).eq("user_id", userId);
+        .in("id", attachmentIds as string[]).eq("user_id", userId).eq("conversation_id", conversation.id);
     }
 
     const { error: usageError } = await db.from("armex_usage").insert({
