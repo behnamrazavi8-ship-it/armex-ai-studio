@@ -312,7 +312,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
     const savedOutput=await persistEditedImageInConversation(session,outputUrl);
     const completionNote="انجام شد؛ این نسخه هم به تاریخچه گفتگوت اضافه شد.";
     const savedNote=await callArmexApi(session,"",{action:"save_chat_message",conversation_id:conversationId,
-     request_id:editMessageRequestId,role:"assistant",content:completionNote,model:"openai/gpt-4o-mini",attachment_id:savedOutput.id});
+     request_id:crypto.randomUUID(),role:"assistant",content:completionNote,model:"openai/gpt-4o-mini",attachment_id:savedOutput.id});
     addChatMessage("assistant",completionNote,savedOutput);
     lastImageContext=[savedOutput];
     window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=savedOutput?.signed_url||"";
