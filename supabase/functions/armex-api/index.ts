@@ -168,7 +168,7 @@ const listGeneratedImages = async (db: SupabaseClient, userId: string, cors: Hea
 };
 
 const generateImage = async (
-  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+  db: SupabaseClient, userId: string, body: Json, openRouterKey: string, cors: HeadersInit,
 ): Promise<Response> => {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   const requestId = isUuid(body.request_id) ? body.request_id : "";
@@ -181,6 +181,61 @@ const generateImage = async (
   if (!requestId) {
     return fail("A UUID request_id is required for safe image billing", 400, cors);
   }
+
+  // FLUX.1 Schnell is weak with mixed Persian/English instructions. Compile
+  // every request into a precise English prompt before reserving any credits.
+  // This inference is included in the image workflow and does not add a wallet debit.
+  if (!openRouterKey) return fail("Image prompt intelligence is temporarily unavailable; no credits were reserved", 503, cors);
+  let compiledPrompt = "";
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(OPENROUTER_URL + "/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: "Bearer " + openRouterKey,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://lokal-ai.net",
+          "X-Title": "LOKAL AI Image Prompt Compiler",
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-4o-mini",
+          temperature: 0.1,
+          max_tokens: 650,
+          messages: [
+            {
+              role: "system",
+              content: "You are a strict text-to-image prompt compiler for FLUX. Translate the user's request into clear, concise English. Preserve every explicit object, exact count, identity, color, material, action, position, spatial relation, camera/viewpoint, background, style, lighting, and negative constraint. Never invent extra subjects, props, text, logos, or scene details. Do not omit small but explicit requirements. Resolve Persian wording faithfully; do not replace a specific object with a generic category. Return only the final image prompt, with no explanation or markdown."
+            },
+            {
+              role: "user",
+              content: "Compile this exact request without changing its meaning:\n\n" + prompt
+            }
+          ]
+        }),
+      });
+      if (!response.ok) throw new Error("PROMPT_COMPILER_HTTP_" + response.status);
+      const result = await response.json();
+      const content = result.choices?.[0]?.message?.content;
+      compiledPrompt = typeof content === "string"
+        ? content.replace(/^\s*```(?:text)?\s*/i, "").replace(/\s*```\s*$/, "").trim()
+        : "";
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch (error) {
+    console.error("Image prompt compilation failed", {
+      requestId,
+      code: String(error?.message || "prompt_compiler_error").slice(0, 80),
+    });
+    return fail("پرامپت برای موتور تصویر به‌درستی آماده نشد؛ هیچ اعتباری رزرو نشده است. دوباره تلاش کن.", 502, cors);
+  }
+  if (!compiledPrompt || compiledPrompt.length > 2048) {
+    return fail("پرامپت نهایی برای موتور تصویر معتبر نیست؛ هیچ اعتباری رزرو نشده است.", 502, cors);
+  }
+
   if (!Number.isSafeInteger(IMAGE_CREDIT_COST) || IMAGE_CREDIT_COST < 1 || IMAGE_CREDIT_COST > 1000) {
     return fail("Image billing configuration is invalid", 503, cors);
   }
@@ -188,7 +243,7 @@ const generateImage = async (
   const { data, error } = await db.rpc("armex_enqueue_image_generation", {
     p_user_id: userId,
     p_request_id: requestId,
-    p_prompt: prompt,
+    p_prompt: compiledPrompt,
     p_model: IMAGE_MODEL,
     p_aspect_ratio: aspectRatio,
     p_resolution: resolution,
@@ -213,6 +268,7 @@ const generateImage = async (
     job: { id: data.job_id, status: data.status || "pending" },
     credits_charged: IMAGE_CREDIT_COST,
     model: IMAGE_MODEL,
+    prompt_compiled: true,
   }, 202, cors);
 };
 
@@ -644,7 +700,7 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   if (body.action === "generate_image") {
-    return await generateImage(db, userId, body, cors);
+    return await generateImage(db, userId, body, openRouterKey, cors);
   }
   if (body.action === "create_conversation") {
     return await createChatConversation(db, userId, body, cors);
