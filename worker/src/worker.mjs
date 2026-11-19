@@ -117,7 +117,7 @@ async function runImageEditProvider(job) {
       throw error;
     }
     const inputBytes = new Uint8Array(await inputResponse.arrayBuffer());
-    if (!inputBytes.length || inputBytes.length > 5 * 1024 * 1024) {
+    if (!inputBytes.length || inputBytes.length > 20 * 1024 * 1024) {
       const error = new Error("IMAGE_EDIT_INPUT_SIZE_INVALID"); error.retryable = false; throw error;
     }
     const inputType = inputResponse.headers.get("content-type")?.split(";")[0] || "image/jpeg";
