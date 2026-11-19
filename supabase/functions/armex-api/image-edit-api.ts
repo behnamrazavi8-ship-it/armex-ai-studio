@@ -2,7 +2,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "lokal-ai-images";
 const MODEL = "@cf/black-forest-labs/flux-2-klein-4b";
-const MAX_INPUT_BYTES = 5 * 1024 * 1024;
+const MAX_INPUT_BYTES = 20 * 1024 * 1024;
 const json = (data: Record<string, unknown>, status = 200, cors: HeadersInit = {}) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...cors } });
 const fail = (error: string, status: number, cors: HeadersInit) => json({ success: false, error }, status, cors);
@@ -76,14 +76,18 @@ export async function handleImageEditApi(
   if (action !== "edit_image" || !body) return fail("عملیات ویرایش تصویر نامعتبر است.", 400, cors);
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   const requestId = validUuid(body.request_id) ? body.request_id : "";
+  const attachmentIds = Array.isArray(body.attachment_ids) ? body.attachment_ids : [];
   const rawImages = Array.isArray(body.images)
     ? body.images
     : [{ image_base64: body.image_base64, mime_type: body.mime_type }];
-  if (!Array.isArray(rawImages) || rawImages.length < 1 || rawImages.length > 3) {
-    return fail("برای ویرایش هم‌زمان باید بین ۱ تا ۳ تصویر ارسال شود.", 400, cors);
-  }
   if (!prompt || prompt.length > 1600) return fail("پرامپت باید بین ۱ تا ۱۶۰۰ نویسه باشد.", 400, cors);
   if (!requestId) return fail("شناسه یکتای درخواست معتبر نیست.", 400, cors);
+  if (attachmentIds.length > 3 || attachmentIds.some((id) => !validUuid(id))) {
+    return fail("برای ویرایش هم‌زمان باید بین ۱ تا ۳ تصویر معتبر ارسال شود.", 400, cors);
+  }
+  if (attachmentIds.length && (Array.isArray(body.images) || body.image_base64)) {
+    return fail("برای ویرایش، شناسه تصاویر چت را به‌جای داده خام تصویر ارسال کن.", 400, cors);
+  }
 
   const { data: prior, error: priorError } = await db.from("armex_image_edit_jobs")
     .select("id,status").eq("user_id", userId).eq("request_id", requestId).maybeSingle();
@@ -91,20 +95,58 @@ export async function handleImageEditApi(
   if (prior) return json({ success: true, duplicate: true, job: { id: prior.id, status: prior.status }, model: MODEL }, 202, cors);
 
   const decodedImages: Array<{ bytes: Uint8Array; mime: string; extension: string }> = [];
-  for (const raw of rawImages) {
-    if (!raw || typeof raw !== "object") return fail("اطلاعات یکی از تصاویر معتبر نیست.", 400, cors);
-    const image = raw as Record<string, unknown>;
-    const mime = typeof image.mime_type === "string" ? image.mime_type : "";
-    const encoded = typeof image.image_base64 === "string"
-      ? image.image_base64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "")
-      : "";
-    if (encoded.length > Math.ceil(MAX_INPUT_BYTES * 4 / 3) + 8) {
-      return fail("حجم یکی از تصاویر از سقف مجاز بیشتر است.", 400, cors);
+  if (attachmentIds.length) {
+    const conversationId = body.conversation_id;
+    if (!validUuid(conversationId)) return fail("شناسه گفتگوی تصاویر معتبر نیست.", 400, cors);
+    const { data: attachments, error: attachmentError } = await db.from("armex_chat_attachments")
+      .select("id,storage_path,mime_type,status")
+      .in("id", attachmentIds as string[]).eq("user_id", userId)
+      .eq("conversation_id", conversationId).eq("status", "ready");
+    if (attachmentError || !attachments || attachments.length !== attachmentIds.length) {
+      return fail("یک یا چند تصویر در گفتگوی فعلی پیدا نشد یا هنوز آماده نیست.", 404, cors);
     }
-    const bytes = decodeImage(encoded, mime);
-    if (!bytes) return fail("یکی از تصاویر معتبر نیست یا حجم آن بیشتر از ۵ مگابایت است. فرمت‌های JPG، PNG و WebP پشتیبانی می‌شوند.", 400, cors);
-    const extension = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
-    decodedImages.push({ bytes, mime, extension });
+    const orderedAttachments = (attachmentIds as string[]).map((id) => attachments.find((item) => item.id === id)).filter(Boolean);
+    for (let index = 0; index < orderedAttachments.length; index++) {
+      const attachment = orderedAttachments[index]!;
+      const mime = String(attachment.mime_type || "");
+      if (!["image/jpeg", "image/png", "image/webp"].includes(mime)) {
+        return fail("فقط تصاویر JPG، PNG و WebP برای ویرایش پشتیبانی می‌شوند.", 415, cors);
+      }
+      const { data: file, error: downloadError } = await db.storage.from("lokal-chat-media")
+        .download(String(attachment.storage_path));
+      if (downloadError || !file || file.size <= 0 || file.size > MAX_INPUT_BYTES) {
+        return fail("دریافت تصویر شماره " + (index + 1) + " برای ویرایش ناموفق بود یا حجم آن بیش از ۲۰ مگابایت است.", 413, cors);
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const signatureValid = mime === "image/jpeg"
+        ? bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+        : mime === "image/png"
+        ? bytes.length > 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+        : bytes.length > 12 && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+          String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+      if (!signatureValid) return fail("محتوای تصویر شماره " + (index + 1) + " با فرمت اعلام‌شده مطابقت ندارد.", 415, cors);
+      const extension = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
+      decodedImages.push({ bytes, mime, extension });
+    }
+  } else {
+    if (!Array.isArray(rawImages) || rawImages.length < 1 || rawImages.length > 3) {
+      return fail("برای ویرایش هم‌زمان باید بین ۱ تا ۳ تصویر ارسال شود.", 400, cors);
+    }
+    for (const raw of rawImages) {
+      if (!raw || typeof raw !== "object") return fail("اطلاعات یکی از تصاویر معتبر نیست.", 400, cors);
+      const image = raw as Record<string, unknown>;
+      const mime = typeof image.mime_type === "string" ? image.mime_type : "";
+      const encoded = typeof image.image_base64 === "string"
+        ? image.image_base64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "")
+        : "";
+      if (encoded.length > Math.ceil(MAX_INPUT_BYTES * 4 / 3) + 8) {
+        return fail("حجم یکی از تصاویر از سقف مجاز بیشتر است.", 400, cors);
+      }
+      const bytes = decodeImage(encoded, mime);
+      if (!bytes) return fail("یکی از تصاویر معتبر نیست یا حجم آن بیشتر از ۲۰ مگابایت است. فرمت‌های JPG، PNG و WebP پشتیبانی می‌شوند.", 400, cors);
+      const extension = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
+      decodedImages.push({ bytes, mime, extension });
+    }
   }
 
   const paths: string[] = [];
@@ -133,6 +175,9 @@ export async function handleImageEditApi(
     }
     console.error("Image edit enqueue failed", { code: error?.code });
     return fail("ثبت درخواست ویرایش انجام نشد. ابتدا migration چندتصویری باید روی Supabase اعمال شود یا وضعیت درخواست بررسی شود.", 503, cors);
+  }
+  if (data.duplicate === true) {
+    await db.storage.from(BUCKET).remove(paths);
   }
   if (data.success !== true) {
     await db.storage.from(BUCKET).remove(paths);
