@@ -1,6 +1,9 @@
 const MODEL_LABEL = "FLUX.2 Klein 4B";
-// Keep submissions disabled until the dedicated image-edit queue worker is deployed.
-const IMAGE_EDIT_WORKER_READY = false;
+// The existing Medium Worker already serves image generation. Its newer image-edit
+// queue consumer is present on feat/lokal-medium-image-worker, but the live service
+// was last verified on the older runtime and the queue migrations remain unapplied.
+// Keep this capability fail-closed until BOTH are rolled out and verified.
+const IMAGE_EDIT_QUEUE_ROLLED_OUT = false;
 const STYLE_ID = "lokal-image-editor-styles";
 
 export function initImageEditor({ supabase, callArmexApi }) {
@@ -13,7 +16,7 @@ export function initImageEditor({ supabase, callArmexApi }) {
     <div class="welcome"><div class="eyebrow">LOKAL AI · IMAGE EDITOR</div><h1>ویرایش هوشمند تصویر</h1>
       <p class="muted-copy">عکس را وارد کن، تغییر دلخواهت را توضیح بده و نسخه ویرایش‌شده را دریافت کن. موتور تا حد ممکن سوژه و جزئیات ناخواسته را حفظ می‌کند.</p></div>
     <div class="ie-shell">
-      <div class="ie-topline"><div><strong>استودیوی ویرایش تصویر</strong><small>بدون مصرف اعتبار کیف پول · موتور پردازش در مرحله اتصال</small></div>
+      <div class="ie-topline"><div><strong>استودیوی ویرایش تصویر</strong><small>بدون مصرف اعتبار کیف پول · اتصال به ورکر Medium موجود · صف ویرایش تصویر در انتظار انتشار نسخه جدید</small></div>
         <div class="ie-quota"><span id="ie-quota-label">در حال بررسی سهمیه…</span><div class="ie-meter"><i id="ie-quota-meter"></i></div></div></div>
       <div class="ie-grid">
         <div class="ie-input-panel">
@@ -112,7 +115,7 @@ export function initImageEditor({ supabase, callArmexApi }) {
       say(error.message || "خواندن سهمیه ناموفق بود.", true);
     }
   };
-  const refreshButton = () => { submit.disabled = !IMAGE_EDIT_WORKER_READY || activeJob || !selectedFile || !promptInput.value.trim() || quotaRemaining <= 0; };
+  const refreshButton = () => { submit.disabled = !IMAGE_EDIT_QUEUE_ROLLED_OUT || activeJob || !selectedFile || !promptInput.value.trim() || quotaRemaining <= 0; };
   const makePreview = (file) => {
     if (currentInputUrl) URL.revokeObjectURL(currentInputUrl);
     currentInputUrl = URL.createObjectURL(file);
