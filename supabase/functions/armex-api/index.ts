@@ -461,7 +461,7 @@ const listChatAttachments = async (
   db: SupabaseClient, userId: string, conversationId: string,
 ): Promise<Json[]> => {
   const { data, error } = await db.from("armex_chat_attachments")
-    .select("id,original_filename,mime_type,size_bytes,status,created_at,storage_path")
+    .select("id,message_id,original_filename,mime_type,size_bytes,status,created_at,storage_path")
     .eq("user_id", userId).eq("conversation_id", conversationId).eq("status", "ready")
     .order("created_at", { ascending: true }).limit(20);
   if (error) throw new Error("Could not load conversation attachments");
