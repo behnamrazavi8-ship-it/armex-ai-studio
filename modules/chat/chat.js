@@ -32,10 +32,10 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  });
  let activeChatConversationId=null;
  let chatRequestBusy=false;
- let selectedImageFile=null;
- let selectedImageUrl="";
- let uploadedAttachment=null;
- let lastImageContext=null;
+ let selectedImageFiles=[];
+ let selectedImageUrls=[];
+ let uploadedAttachments=[];
+ let lastImageContext=[];
 
  const style=document.createElement("style");
  style.id="lokal-chat-attachment-styles";
@@ -94,17 +94,19 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  `;
  if(!document.getElementById(style.id))document.head.append(style);
 
- let activeObjectUrl="";
+ let activeObjectUrls=[];
  const setChatStatus=(message,isError=false)=>{if(!chatStatus)return;chatStatus.textContent=message||"";chatStatus.style.color=isError?"#ffb8c2":"#91aaa9"};
  const addChatMessage=(role,content,attachment=null)=>{
   const bubble=document.createElement("div");
   bubble.className="chat-message "+(role==="user"?"user":"assistant");
   const text=document.createElement("div");text.textContent=String(content||"");bubble.append(text);
-  if(attachment?.signed_url&&String(attachment.mime_type||"").startsWith("image/")){
+  const attachments=Array.isArray(attachment)?attachment:attachment?[attachment]:[];
+  attachments.forEach(item=>{
+   if(!item?.signed_url||!String(item.mime_type||"").startsWith("image/"))return;
    const image=document.createElement("img");image.className="chat-message-attachment";
-   image.src=attachment.signed_url;image.alt=attachment.original_filename||"تصویر پیوست‌شده";
+   image.src=item.signed_url;image.alt=item.original_filename||"تصویر پیوست‌شده";
    image.loading="lazy";bubble.append(image);
-  }
+  });
   chatTranscript.append(bubble);chatTranscript.scrollTop=chatTranscript.scrollHeight;
  };
  const renderAttachmentHistory=(attachments=[])=>{
@@ -126,20 +128,28 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    const heading=document.createElement("b");heading.textContent="سلام! من دستیار هوشمند LOKAL AI هستم.";
    empty.append(heading,document.createTextNode("سؤال یا ایده‌ات را بنویس تا شروع کنیم."));
    chatTranscript.append(empty);
-  }else messages.forEach(item=>addChatMessage(item.role,item.content));
-  renderAttachmentHistory(attachments);
+  }else messages.forEach(item=>{
+   const linked=(attachments||[]).filter(file=>file.message_id===item.id);
+   addChatMessage(item.role,item.content,linked);
+  });
+  renderAttachmentHistory((attachments||[]).filter(file=>!file.message_id));
  };
  const renderSelectedImage=()=>{
   if(!attachmentPreview)return;
   attachmentPreview.replaceChildren();
-  if(!selectedImageFile){attachmentPreview.hidden=true;return}
-  const image=document.createElement("img");image.src=selectedImageUrl;image.alt="پیش‌نمایش عکس انتخاب‌شده";
-  const label=document.createElement("span");label.textContent=selectedImageFile.name+" · "+(selectedImageFile.size/1024/1024).toFixed(1)+" MB";
-  attachmentPreview.append(image,label);attachmentPreview.hidden=false;
+  if(!selectedImageFiles.length){attachmentPreview.hidden=true;return}
+  attachmentPreview.classList.add("chat-selected-images");
+  selectedImageFiles.forEach((file,index)=>{
+   const item=document.createElement("div");item.className="chat-selected-attachment";
+   const image=document.createElement("img");image.src=selectedImageUrls[index];image.alt="پیش‌نمایش تصویر "+(index+1);
+   const label=document.createElement("span");label.textContent=(index+1)+". "+file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB";
+   item.append(image,label);attachmentPreview.append(item);
+  });
+  attachmentPreview.hidden=false;
  };
  const clearSelectedImage=()=>{
-  if(activeObjectUrl){URL.revokeObjectURL(activeObjectUrl);activeObjectUrl=""}
-  selectedImageFile=null;selectedImageUrl="";uploadedAttachment=null;
+  activeObjectUrls.forEach(url=>URL.revokeObjectURL(url));activeObjectUrls=[];
+  selectedImageFiles=[];selectedImageUrls=[];uploadedAttachments=[];
   if(attachmentInput)attachmentInput.value="";
   renderSelectedImage();
  };
@@ -173,7 +183,8 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    activeChatConversationId=id;chatTitle.textContent=result.conversation?.title||"گفتگو";
    clearSelectedImage();
    const historicalImages=(result.attachments||[]).filter(item=>item?.signed_url&&String(item.mime_type||"").startsWith("image/"));
-   lastImageContext=historicalImages.length?historicalImages[historicalImages.length-1]:null;window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=lastImageContext?.signed_url||"";
+   lastImageContext=historicalImages.slice(-3);window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=lastImageContext[0]?.signed_url||"";
+   window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=lastImageContext.map(item=>item.signed_url);
    renderChatHistory(result.messages,result.attachments||[]);
    await loadChatHistoryList(session);setChatStatus("");
   }catch(error){setChatStatus("بارگذاری گفتگو انجام نشد: "+String(error?.message||error),true)}
@@ -187,25 +198,30 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   await loadChatHistoryList(session);
   return activeChatConversationId;
  };
- const uploadSelectedImage=async(session)=>{
-  if(uploadedAttachment)return uploadedAttachment;
-  if(!selectedImageFile)return null;
+ const uploadSelectedImages=async(session)=>{
+  if(!selectedImageFiles.length)return [];
   const conversationId=await ensureConversationForAttachment(session);
-  setChatStatus("در حال آماده‌سازی بارگذاری امن تصویر…");
-  const init=await callArmexApi(session,"",{action:"create_media_upload",conversation_id:conversationId,
-   mime_type:selectedImageFile.type,filename:selectedImageFile.name,size_bytes:selectedImageFile.size});
-  if(init.success!==true||!init.attachment_id||!init.path||!init.token||!init.bucket)throw new Error("آماده‌سازی بارگذاری تصویر ناموفق بود.");
-  const {error:uploadError}=await supabase.storage.from(init.bucket).uploadToSignedUrl(
-   init.path,init.token,selectedImageFile,{contentType:selectedImageFile.type,cacheControl:"3600"}
-  );
-  if(uploadError)throw new Error("آپلود تصویر انجام نشد: "+uploadError.message);
-  setChatStatus("تصویر بارگذاری شد؛ در حال بررسی امن فایل…");
-  const completed=await callArmexApi(session,"",{action:"complete_media_upload",attachment_id:init.attachment_id});
-  if(completed.success!==true||!completed.attachment?.id)throw new Error("تأیید امن تصویر انجام نشد.");
-  uploadedAttachment=completed.attachment;
-  window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=uploadedAttachment?.signed_url||"";
+  const completedAttachments=selectedImageFiles.map((_,index)=>uploadedAttachments[index]||null);
+  for(let index=0;index<selectedImageFiles.length;index++){
+   if(completedAttachments[index])continue;
+   const file=selectedImageFiles[index];
+   setChatStatus("در حال بارگذاری امن تصویر "+(index+1)+" از "+selectedImageFiles.length+"…");
+   const init=await callArmexApi(session,"",{action:"create_media_upload",conversation_id:conversationId,
+    mime_type:file.type,filename:file.name,size_bytes:file.size});
+   if(init.success!==true||!init.attachment_id||!init.path||!init.token||!init.bucket)throw new Error("آماده‌سازی بارگذاری تصویر "+(index+1)+" ناموفق بود.");
+   const {error:uploadError}=await supabase.storage.from(init.bucket).uploadToSignedUrl(
+    init.path,init.token,file,{contentType:file.type,cacheControl:"3600"}
+   );
+   if(uploadError)throw new Error("آپلود تصویر "+(index+1)+" انجام نشد: "+uploadError.message);
+   const completed=await callArmexApi(session,"",{action:"complete_media_upload",attachment_id:init.attachment_id});
+   if(completed.success!==true||!completed.attachment?.id)throw new Error("تأیید امن تصویر "+(index+1)+" انجام نشد.");
+   completedAttachments[index]=completed.attachment;
+   uploadedAttachments=completedAttachments.slice();
+  }
+  window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=completedAttachments[0]?.signed_url||"";
+  window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=completedAttachments.map(item=>item?.signed_url).filter(Boolean);
   window.LOKAL_PROMPT_REFERENCE_IMAGE=null;
-  return uploadedAttachment;
+  return completedAttachments;
  };
 
  const isImageEditRequest=(message)=>{
@@ -234,11 +250,16 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
   return {image_base64:btoa(binary),mime_type:"image/webp"};
  };
- const prepareChatImageForEdit=async(attachment)=>{
-  if(!attachment?.signed_url||!String(attachment.mime_type||"").startsWith("image/"))throw new Error("برای ویرایش، ابتدا یک تصویر معتبر پیوست کن.");
-  const response=await fetch(attachment.signed_url,{cache:"no-store"});
-  if(!response.ok)throw new Error("دریافت تصویر پیوست برای ویرایش ناموفق بود.");
-  return imageBlobToPayload(await response.blob());
+ const prepareChatImagesForEdit=async(attachments)=>{
+  const images=Array.isArray(attachments)?attachments:attachments?[attachments]:[];
+  if(images.length<1||images.length>3)throw new Error("برای ویرایش هم‌زمان باید ۱ تا ۳ تصویر معتبر پیوست کنی.");
+  const prepared=await Promise.all(images.map(async(attachment,index)=>{
+   if(!attachment?.signed_url||!String(attachment.mime_type||"").startsWith("image/"))throw new Error("تصویر شماره "+(index+1)+" معتبر نیست.");
+   const response=await fetch(attachment.signed_url,{cache:"no-store"});
+   if(!response.ok)throw new Error("دریافت تصویر شماره "+(index+1)+" برای ویرایش ناموفق بود.");
+   return imageBlobToPayload(await response.blob());
+  }));
+  return {images:prepared};
  };
 
  const persistEditedImageInConversation=async(session,imageUrl)=>{
@@ -259,9 +280,9 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   if(completed.success!==true||!completed.attachment?.signed_url)throw new Error("تأیید ذخیره خروجی ویرایش ناموفق بود.");
   return completed.attachment;
  };
- const runChatImageEdit=async(session,prompt,attachment)=>{
-  setChatStatus("در حال آماده‌سازی تصویر برای موتور ویرایش…");
-  const prepared=await prepareChatImageForEdit(attachment);
+ const runChatImageEdit=async(session,prompt,attachments)=>{
+  setChatStatus("در حال آماده‌سازی "+(Array.isArray(attachments)?attachments.length:1)+" تصویر برای موتور ویرایش…");
+  const prepared=await prepareChatImagesForEdit(attachments);
   const queued=await callArmexApi(session,"",{action:"edit_image",request_id:crypto.randomUUID(),prompt,...prepared});
   if(queued?.success!==true||!queued?.job?.id){
    if(queued?.code==="daily_quota_exceeded"||queued?.status===429)throw new Error("سهمیه رایگان ویرایش تصویر امروز تمام شده است.");
@@ -285,26 +306,28 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  };
  const sendChatMessage=async()=>{
   const typedMessage=chatInput?.value?.trim()||"";
-  if((!typedMessage&&!selectedImageFile&&!uploadedAttachment)||chatRequestBusy)return;
-  const message=typedMessage||(selectedImageFile||uploadedAttachment?"لطفاً این تصویر را بررسی و توصیف کن.":"");
+  if((!typedMessage&&!selectedImageFiles.length&&!uploadedAttachments.length)||chatRequestBusy)return;
+  const hasSelectedImages=selectedImageFiles.length>0||uploadedAttachments.length>0;
+  const message=typedMessage||(hasSelectedImages?"لطفاً این تصاویر را بررسی و توصیف کن.":"");
   const {data:{session}}=await supabase.auth.getSession();
   if(!session){setChatStatus("برای استفاده از چت ابتدا وارد حساب کاربری شو.",true);return}
   chatRequestBusy=true;chatSend.disabled=true;chatInput.disabled=true;if(attachButton)attachButton.disabled=true;
   try{
    await ensureSecureApi(session);
-   const attachment=await uploadSelectedImage(session);
-   const imageForEdit=attachment||lastImageContext;
+   const attachments=await uploadSelectedImages(session);
+   const imageForEdit=attachments.length?attachments:(Array.isArray(lastImageContext)?lastImageContext:lastImageContext?[lastImageContext]:[]);
    const wantsImageEdit=isImageEditRequest(typedMessage);
-   if(wantsImageEdit&&(!imageForEdit||!String(imageForEdit.mime_type||"").startsWith("image/"))){
-    addChatMessage("assistant","حتماً؛ فقط عکس رو هم بفرست تا ویرایشش کنم.");
-    setChatStatus("برای ویرایش تصویر، عکس لازمه. این پیام به چت متنی ارسال نشد و اعتباری مصرف نکرد.");
+   if(wantsImageEdit&&!imageForEdit.length){
+    addChatMessage("assistant","حتماً؛ عکس یا عکس‌ها رو هم بفرست تا ویرایششون کنم.");
+    setChatStatus("برای ویرایش تصویر، حداقل یک عکس لازمه. این پیام به چت متنی ارسال نشد و اعتباری مصرف نکرد.");
     return;
    }
    if(wantsImageEdit){
     const conversationId=await ensureConversationForAttachment(session);
     const editMessageRequestId=crypto.randomUUID();
     const savedPrompt=await callArmexApi(session,"",{action:"save_chat_message",conversation_id:conversationId,
-     request_id:editMessageRequestId,role:"user",content:typedMessage,model:"openai/gpt-4o-mini",attachment_id:imageForEdit.id});
+     request_id:editMessageRequestId,role:"user",content:typedMessage,model:"openai/gpt-4o-mini",
+     attachment_ids:imageForEdit.map(item=>item.id)});
     if(savedPrompt?.success!==true)throw new Error(savedPrompt?.error||"ثبت درخواست ویرایش در تاریخچه گفتگو ناموفق بود.");
     addChatMessage("user",message,imageForEdit);
     const outputUrl=await runChatImageEdit(session,typedMessage,imageForEdit);
@@ -314,7 +337,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
     const savedNote=await callArmexApi(session,"",{action:"save_chat_message",conversation_id:conversationId,
      request_id:editMessageRequestId,role:"assistant",content:completionNote,model:"openai/gpt-4o-mini",attachment_id:savedOutput.id});
     addChatMessage("assistant",completionNote,savedOutput);
-    lastImageContext=savedOutput;
+    lastImageContext=[savedOutput];
     chatInput.value="";clearSelectedImage();
     setChatStatus(savedNote?.success===true?"ویرایش تصویر کامل شد · درخواست و نتیجه در تاریخچه ذخیره شدند.":"تصویر ذخیره شد؛ ثبت متن نتیجه در تاریخچه کامل نشد.");
     await loadChatHistoryList(session);
@@ -325,14 +348,14 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    if(!safeMessage||safeMessage.length>12000)throw new Error("متن پیام برای ارسال معتبر نیست؛ لطفاً دوباره تلاش کن.");
    const payload={request_id:crypto.randomUUID(),message:safeMessage,model:"openai/gpt-4o-mini",max_tokens:1200};
    if(activeChatConversationId)payload.conversation_id=activeChatConversationId;
-   if(attachment?.id)payload.attachment_id=attachment.id;
+   if(attachments.length)payload.attachment_ids=attachments.map(item=>item.id);
    const result=await callArmexApi(session,"",payload);
    if(result.success!==true||!result.answer||!result.conversation_id){
     if(result.pending)throw new Error("درخواستت در حال بررسی است؛ برای جلوگیری از اجرای تکراری، پیام را دوباره ارسال نکن.");
     throw new Error(result.error||"پاسخ معتبر از سرویس چت دریافت نشد.");
    }
    activeChatConversationId=result.conversation_id;
-   addChatMessage("user",message,attachment);
+   addChatMessage("user",message,attachments);
    addChatMessage("assistant",result.answer);
    chatInput.value="";clearSelectedImage();chatTitle.textContent="گفتگو";
    const creditsCharged=Number(result.usage?.credits_charged??0);
@@ -348,27 +371,35 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  document.getElementById("chat-exit")?.addEventListener("click",()=>document.querySelector('[data-page="home"]')?.click());
  document.getElementById("chat-new")?.addEventListener("click",()=>{
   closeHistoryDrawer();
-  if(uploadedAttachment){setChatStatus("تصویر بارگذاری‌شده هنوز ارسال نشده است؛ ابتدا همان پیام را ارسال کن.",true);return}
+  if(selectedImageFiles.length||uploadedAttachments.length){setChatStatus("تصاویر پیوست‌شده هنوز ارسال نشده‌اند؛ ابتدا همان پیام را ارسال کن.",true);return}
   activeChatConversationId=null;lastImageContext=null;window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
   setChatStatus("");chatHistoryList?.querySelectorAll(".chat-history-item").forEach(item=>item.classList.remove("active"));chatInput?.focus();
  });
  chatHistoryList?.addEventListener("click",async event=>{
   const button=event.target.closest("[data-conversation-id]");if(!button)return;
-  if(uploadedAttachment){setChatStatus("ابتدا تصویر پیوست‌شده را ارسال کن؛ سپس می‌توانی گفتگوی دیگری باز کنی.",true);return}
+  if(selectedImageFiles.length||uploadedAttachments.length){setChatStatus("ابتدا تصاویر پیوست‌شده را ارسال کن؛ سپس می‌توانی گفتگوی دیگری باز کنی.",true);return}
   const {data:{session}}=await supabase.auth.getSession();
   if(session){await openChatHistory(button.dataset.conversationId,session);closeHistoryDrawer()}
  });
  attachButton?.addEventListener("click",()=>{
-  if(uploadedAttachment){setChatStatus("ابتدا تصویر پیوست‌شده را ارسال کن.",true);return}
+  if(selectedImageFiles.length>=3){setChatStatus("حداکثر سه تصویر را می‌توانی هم‌زمان ارسال کنی.");return}
   attachmentInput?.click();
  });
  attachmentInput?.addEventListener("change",()=>{
-  const file=attachmentInput.files?.[0];if(!file)return;
-  if(!["image/jpeg","image/png","image/webp"].includes(file.type)){setChatStatus("فقط تصاویر JPG، PNG و WebP پشتیبانی می‌شوند.",true);attachmentInput.value="";return}
-  if(file.size<=0||file.size>20*1024*1024){setChatStatus("حجم تصویر باید حداکثر ۲۰ مگابایت باشد.",true);attachmentInput.value="";return}
-  if(activeObjectUrl)URL.revokeObjectURL(activeObjectUrl);
-  selectedImageFile=file;uploadedAttachment=null;activeObjectUrl=URL.createObjectURL(file);selectedImageUrl=activeObjectUrl;
-  renderSelectedImage();setChatStatus("تصویر آماده ارسال است؛ متن دلخواهت را بنویس و ارسال کن.");
+  const files=Array.from(attachmentInput.files||[]);
+  if(!files.length)return;
+  if(selectedImageFiles.length+files.length>3){setChatStatus("حداکثر سه تصویر را می‌توانی هم‌زمان ارسال کنی.",true);attachmentInput.value="";return}
+  const invalid=files.find(file=>!["image/jpeg","image/png","image/webp"].includes(file.type));
+  if(invalid){setChatStatus("فقط تصاویر JPG، PNG و WebP پشتیبانی می‌شوند.",true);attachmentInput.value="";return}
+  const oversized=files.find(file=>file.size<=0||file.size>20*1024*1024);
+  if(oversized){setChatStatus("حجم هر تصویر باید حداکثر ۲۰ مگابایت باشد.",true);attachmentInput.value="";return}
+  files.forEach(file=>{
+   selectedImageFiles.push(file);
+   const url=URL.createObjectURL(file);selectedImageUrls.push(url);activeObjectUrls.push(url);
+   uploadedAttachments.push(null);
+  });
+  renderSelectedImage();setChatStatus(files.length+" تصویر اضافه شد؛ متن دلخواهت را بنویس و ارسال کن.");
+  attachmentInput.value="";
  });
  chatSend?.addEventListener("click",sendChatMessage);
  chatInput?.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendChatMessage()}});
@@ -377,7 +408,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  }));
  supabase.auth.onAuthStateChange((event,session)=>{
   if(event==="SIGNED_IN"&&session)void loadChatHistoryList(session);
-  if(event==="SIGNED_OUT"){activeChatConversationId=null;lastImageContext=null;window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
+  if(event==="SIGNED_OUT"){activeChatConversationId=null;lastImageContext=[];window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=[];window.LOKAL_PROMPT_REFERENCE_IMAGE=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
  });
  void supabase.auth.getSession().then(({data:{session}})=>{if(session)void loadChatHistoryList(session)});
 }
