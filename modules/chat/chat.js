@@ -107,34 +107,6 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    body.lokal-chat-active #page-chat .chat-compose-box textarea{min-height:58px;max-height:112px}
    .chat-history-drawer .chat-history-panel{width:min(340px,88vw);border-radius:0 16px 16px 0}
   }
-  /* True full-viewport chat mode: remove outer workspace chrome and give the transcript its own scroll area. */
-  html:has(body.lokal-chat-active),body.lokal-chat-active{height:100%;min-height:100%;overflow:hidden!important}
-  body.lokal-chat-active #workspace-app{height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
-  body.lokal-chat-active #workspace-app>.app-top,
-  body.lokal-chat-active #global-mobile-nav{display:none!important}
-  body.lokal-chat-active #workspace-app>.app-layout{display:block!important;flex:1 1 auto;width:100%;height:100%;min-height:0;margin:0;padding:0!important;overflow:hidden}
-  body.lokal-chat-active #workspace-app .sidebar{display:none!important}
-  body.lokal-chat-active #workspace-app .main{width:100%;height:100%;min-height:0;margin:0;overflow:hidden}
-  body.lokal-chat-active #page-chat{display:flex!important;flex-direction:column;width:100%;height:100%;min-height:0;margin:0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden}
-  body.lokal-chat-active #page-chat>.welcome,
-  body.lokal-chat-active #page-chat>.notice{display:none!important}
-  body.lokal-chat-active #page-chat .chat-workspace{display:flex;flex:1 1 auto;width:100%;height:auto;min-height:0;margin:0;overflow:hidden}
-  body.lokal-chat-active #page-chat .chat-conversation{display:flex;flex:1 1 auto;flex-direction:column;width:100%;height:100%;min-height:0;max-height:none;margin:0;padding:10px;overflow:hidden;box-sizing:border-box}
-  body.lokal-chat-active #page-chat .chat-transcript{flex:1 1 0;min-height:0;height:auto;max-height:none;overflow-y:auto;overscroll-behavior:contain}
-  body.lokal-chat-active #page-chat .chat-compose-box{flex:0 0 auto;max-height:34dvh;overflow-y:auto}
-  body.lokal-chat-active #page-chat .chat-live-status{flex:0 0 auto;min-height:20px;max-height:42px;overflow:auto}
-  @media(min-width:761px){
-   body.lokal-chat-active #page-chat{padding:14px 18px}
-   body.lokal-chat-active #page-chat .chat-conversation{max-width:none}
-  }
-  @media(max-width:760px){
-   body.lokal-chat-active #page-chat{padding:5px 7px calc(5px + env(safe-area-inset-bottom))}
-   body.lokal-chat-active #page-chat .chat-conversation{padding:8px;gap:8px}
-   body.lokal-chat-active #page-chat .chat-conversation-head{flex:0 0 44px;min-height:44px}
-   body.lokal-chat-active #page-chat .chat-transcript{padding:8px 4px}
-   body.lokal-chat-active #page-chat .chat-compose-box textarea{min-height:54px;max-height:90px}
-   body.lokal-chat-active #page-chat .chat-live-status{font-size:10px;padding:3px}
-  }
  `;
  if(!document.getElementById(style.id))document.head.append(style);
 
