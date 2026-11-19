@@ -688,10 +688,8 @@ const handle = async (request: Request): Promise<Response> => {
   if (!requestId) return fail("A UUID request_id is required for idempotent billing", 400, cors);
 
   const attemptId = crypto.randomUUID();
-  const chatCreditCost = Number(Deno.env.get("CHAT_CREDIT_COST") ?? "1");
-  if (!Number.isSafeInteger(chatCreditCost) || chatCreditCost !== 1) {
-    return fail("Chat billing configuration must be CHAT_CREDIT_COST=1", 503, cors);
-  }
+  // Smart Chat is free to the user; provider costs remain recorded in armex_usage.actual_cost_usd.
+  const chatCreditCost = 0;
 
   const { data: priorUsage, error: priorUsageError } = await db
     .from("armex_usage")
