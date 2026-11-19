@@ -278,7 +278,9 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
     return;
    }
    setChatStatus("در حال دریافت پاسخ هوش مصنوعی…");
-   const payload={request_id:crypto.randomUUID(),message,model:"openai/gpt-4o-mini",max_tokens:1200};
+   const safeMessage=String(message||"").trim();
+   if(!safeMessage||safeMessage.length>12000)throw new Error("متن پیام برای ارسال معتبر نیست؛ لطفاً دوباره تلاش کن.");
+   const payload={request_id:crypto.randomUUID(),message:safeMessage,model:"openai/gpt-4o-mini",max_tokens:1200};
    if(activeChatConversationId)payload.conversation_id=activeChatConversationId;
    if(attachment?.id)payload.attachment_id=attachment.id;
    const result=await callArmexApi(session,"",payload);
