@@ -1,0 +1,33 @@
+name: LOKAL AI Smart Chat and Gold Theme Checks
+
+on:
+  push:
+    branches:
+      - feat/lokal-smart-chat-gold-luxe
+  pull_request:
+    branches:
+      - fix/pr49-chat-image-edit-routing
+      - main
+    paths:
+      - "modules/chat/chat.js"
+      - "styles/lokal-luxe-theme.css"
+      - "tests/smart-chat-theme.test.mjs"
+      - ".github/workflows/smart-chat-theme-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check Smart Chat JavaScript syntax
+        run: node --check modules/chat/chat.js
+      - name: Run Smart Chat and theme regression tests
+        run: node --test tests/smart-chat-theme.test.mjs

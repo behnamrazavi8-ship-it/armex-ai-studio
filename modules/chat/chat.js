@@ -15,6 +15,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  let selectedImageFile=null;
  let selectedImageUrl="";
  let uploadedAttachment=null;
+ let lastImageContext=null;
 
  const style=document.createElement("style");
  style.id="lokal-chat-attachment-styles";
@@ -111,7 +112,10 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    const result=await callArmexApi(session,"?action=conversation&id="+encodeURIComponent(id));
    if(result.success!==true||!Array.isArray(result.messages))throw new Error("پاسخ تاریخچه معتبر نیست.");
    activeChatConversationId=id;chatTitle.textContent=result.conversation?.title||"گفتگو";
-   clearSelectedImage();renderChatHistory(result.messages,result.attachments||[]);
+   clearSelectedImage();
+   const historicalImages=(result.attachments||[]).filter(item=>item?.signed_url&&String(item.mime_type||"").startsWith("image/"));
+   lastImageContext=historicalImages.length?historicalImages[historicalImages.length-1]:null;
+   renderChatHistory(result.messages,result.attachments||[]);
    await loadChatHistoryList(session);setChatStatus("");
   }catch(error){setChatStatus("بارگذاری گفتگو انجام نشد: "+String(error?.message||error),true)}
  };
@@ -145,7 +149,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
 
  const isImageEditRequest=(message)=>{
   const text=String(message||"").toLowerCase().replace(/[ي]/g,"ی").replace(/[ك]/g,"ک");
-  return /(ویرایش|ادیت|تغییر|عوض کن|تبدیل کن|سفید کن|سیاه کن|روشن کن|تیره کن|حذف کن|پاک کن|جایگزین کن|اضافه کن|برش بده|کراپ|روتوش|پس\s*زمینه|بک\s*گراند|background|retouch|\bedit\b|\bremove\b|\breplace\b)/i.test(text);
+  return /(ویرایش|ادیت|تغییر|عوض کن|تبدیل کن|سفید کن|سیاه کن|روشن کن|تیره کن|حذف کن|پاک کن|جایگزین کن|اضافه کن|برش بده|کراپ|روتوش|اصلاح کن|اصلاحش|درستش کن|پس\s*زمینه|بک\s*گراند|تصویر قبلی|عکس قبلی|خروجی قبلی|همون عکس|همون تصویر|background|retouch|\bedit\b|\bremove\b|\breplace\b)/i.test(text);
  };
  const imageBlobToPayload=async(blob)=>{
   const bitmap=await createImageBitmap(blob);
@@ -175,6 +179,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   if(!response.ok)throw new Error("دریافت تصویر پیوست برای ویرایش ناموفق بود.");
   return imageBlobToPayload(await response.blob());
  };
+
  const runChatImageEdit=async(session,prompt,attachment)=>{
   setChatStatus("در حال آماده‌سازی تصویر برای موتور ویرایش…");
   const prepared=await prepareChatImageForEdit(attachment);
@@ -209,15 +214,21 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   try{
    await ensureSecureApi(session);
    const attachment=await uploadSelectedImage(session);
-   if(attachment&&String(attachment.mime_type||"").startsWith("image/")&&isImageEditRequest(typedMessage)){
-    addChatMessage("user",message,attachment);
-    const outputUrl=await runChatImageEdit(session,typedMessage,attachment);
-    addChatMessage("assistant","ویرایش تصویر با موفقیت انجام شد. خروجی آماده است:",{
-     signed_url:outputUrl,mime_type:"image/jpeg",original_filename:"lokal-ai-edited-image.jpg"
-    });
+   const imageForEdit=attachment||lastImageContext;
+   const wantsImageEdit=isImageEditRequest(typedMessage);
+   if(wantsImageEdit&&(!imageForEdit||!String(imageForEdit.mime_type||"").startsWith("image/"))){
+    addChatMessage("assistant","حتماً؛ فقط عکس رو هم بفرست تا ویرایشش کنم.");
+    setChatStatus("برای ویرایش تصویر، عکس لازمه. این پیام به چت متنی ارسال نشد و اعتباری مصرف نکرد.");
+    return;
+   }
+   if(wantsImageEdit){
+    addChatMessage("user",message,imageForEdit);
+    const outputUrl=await runChatImageEdit(session,typedMessage,imageForEdit);
+    const editedImage={signed_url:outputUrl,mime_type:"image/jpeg",original_filename:"lokal-ai-edited-image.jpg"};
+    addChatMessage("assistant","ویرایش تصویر با موفقیت انجام شد. خروجی آماده است:",editedImage);
+    lastImageContext=editedImage;
     chatInput.value="";clearSelectedImage();
     setChatStatus("ویرایش تصویر کامل شد · بدون مصرف اعتبار چت.");
-    await loadChatHistoryList(session);
     return;
    }
    setChatStatus("در حال دریافت پاسخ هوش مصنوعی…");
@@ -226,14 +237,15 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    if(attachment?.id)payload.attachment_id=attachment.id;
    const result=await callArmexApi(session,"",payload);
    if(result.success!==true||!result.answer||!result.conversation_id){
-    if(result.pending)throw new Error("درخواست برای بررسی وضعیت مالی در صف تطبیق قرار گرفت؛ پیام را دوباره ارسال نکن.");
+    if(result.pending)throw new Error("درخواستت در حال بررسی است؛ برای جلوگیری از اجرای تکراری، پیام را دوباره ارسال نکن.");
     throw new Error(result.error||"پاسخ معتبر از سرویس چت دریافت نشد.");
    }
    activeChatConversationId=result.conversation_id;
    addChatMessage("user",message,attachment);
    addChatMessage("assistant",result.answer);
    chatInput.value="";clearSelectedImage();chatTitle.textContent="گفتگو";
-   setChatStatus("پاسخ آماده شد · "+Number(result.usage?.credits_charged||1).toLocaleString("fa-IR")+" اعتبار مصرف شد.");
+   const creditsCharged=Number(result.usage?.credits_charged??0);
+   setChatStatus(creditsCharged===0?"پاسخ آماده شد · چت رایگان بود.":"پاسخ آماده شد · "+creditsCharged.toLocaleString("fa-IR")+" اعتبار مصرف شد.");
    await Promise.all([loadWalletBalance(session),loadChatHistoryList(session)]);
   }catch(error){
    setChatStatus(String(error?.message||"ارسال پیام ناموفق بود."),true);
@@ -244,7 +256,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  };
  document.getElementById("chat-new")?.addEventListener("click",()=>{
   if(uploadedAttachment){setChatStatus("تصویر بارگذاری‌شده هنوز ارسال نشده است؛ ابتدا همان پیام را ارسال کن.",true);return}
-  activeChatConversationId=null;chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
+  activeChatConversationId=null;lastImageContext=null;chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
   setChatStatus("");chatHistoryList?.querySelectorAll(".chat-history-item").forEach(item=>item.classList.remove("active"));chatInput?.focus();
  });
  chatHistoryList?.addEventListener("click",async event=>{
@@ -271,7 +283,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  }));
  supabase.auth.onAuthStateChange((event,session)=>{
   if(event==="SIGNED_IN"&&session)void loadChatHistoryList(session);
-  if(event==="SIGNED_OUT"){activeChatConversationId=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
+  if(event==="SIGNED_OUT"){activeChatConversationId=null;lastImageContext=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
  });
  void supabase.auth.getSession().then(({data:{session}})=>{if(session)void loadChatHistoryList(session)});
 }
