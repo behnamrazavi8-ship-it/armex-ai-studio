@@ -920,7 +920,7 @@ const handle = async (request: Request): Promise<Response> => {
     const userContent = imageSignedUrls.length
       ? [
           { type: "text", text: message },
-          ...imageSignedUrls.map((url) => ({ type: "image_url", image_url: { url } })),
+          ...imageSignedUrls.map((imageSignedUrl) => ({ type: "image_url", image_url: { url: imageSignedUrl } })),
         ]
       : videoAttachment
       ? message + String.fromCharCode(10, 10) + "[The user attached a video file named " + String(videoAttachment.original_filename) + ". The video is securely stored but video understanding/editing is not available in this release. Do not claim to have viewed or edited it.]"
