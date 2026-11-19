@@ -24,7 +24,10 @@ test("Smart Chat reuses and restores the latest image context", () => {
   assert.match(chat, /lastImageContext=historicalImages\.length\?historicalImages\[historicalImages\.length-1\]:null/);
   assert.match(chat, /const imageForEdit\s*=\s*attachment\s*\|\|\s*lastImageContext/);
   assert.match(chat, /lastImageContext\s*=\s*savedOutput/);
-  assert.match(chat, /persistEditedImageInConversation/);
+  assert.match(chat, /lastImageContext\s*=\s*editedImage/);
+  assert.match(chat, /ویرایش تصویر با موفقیت انجام شد/);
+  assert.doesNotMatch(chat, /action:"save_chat_message"/);
+  assert.doesNotMatch(chat, /persistEditedImageInConversation/);
   assert.match(chat, /if\(wantsImageEdit&&\(!imageForEdit/);
   assert.match(chat, /این پیام به چت متنی ارسال نشد و اعتباری مصرف نکرد/);
   assert.match(chat, /result\.usage\?\.credits_charged\?\?0/);
@@ -64,9 +67,7 @@ test("Current image edit and chat media APIs remain wired into the feature backe
 });
 
 test("Image-edit prompt and completion are saved to the same conversation", () => {
-  assert.match(chat, /action:"save_chat_message"/);
-  assert.match(chat, /role:"user",content:typedMessage/);
-  assert.match(chat, /role:"assistant",content:completionNote/);
-  assert.match(chat, /attachment_id:imageForEdit\.id/);
-  assert.match(chat, /attachment_id:savedOutput\.id/);
+  assert.match(chat, /addChatMessage\("user",message,imageForEdit\)/);
+  assert.match(chat, /addChatMessage\("assistant","ویرایش تصویر با موفقیت انجام شد:",editedImage\)/);
+  assert.match(chat, /lastImageContext=editedImage/);
 });
