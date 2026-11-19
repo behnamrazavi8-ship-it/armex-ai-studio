@@ -235,7 +235,7 @@ const generateImage = async (
   } catch (error) {
     console.error("Image prompt compilation failed", {
       requestId,
-      code: String(error?.message || "prompt_compiler_error").slice(0, 80),
+      code: String(error instanceof Error ? error.message : "prompt_compiler_error").slice(0, 80),
     });
     return fail("پرامپت برای موتور تصویر به‌درستی آماده نشد؛ هیچ اعتباری رزرو نشده است. دوباره تلاش کن.", 502, cors);
   }
