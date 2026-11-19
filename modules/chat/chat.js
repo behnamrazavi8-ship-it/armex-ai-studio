@@ -193,6 +193,8 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    lastImageContext=lastImageMessage?historicalImages.filter(item=>item.message_id===lastImageMessage.id).slice(0,3):[];
    window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=lastImageContext[0]?.signed_url||"";
    window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=lastImageContext.map(item=>item.signed_url);
+   window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS=lastImageContext.map(item=>item.id);
+   window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID=activeChatConversationId;
    renderChatHistory(result.messages,result.attachments||[]);
    await loadChatHistoryList(session);setChatStatus("");
   }catch(error){setChatStatus("بارگذاری گفتگو انجام نشد: "+String(error?.message||error),true)}
@@ -228,6 +230,8 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   }
   window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=completedAttachments[0]?.signed_url||"";
   window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=completedAttachments.map(item=>item?.signed_url).filter(Boolean);
+  window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS=completedAttachments.map(item=>item?.id).filter(Boolean);
+  window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID=conversationId;
   window.LOKAL_PROMPT_REFERENCE_IMAGE=null;
   return completedAttachments;
  };
@@ -319,6 +323,8 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
     lastImageContext=[savedOutput];
     window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=savedOutput?.signed_url||"";
     window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=lastImageContext.map(item=>item.signed_url).filter(Boolean);
+    window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS=[savedOutput.id];
+    window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID=conversationId;
     chatInput.value="";clearSelectedImage();
     setChatStatus(savedNote?.success===true?"ویرایش تصویر کامل شد · درخواست و نتیجه در تاریخچه ذخیره شدند.":"تصویر ذخیره شد؛ ثبت متن نتیجه در تاریخچه کامل نشد.");
     await loadChatHistoryList(session);
@@ -353,7 +359,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  document.getElementById("chat-new")?.addEventListener("click",()=>{
   closeHistoryDrawer();
   if(selectedImageFiles.length||uploadedAttachments.length){setChatStatus("تصاویر پیوست‌شده هنوز ارسال نشده‌اند؛ ابتدا همان پیام را ارسال کن.",true);return}
-  activeChatConversationId=null;lastImageContext=[];window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=[];chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
+  activeChatConversationId=null;lastImageContext=[];window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=[];window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS=[];window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID="";chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
   setChatStatus("");chatHistoryList?.querySelectorAll(".chat-history-item").forEach(item=>item.classList.remove("active"));chatInput?.focus();
  });
  chatHistoryList?.addEventListener("click",async event=>{
@@ -389,7 +395,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  }));
  supabase.auth.onAuthStateChange((event,session)=>{
   if(event==="SIGNED_IN"&&session)void loadChatHistoryList(session);
-  if(event==="SIGNED_OUT"){activeChatConversationId=null;lastImageContext=[];window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=[];window.LOKAL_PROMPT_REFERENCE_IMAGE=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
+  if(event==="SIGNED_OUT"){activeChatConversationId=null;lastImageContext=[];window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=[];window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS=[];window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID="";window.LOKAL_PROMPT_REFERENCE_IMAGE=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
  });
  void supabase.auth.getSession().then(({data:{session}})=>{if(session)void loadChatHistoryList(session)});
 }
