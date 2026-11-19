@@ -189,7 +189,9 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    activeChatConversationId=id;chatTitle.textContent=result.conversation?.title||"گفتگو";
    clearSelectedImage();
    const historicalImages=(result.attachments||[]).filter(item=>item?.signed_url&&String(item.mime_type||"").startsWith("image/"));
-   lastImageContext=historicalImages.slice(-3);window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=lastImageContext[0]?.signed_url||"";
+   const lastImageMessage=[...(result.messages||[])].reverse().find(message=>historicalImages.some(item=>item.message_id===message.id));
+   lastImageContext=lastImageMessage?historicalImages.filter(item=>item.message_id===lastImageMessage.id).slice(0,3):[];
+   window.LOKAL_PROMPT_REFERENCE_IMAGE_URL=lastImageContext[0]?.signed_url||"";
    window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=lastImageContext.map(item=>item.signed_url);
    renderChatHistory(result.messages,result.attachments||[]);
    await loadChatHistoryList(session);setChatStatus("");
@@ -232,7 +234,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
 
  const isImageEditRequest=(message)=>{
   const text=String(message||"").toLowerCase().replace(/[ي]/g,"ی").replace(/[ك]/g,"ک");
-  return /(ویرایش|ادیت|تغییر|عوض کن|تبدیل کن|سفید کن|سیاه کن|روشن کن|تیره کن|حذف کن|پاک کن|جایگزین کن|اضافه کن|برش بده|کراپ|روتوش|اصلاح کن|اصلاحش|درستش کن|پس\s*زمینه|بک\s*گراند|تصویر قبلی|عکس قبلی|خروجی قبلی|همون عکس|همون تصویر|background|retouch|\bedit\b|\bremove\b|\breplace\b)/i.test(text);
+  return /(ویرایش|ادیت|تغییر|عوض کن|تبدیل کن|سفید کن|سیاه کن|روشن کن|تیره کن|حذف کن|پاک کن|جایگزین کن|اضافه کن|برش بده|کراپ|روتوش|اصلاح کن|اصلاحش|درستش کن|پس\s*زمینه|بک\s*گراند|تصویر قبلی|عکس قبلی|خروجی قبلی|همون عکس|همون تصویر|ترکیب(?:کن|کردن)|ادغام(?:کن|کردن)|مونتاژ|تصویر اول|عکس اول|تصویر دوم|عکس دوم|از این تصاویر|این دو عکس|این سه عکس|background|retouch|\bedit\b|\bremove\b|\breplace\b|\bcombine\b|\bmerge\b|\bcomposite\b)/i.test(text);
  };
 
 
