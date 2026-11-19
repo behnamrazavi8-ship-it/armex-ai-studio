@@ -5,8 +5,10 @@ on:
     paths:
       - "index.html"
       - "modules/chat/**"
+      - "tests/chat-image-edit-intent.test.mjs"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
+      - "tests/chat-image-edit-intent.test.mjs"
       - "supabase/staging/**"
       - "supabase/migrations/**"
   push:
@@ -93,6 +95,9 @@ jobs:
 
       - name: Type-check armex-api
         run: deno check supabase/functions/armex-api/index.ts
+
+      - name: Test Smart Chat image-edit intent
+        run: node --test tests/chat-image-edit-intent.test.mjs
 
       - name: Syntax-check browser JavaScript
         run: |
