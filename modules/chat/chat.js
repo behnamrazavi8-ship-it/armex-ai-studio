@@ -82,6 +82,10 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   .chat-selected-images{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .chat-selected-attachment{display:flex;align-items:center;gap:8px;max-width:100%;padding:6px;border:1px solid #29434d;border-radius:10px}
   .chat-selected-attachment img{width:56px;height:56px;object-fit:cover;border-radius:8px}
+  #chat-attachment-preview.chat-selected-images{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;max-width:100%;max-height:82px;overscroll-behavior-x:contain}
+  .chat-selected-attachment{flex:0 0 auto}
+  .chat-compose-box{flex-shrink:0}
+  .chat-compose-tools #chat-send{display:inline-flex;flex:0 0 auto;visibility:visible}
   .chat-selected-attachment span{font-size:11px;overflow-wrap:anywhere;flex:1}.chat-selected-attachment button{border:1px solid #69434a;background:#29151a;color:#ffc5cc;border-radius:8px;padding:7px 9px;font-size:10px;white-space:nowrap}
   body.lokal-chat-active{overflow:hidden}
   body.lokal-chat-active .app-layout{height:calc(100dvh - 70px);overflow:hidden}
