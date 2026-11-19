@@ -95,8 +95,43 @@ const handle = async (request: Request): Promise<Response> => {
   const suppliedImageUrls = Array.isArray(body.image_urls)
     ? body.image_urls
     : typeof body.image_url === "string" && body.image_url.trim() ? [body.image_url.trim()] : [];
-  if (suppliedImageUrls.length > 3) return fail("At most three reference images are supported", 400, cors);
+  const imageAttachmentIds = Array.isArray(body.image_attachment_ids) ? body.image_attachment_ids : [];
+  if (suppliedImageUrls.length > 3 || imageAttachmentIds.length > 3) {
+    return fail("At most three reference images are supported", 400, cors);
+  }
+  if (suppliedImageUrls.length && imageAttachmentIds.length) {
+    return fail("Send private attachment IDs or signed image URLs, not both", 400, cors);
+  }
   const imageUrls: string[] = [];
+  if (imageAttachmentIds.length) {
+    const conversationId = body.conversation_id;
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(String(conversationId || "")) ||
+        imageAttachmentIds.some((id) => typeof id !== "string" || !uuidPattern.test(id))) {
+      return fail("Reference image attachments are invalid", 400, cors);
+    }
+    const { data: attachments, error: attachmentError } = await db.from("armex_chat_attachments")
+      .select("id,storage_path,mime_type")
+      .in("id", imageAttachmentIds as string[]).eq("user_id", userId)
+      .eq("conversation_id", conversationId).eq("status", "ready");
+    if (attachmentError || !attachments || attachments.length !== imageAttachmentIds.length) {
+      return fail("One or more private reference images were not found or are not ready", 404, cors);
+    }
+    const byId = new Map<string, Record<string, unknown>>();
+    (attachments as Array<Record<string, unknown>>).forEach((item) => byId.set(String(item.id), item));
+    for (const id of imageAttachmentIds as string[]) {
+      const attachment = byId.get(id);
+      if (!attachment || !String(attachment.mime_type || "").startsWith("image/")) {
+        return fail("Only ready private images can be used as Prompt Lab references", 415, cors);
+      }
+      const { data: signed, error: signingError } = await db.storage.from("lokal-chat-media")
+        .createSignedUrl(String(attachment.storage_path), 300);
+      if (signingError || !signed?.signedUrl) {
+        return fail("Could not prepare a private reference image for analysis", 503, cors);
+      }
+      imageUrls.push(signed.signedUrl);
+    }
+  }
   for (const supplied of suppliedImageUrls) {
     if (typeof supplied !== "string" || !supplied.trim()) return fail("Reference image URL is invalid", 400, cors);
     try {
