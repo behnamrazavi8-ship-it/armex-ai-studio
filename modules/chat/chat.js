@@ -82,7 +82,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   .chat-selected-images{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .chat-selected-attachment{display:flex;align-items:center;gap:8px;max-width:100%;padding:6px;border:1px solid #29434d;border-radius:10px}
   .chat-selected-attachment img{width:56px;height:56px;object-fit:cover;border-radius:8px}
-  .chat-selected-attachment span{font-size:11px;overflow-wrap:anywhere}
+  .chat-selected-attachment span{font-size:11px;overflow-wrap:anywhere;flex:1}.chat-selected-attachment button{border:1px solid #69434a;background:#29151a;color:#ffc5cc;border-radius:8px;padding:7px 9px;font-size:10px;white-space:nowrap}
   body.lokal-chat-active{overflow:hidden}
   body.lokal-chat-active .app-layout{height:calc(100dvh - 70px);overflow:hidden}
   body.lokal-chat-active .main{height:100%;min-height:0}
@@ -149,11 +149,11 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    const item=document.createElement("div");item.className="chat-selected-attachment";
    const image=document.createElement("img");image.src=selectedImageUrls[index];image.alt="پیش‌نمایش تصویر "+(index+1);
    const label=document.createElement("span");label.textContent=(index+1)+". "+file.name+" · "+(file.size/1024/1024).toFixed(1)+" MB";
-   item.append(image,label);attachmentPreview.append(item);
+   const remove=document.createElement("button");remove.type="button";remove.dataset.removeChatImage=String(index);remove.textContent="حذف";remove.setAttribute("aria-label","حذف تصویر "+(index+1));\n   item.append(image,label,remove);attachmentPreview.append(item);
   });
   attachmentPreview.hidden=false;
  };
- const clearSelectedImage=()=>{
+ attachmentPreview?.addEventListener("click",event=>{\n  const button=event.target.closest("[data-remove-chat-image]");if(!button)return;\n  const index=Number(button.dataset.removeChatImage);if(!Number.isInteger(index)||index<0||index>=selectedImageFiles.length)return;\n  const url=selectedImageUrls[index];if(url){URL.revokeObjectURL(url);activeObjectUrls=activeObjectUrls.filter(item=>item!==url)}\n  selectedImageFiles.splice(index,1);selectedImageUrls.splice(index,1);uploadedAttachments.splice(index,1);\n  renderSelectedImage();setChatStatus(selectedImageFiles.length?("تصویر حذف شد؛ "+selectedImageFiles.length+" تصویر باقی مانده است."): "تصویر انتخاب‌شده حذف شد.");\n });\n const clearSelectedImage=()=>{
   activeObjectUrls.forEach(url=>URL.revokeObjectURL(url));activeObjectUrls=[];
   selectedImageFiles=[];selectedImageUrls=[];uploadedAttachments=[];
   if(attachmentInput)attachmentInput.value="";
