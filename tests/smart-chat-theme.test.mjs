@@ -67,6 +67,6 @@ test("Current image edit and chat media APIs remain wired into the feature backe
 
 test("Image-edit prompt and completion render inline and preserve the edited image context", () => {
   assert.match(chat, /addChatMessage\("user",message,imageForEdit\)/);
-  assert.match(chat, /addChatMessage\("assistant","ویرایش تصویر با موفقیت انجام شد:",editedImage\)/);
+  assert.match(chat, /addChatMessage\("assistant","ویرایش تصویر با موفقیت انجام شد. خروجی آماده است:",editedImage\)/);
   assert.match(chat, /lastImageContext=editedImage/);
 });
