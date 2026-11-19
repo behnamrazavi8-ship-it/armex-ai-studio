@@ -1,4 +1,6 @@
 const MODEL_LABEL = "FLUX.2 Klein 4B";
+// Keep submissions disabled until the dedicated image-edit queue worker is deployed.
+const IMAGE_EDIT_WORKER_READY = false;
 const STYLE_ID = "lokal-image-editor-styles";
 
 export function initImageEditor({ supabase, callArmexApi }) {
@@ -11,7 +13,7 @@ export function initImageEditor({ supabase, callArmexApi }) {
     <div class="welcome"><div class="eyebrow">LOKAL AI · IMAGE EDITOR</div><h1>ویرایش هوشمند تصویر</h1>
       <p class="muted-copy">عکس را وارد کن، تغییر دلخواهت را توضیح بده و نسخه ویرایش‌شده را دریافت کن. موتور تا حد ممکن سوژه و جزئیات ناخواسته را حفظ می‌کند.</p></div>
     <div class="ie-shell">
-      <div class="ie-topline"><div><strong>استودیوی ویرایش تصویر</strong><small>بدون مصرف اعتبار کیف پول · ۵ ویرایش رایگان در روز</small></div>
+      <div class="ie-topline"><div><strong>استودیوی ویرایش تصویر</strong><small>بدون مصرف اعتبار کیف پول · موتور پردازش در مرحله اتصال</small></div>
         <div class="ie-quota"><span id="ie-quota-label">در حال بررسی سهمیه…</span><div class="ie-meter"><i id="ie-quota-meter"></i></div></div></div>
       <div class="ie-grid">
         <div class="ie-input-panel">
@@ -110,7 +112,7 @@ export function initImageEditor({ supabase, callArmexApi }) {
       say(error.message || "خواندن سهمیه ناموفق بود.", true);
     }
   };
-  const refreshButton = () => { submit.disabled = activeJob || !selectedFile || !promptInput.value.trim() || quotaRemaining <= 0; };
+  const refreshButton = () => { submit.disabled = !IMAGE_EDIT_WORKER_READY || activeJob || !selectedFile || !promptInput.value.trim() || quotaRemaining <= 0; };
   const makePreview = (file) => {
     if (currentInputUrl) URL.revokeObjectURL(currentInputUrl);
     currentInputUrl = URL.createObjectURL(file);
@@ -243,5 +245,6 @@ export function initImageEditor({ supabase, callArmexApi }) {
     comparison.innerHTML = '<div class="ie-empty"><span>✧</span><b>برای شروع یک تصویر انتخاب کن</b></div>';
     $("ie-history").innerHTML = ""; actions.hidden = true; quotaLabel.textContent = "برای مشاهده سهمیه وارد حساب شو"; quotaRemaining = 0; refreshButton();
   });
+  if (!IMAGE_EDIT_WORKER_READY) say("موتور اجرایی ویرایش تصویر هنوز متصل نشده است؛ تا فعال‌سازی Worker هیچ درخواستی ثبت نمی‌شود.");
   void updateQuota(); void loadHistory();
 }
