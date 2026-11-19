@@ -234,39 +234,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   const text=String(message||"").toLowerCase().replace(/[ي]/g,"ی").replace(/[ك]/g,"ک");
   return /(ویرایش|ادیت|تغییر|عوض کن|تبدیل کن|سفید کن|سیاه کن|روشن کن|تیره کن|حذف کن|پاک کن|جایگزین کن|اضافه کن|برش بده|کراپ|روتوش|اصلاح کن|اصلاحش|درستش کن|پس\s*زمینه|بک\s*گراند|تصویر قبلی|عکس قبلی|خروجی قبلی|همون عکس|همون تصویر|background|retouch|\bedit\b|\bremove\b|\breplace\b)/i.test(text);
  };
- const imageBlobToPayload=async(blob)=>{
-  const bitmap=await createImageBitmap(blob);
-  if(bitmap.width*bitmap.height>40000000){bitmap.close();throw new Error("ابعاد تصویر بیش از حد بزرگ است؛ لطفاً نسخه کوچک‌تری انتخاب کن.")}
-  let prepared=null;
-  for(const maxSide of [1024,768,640]){
-   const scale=Math.min(1,maxSide/Math.max(bitmap.width,bitmap.height));
-   const canvas=document.createElement("canvas");
-   canvas.width=Math.max(1,Math.round(bitmap.width*scale));
-   canvas.height=Math.max(1,Math.round(bitmap.height*scale));
-   const context=canvas.getContext("2d",{alpha:true});
-   if(!context)continue;
-   context.clearRect(0,0,canvas.width,canvas.height);
-   context.drawImage(bitmap,0,0,canvas.width,canvas.height);
-   const output=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",0.86));
-   if(output&&output.size<=5*1024*1024){prepared=output;break}
-  }
-  bitmap.close();
-  if(!prepared)throw new Error("آماده‌سازی تصویر برای ویرایش انجام نشد؛ یک تصویر کم‌حجم‌تر انتخاب کن.");
-  const bytes=new Uint8Array(await prepared.arrayBuffer());let binary="";
-  for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
-  return {image_base64:btoa(binary),mime_type:"image/webp"};
- };
- const prepareChatImagesForEdit=async(attachments)=>{
-  const images=Array.isArray(attachments)?attachments:attachments?[attachments]:[];
-  if(images.length<1||images.length>3)throw new Error("برای ویرایش هم‌زمان باید ۱ تا ۳ تصویر معتبر پیوست کنی.");
-  const prepared=await Promise.all(images.map(async(attachment,index)=>{
-   if(!attachment?.signed_url||!String(attachment.mime_type||"").startsWith("image/"))throw new Error("تصویر شماره "+(index+1)+" معتبر نیست.");
-   const response=await fetch(attachment.signed_url,{cache:"no-store"});
-   if(!response.ok)throw new Error("دریافت تصویر شماره "+(index+1)+" برای ویرایش ناموفق بود.");
-   return imageBlobToPayload(await response.blob());
-  }));
-  return {images:prepared};
- };
+
 
  const persistEditedImageInConversation=async(session,imageUrl)=>{
   const conversationId=await ensureConversationForAttachment(session);
@@ -287,9 +255,12 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   return completed.attachment;
  };
  const runChatImageEdit=async(session,prompt,attachments)=>{
-  setChatStatus("در حال آماده‌سازی "+(Array.isArray(attachments)?attachments.length:1)+" تصویر برای موتور ویرایش…");
-  const prepared=await prepareChatImagesForEdit(attachments);
-  const queued=await callArmexApi(session,"",{action:"edit_image",request_id:crypto.randomUUID(),prompt,...prepared});
+  const imageList=Array.isArray(attachments)?attachments:attachments?[attachments]:[];
+  if(imageList.length<1||imageList.length>3)throw new Error("برای ویرایش هم‌زمان باید ۱ تا ۳ تصویر انتخاب شود.");
+  setChatStatus("در حال آماده‌سازی امن "+imageList.length+" تصویر مرجع برای موتور ویرایش…");
+  const conversationId=await ensureConversationForAttachment(session);
+  const queued=await callArmexApi(session,"",{action:"edit_image",request_id:crypto.randomUUID(),
+   conversation_id:conversationId,attachment_ids:imageList.map(item=>item.id),prompt});
   if(queued?.success!==true||!queued?.job?.id){
    if(queued?.code==="daily_quota_exceeded"||queued?.status===429)throw new Error("سهمیه رایگان ویرایش تصویر امروز تمام شده است.");
    throw new Error(queued?.error||"ثبت درخواست ویرایش تصویر ناموفق بود.");
