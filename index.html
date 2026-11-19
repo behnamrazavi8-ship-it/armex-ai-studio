@@ -74,16 +74,20 @@
 
  <div class="welcome"><div class="eyebrow">LOKAL AI · SMART CHAT</div><h1>چت هوشمند</h1><p class="muted-copy">گفت‌وگوی هوشمند با تاریخچهٔ خصوصی و همگام با حساب کاربری.</p></div>
  <div class="chat-workspace">
-  <aside class="panel chat-history-panel">
-   <button class="btn" id="chat-new" type="button" style="width:100%">＋ گفتگوی جدید</button>
-   <div class="chat-history-list" id="chat-history-list"><div class="empty">برای مشاهدهٔ گفتگوها وارد حساب شو.</div></div>
-  </aside>
   <section class="panel chat-conversation">
-   <div class="chat-conversation-head chat-fullscreen-head"><button class="btn btn-ghost btn-small" id="chat-exit" type="button">← بازگشت به داشبورد</button><b id="chat-title">گفتگوی جدید</b></div>
+   <div class="chat-conversation-head chat-fullscreen-head"><button class="btn btn-ghost btn-small" id="chat-exit" type="button">← بازگشت به داشبورد</button><b id="chat-title">گفتگوی جدید</b><button class="btn btn-ghost btn-small" id="chat-history-toggle" type="button" aria-label="گفتگوهای ذخیره‌شده" aria-expanded="false" title="گفتگوهای ذخیره‌شده">☰</button></div>
    <div class="chat-transcript" id="chat-transcript" aria-live="polite"></div>
    <div class="chat-compose-box"><textarea id="chat-input" maxlength="12000" placeholder="پیامت را اینجا بنویس… (Enter برای ارسال، Shift + Enter برای خط جدید)"></textarea><input id="chat-attachment-input" type="file" accept="image/jpeg,image/png,image/webp" hidden><div id="chat-attachment-preview" hidden></div><div class="chat-compose-actions"><span class="muted-copy">پاسخ‌ها و تاریخچه به‌صورت امن در حساب تو ذخیره می‌شوند.</span><div class="chat-compose-tools"><button class="btn btn-ghost btn-small" id="chat-attach" type="button">＋ افزودن عکس</button><button class="btn" id="chat-send" type="button">ارسال ←</button></div></div></div>
    <div class="chat-live-status" id="chat-status" role="status" aria-live="polite"></div>
   </section>
+ </div>
+ <div class="chat-history-drawer" id="chat-history-drawer" hidden>
+  <div class="chat-history-backdrop" data-chat-history-close></div>
+  <aside class="panel chat-history-panel">
+   <div class="chat-history-drawer-head"><b>گفتگوهای ذخیره‌شده</b><button class="btn btn-ghost btn-small" id="chat-history-close" type="button" aria-label="بستن">×</button></div>
+   <button class="btn" id="chat-new" type="button" style="width:100%">＋ گفتگوی جدید</button>
+   <div class="chat-history-list" id="chat-history-list"><div class="empty">برای مشاهدهٔ گفتگوها وارد حساب شو.</div></div>
+  </aside>
  </div>
  <div class="notice">ویرایش واقعی تصویر و ویدئو از طریق API مستقل هر موتور فعال می‌شود. این رابط فعلاً به سرویس چت امن نسخهٔ جدید متصل است؛ قابلیت‌های رسانه‌ای نسخهٔ قدیمی بدون تطبیق API منتقل نشده‌اند.</div>
 </section>
