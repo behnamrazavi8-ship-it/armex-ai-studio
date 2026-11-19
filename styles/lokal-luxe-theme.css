@@ -1158,41 +1158,38 @@ body,body#app-body{
 }
 
  
-/* Smart Chat fullscreen viewport: activate only for a visible workspace and active chat page. */
+/* Smart Chat fullscreen: use explicit state classes, without :has() dependencies. */
 #workspace-app[hidden]{display:none!important}
-html:has(body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active)),
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active){
+body.lokal-chat-active{
  height:100%;
  min-height:100%;
  overflow:hidden!important;
  overscroll-behavior:none;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #workspace-app:not([hidden]){
- display:flex!important;
- flex-direction:column;
+body.lokal-chat-active #workspace-app:not([hidden]){
  width:100%;
  height:100dvh;
  min-height:0;
  max-height:100dvh;
  overflow:hidden!important;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #workspace-app:not([hidden])>.app-top,
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #global-mobile-nav,
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #workspace-app:not([hidden]) .sidebar{
+body.lokal-chat-active #workspace-app:not([hidden])>.app-top,
+body.lokal-chat-active #workspace-app:not([hidden]) .sidebar,
+body.lokal-chat-active #global-mobile-nav,
+body.lokal-chat-active #workspace-app:not([hidden]) .mobile-nav{
  display:none!important;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #workspace-app:not([hidden])>.app-layout{
+body.lokal-chat-active #workspace-app:not([hidden])>.app-layout{
  display:block!important;
- flex:1 1 auto;
  width:100%;
- height:100%;
+ height:100dvh;
  min-height:0;
- max-height:100%;
+ max-height:100dvh;
  margin:0!important;
  padding:0!important;
  overflow:hidden!important;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #workspace-app:not([hidden]) .main{
+body.lokal-chat-active #workspace-app:not([hidden]) .main{
  display:block;
  width:100%;
  height:100%;
@@ -1202,7 +1199,7 @@ body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #work
  margin:0!important;
  overflow:hidden!important;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #workspace-app:not([hidden]) #page-chat.active{
+body.lokal-chat-active #workspace-app:not([hidden]) #page-chat.active{
  display:flex!important;
  flex-direction:column;
  width:100%;
@@ -1214,11 +1211,9 @@ body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #work
  box-sizing:border-box;
  overflow:hidden!important;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active>.welcome,
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active>.notice{
- display:none!important;
-}
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active .chat-workspace{
+body.lokal-chat-active #page-chat.active>.welcome,
+body.lokal-chat-active #page-chat.active>.notice{display:none!important}
+body.lokal-chat-active #page-chat.active .chat-workspace{
  display:flex!important;
  flex:1 1 auto;
  width:100%;
@@ -1228,7 +1223,7 @@ body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page
  margin:0!important;
  overflow:hidden!important;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active .chat-conversation{
+body.lokal-chat-active #page-chat.active .chat-conversation{
  display:flex!important;
  flex:1 1 auto;
  flex-direction:column;
@@ -1242,10 +1237,8 @@ body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page
  box-sizing:border-box;
  overflow:hidden!important;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active .chat-conversation-head{
- flex:0 0 auto;
-}
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active .chat-transcript{
+body.lokal-chat-active #page-chat.active .chat-conversation-head{flex:0 0 auto}
+body.lokal-chat-active #page-chat.active .chat-transcript{
  flex:1 1 0;
  min-height:0;
  height:auto!important;
@@ -1255,33 +1248,23 @@ body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page
  overscroll-behavior:contain;
  -webkit-overflow-scrolling:touch;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active .chat-compose-box{
+body.lokal-chat-active #page-chat.active .chat-compose-box{
  flex:0 0 auto;
  min-height:0;
  max-height:36dvh;
  overflow-x:hidden;
  overflow-y:auto;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active .chat-live-status{
+body.lokal-chat-active #page-chat.active .chat-live-status{
  flex:0 0 auto;
  min-height:0;
  max-height:44px;
  overflow:auto;
 }
-body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active .chat-history-drawer{
- position:fixed;
- inset:0;
- z-index:1000;
-}
+body.lokal-chat-active #page-chat.active .chat-history-drawer{position:fixed;inset:0;z-index:1000}
 @media(max-width:760px){
- body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active{
-  padding:6px 7px calc(6px + env(safe-area-inset-bottom))!important;
- }
- body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active .chat-conversation{
-  padding:8px!important;
-  border-radius:16px;
- }
- body.lokal-chat-active:has(#workspace-app:not([hidden]) #page-chat.active) #page-chat.active .chat-compose-box{
-  max-height:38dvh;
- }
+ body.lokal-chat-active #workspace-app:not([hidden])>.app-layout{height:100dvh}
+ body.lokal-chat-active #page-chat.active{padding:6px 7px calc(6px + env(safe-area-inset-bottom))!important}
+ body.lokal-chat-active #page-chat.active .chat-conversation{padding:8px!important;border-radius:16px}
+ body.lokal-chat-active #page-chat.active .chat-compose-box{max-height:38dvh}
 }
