@@ -118,7 +118,7 @@
   const current=$('.page.active')?.id.replace('page-','');
   if(current===target)return;
   $$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));
-  $('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));
+  $$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));
   const dockHome=$('.mobile-nav [data-open-workspace]');if(dockHome)dockHome.classList.toggle('active',target==='home');
   if(options.history!==false&&workspaceRoot&&!workspaceRoot.hidden){
    history.pushState({...history.state,lokalWorkspacePage:target},'',location.pathname+location.search+'#workspace-'+target);
