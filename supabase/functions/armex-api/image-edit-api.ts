@@ -146,7 +146,7 @@ export async function handleImageEditApi(
       clearTimeout(timeout);
     }
   } catch (error) {
-    console.error("Image edit prompt compilation failed", { requestId, code: String(error?.message || "compiler_error").slice(0, 80) });
+    console.error("Image edit prompt compilation failed", { requestId, code: String(error instanceof Error ? error.message : "compiler_error").slice(0, 80) });
     return fail("دستور ویرایش برای موتور تصویر به‌درستی آماده نشد؛ سهمیه‌ای مصرف نشده است. دوباره تلاش کن.", 502, cors);
   }
   if (!compiledPrompt || compiledPrompt.length > 1600) {
