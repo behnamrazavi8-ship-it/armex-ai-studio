@@ -300,6 +300,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
    chatRequestBusy=false;chatSend.disabled=false;chatInput.disabled=false;if(attachButton)attachButton.disabled=false;chatInput.focus();
   }
  };
+ document.getElementById("chat-exit")?.addEventListener("click",()=>document.querySelector('[data-page="home"]')?.click());
  document.getElementById("chat-new")?.addEventListener("click",()=>{
   if(uploadedAttachment){setChatStatus("تصویر بارگذاری‌شده هنوز ارسال نشده است؛ ابتدا همان پیام را ارسال کن.",true);return}
   activeChatConversationId=null;lastImageContext=null;chatTitle.textContent="گفتگوی جدید";clearSelectedImage();renderChatHistory([]);
