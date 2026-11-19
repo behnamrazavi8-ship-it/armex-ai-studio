@@ -66,7 +66,7 @@ test("Current image edit and chat media APIs remain wired into the feature backe
   assert.match(imageEditApi, /armex_enqueue_image_edit/);
 });
 
-test("Image-edit prompt and completion are saved to the same conversation", () => {
+test("Image-edit prompt and completion render inline and preserve the edited image context", () => {
   assert.match(chat, /addChatMessage\("user",message,imageForEdit\)/);
   assert.match(chat, /addChatMessage\("assistant","ویرایش تصویر با موفقیت انجام شد:",editedImage\)/);
   assert.match(chat, /lastImageContext=editedImage/);
