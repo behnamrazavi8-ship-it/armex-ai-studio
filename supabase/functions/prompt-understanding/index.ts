@@ -24,8 +24,10 @@ const json = (body: Record<string, unknown>, status = 200, headers: HeadersInit 
   });
 const fail = (error: string, status: number, cors: HeadersInit) => json({ success: false, error }, status, cors);
 const corsFor = (origin: string | null): Record<string, string> => {
-  const allowed = (Deno.env.get("ALLOWED_ORIGINS") || "https://lokal-ai.net,https://www.lokal-ai.net,https://preview.lokal-ai.net,https://feat-lokal-popcorn-visual-on.armex-ai-studio.pages.dev")
+  const configured = (Deno.env.get("ALLOWED_ORIGINS") || "https://lokal-ai.net,https://www.lokal-ai.net")
     .split(",").map((value) => value.trim()).filter(Boolean);
+  const allowed = [...new Set([...configured, "https://lokal-ai.net", "https://www.lokal-ai.net",
+    "https://preview.lokal-ai.net", "https://feat-lokal-popcorn-visual-on.armex-ai-studio.pages.dev"] )];
   const accepted = origin && allowed.includes(origin) ? origin : "";
   return {
     ...(accepted ? { "Access-Control-Allow-Origin": accepted } : {}),
