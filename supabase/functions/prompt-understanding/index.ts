@@ -92,6 +92,22 @@ const handle = async (request: Request): Promise<Response> => {
   const aspectRatio = typeof body.aspect_ratio === "string" ? body.aspect_ratio.trim().slice(0, 30) : "";
 
   let imageDataUrl = "";
+  let imageUrl = "";
+  const suppliedImageUrl = typeof body.image_url === "string" ? body.image_url.trim() : "";
+  if (suppliedImageUrl) {
+    try {
+      const parsed = new URL(suppliedImageUrl);
+      const projectUrl = new URL(Deno.env.get("SUPABASE_URL") || "");
+      const allowedPath = parsed.pathname.startsWith("/storage/v1/object/sign/lokal-chat-media/") ||
+        parsed.pathname.startsWith("/storage/v1/object/sign/lokal-ai-images/");
+      if (parsed.origin !== projectUrl.origin || !allowedPath || !parsed.searchParams.has("token")) {
+        return fail("Reference image URL is not a valid private LOKAL AI attachment", 400, cors);
+      }
+      imageUrl = suppliedImageUrl;
+    } catch {
+      return fail("Reference image URL is invalid", 400, cors);
+    }
+  }
   const encodedImage = typeof body.image_base64 === "string" ? body.image_base64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "") : "";
   const imageMime = typeof body.image_mime_type === "string" ? body.image_mime_type.toLowerCase() : "";
   if (encodedImage) {
@@ -158,15 +174,16 @@ const handle = async (request: Request): Promise<Response> => {
     style ? "Requested visual style: " + style : "",
     aspectRatio ? "Requested aspect ratio: " + aspectRatio : "",
     "User request:\n" + prompt,
-    imageDataUrl ? "A reference image is attached. Describe only relevant visible visual information and preserve the user's written constraints." : "",
+    (imageDataUrl || imageUrl) ? "A reference image is attached. Describe only relevant visible visual information and preserve the user's written constraints." : "",
   ].filter(Boolean).join("\n\n");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const startedAt = Date.now();
   try {
-    const userContent = imageDataUrl
-      ? [{ type: "text", text: userText }, { type: "image_url", image_url: { url: imageDataUrl } }]
+    const referenceImage = imageDataUrl || imageUrl;
+    const userContent = referenceImage
+      ? [{ type: "text", text: userText }, { type: "image_url", image_url: { url: referenceImage } }]
       : userText;
     const response = await fetch(OPENROUTER_URL + "/chat/completions", {
       method: "POST",
