@@ -2,6 +2,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "lokal-ai-images";
 const MODEL = "@cf/black-forest-labs/flux-2-klein-4b";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const MAX_INPUT_BYTES = 20 * 1024 * 1024;
 const json = (data: Record<string, unknown>, status = 200, cors: HeadersInit = {}) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...cors } });
@@ -33,7 +34,7 @@ async function signedUrl(db: SupabaseClient, path: string): Promise<string> {
 
 export async function handleImageEditApi(
   db: SupabaseClient, userId: string, action: string, body: Record<string, unknown> | null,
-  jobId: string, cors: HeadersInit,
+  jobId: string, openRouterKey: string, cors: HeadersInit,
 ): Promise<Response> {
   if (action === "image_edit_quota") {
     const today = new Date().toISOString().slice(0, 10);
@@ -93,6 +94,64 @@ export async function handleImageEditApi(
     .select("id,status").eq("user_id", userId).eq("request_id", requestId).maybeSingle();
   if (priorError) return fail("وضعیت درخواست قبلی بررسی نشد.", 500, cors);
   if (prior) return json({ success: true, duplicate: true, job: { id: prior.id, status: prior.status }, model: MODEL }, 202, cors);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: quotaRow, error: quotaError } = await db.from("armex_image_edit_daily_usage")
+    .select("edits_used").eq("user_id", userId).eq("usage_date", today).maybeSingle();
+  if (quotaError) return fail("سهمیه ویرایش تصویر در دسترس نیست.", 503, cors);
+  if (Number(quotaRow?.edits_used || 0) >= 5) {
+    return json({ success: false, code: "daily_quota_exceeded", error: "سهمیه رایگان امروزت تمام شده است.", used: 5, limit: 5 }, 429, cors);
+  }
+  if (!openRouterKey) return fail("هوش معنایی ویرایش تصویر موقتاً در دسترس نیست.", 503, cors);
+  let compiledPrompt = "";
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(OPENROUTER_URL + "/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: "Bearer " + openRouterKey,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://lokal-ai.net",
+          "X-Title": "LOKAL AI Image Edit Prompt Compiler",
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-4o-mini",
+          temperature: 0.1,
+          max_tokens: 500,
+          messages: [
+            {
+              role: "system",
+              content: "You compile image-edit instructions for FLUX.2 Klein. Translate Persian or mixed-language instructions into precise English. Preserve exactly what must change and what must remain unchanged, including object identity, count, shape, color, materials, placement, background, perspective, and all negative constraints. Do not add unrequested objects or redesign untouched parts. For multiple reference images, keep their roles distinct and refer to their order only when the user specifies which image supplies which element. Return only the final editing prompt, with no explanation or Markdown."
+            },
+            { role: "user", content: "Compile this exact image-edit request without changing its meaning:\n\n" + prompt }
+          ]
+        }),
+      });
+      if (!response.ok) throw new Error("EDIT_PROMPT_COMPILER_HTTP_" + response.status);
+      const result = await response.json();
+      const content = result.choices?.[0]?.message?.content;
+      compiledPrompt = typeof content === "string"
+        ? content.replace(/^\s*```(?:text)?\s*/i, "").replace(/\s*```\s*$/, "").trim()
+        : "";
+      console.log("Image edit prompt compiled", {
+        requestId,
+        inputTokens: Number(result.usage?.prompt_tokens || 0),
+        outputTokens: Number(result.usage?.completion_tokens || 0),
+        providerCostUsd: Number.isFinite(Number(result.usage?.cost)) ? Number(result.usage.cost) : null,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch (error) {
+    console.error("Image edit prompt compilation failed", { requestId, code: String(error?.message || "compiler_error").slice(0, 80) });
+    return fail("دستور ویرایش برای موتور تصویر به‌درستی آماده نشد؛ سهمیه‌ای مصرف نشده است. دوباره تلاش کن.", 502, cors);
+  }
+  if (!compiledPrompt || compiledPrompt.length > 1600) {
+    return fail("دستور نهایی ویرایش معتبر نیست؛ سهمیه‌ای مصرف نشده است.", 502, cors);
+  }
 
   const decodedImages: Array<{ bytes: Uint8Array; mime: string; extension: string }> = [];
   if (attachmentIds.length) {
@@ -165,7 +224,7 @@ export async function handleImageEditApi(
   }
 
   const { data, error } = await db.rpc("armex_enqueue_image_edit_multi", {
-    p_user_id: userId, p_request_id: requestId, p_prompt: prompt, p_input_storage_paths: paths,
+    p_user_id: userId, p_request_id: requestId, p_prompt: compiledPrompt, p_input_storage_paths: paths,
   });
   if (error || !data) {
     // A transport error can be ambiguous: the transaction may have committed.
