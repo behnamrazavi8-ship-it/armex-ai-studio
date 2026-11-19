@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { supabaseAuthHeaders } from "./supabase-auth.mjs";
 import { normalizeImageForFlux } from "./image-normalizer.mjs";
+import { getImageEditInputPaths } from "./image-edit-inputs.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -83,11 +84,10 @@ async function heartbeatImageEdit(jobId) {
 }
 
 async function runImageEditProvider(job) {
-  const inputPaths = Array.isArray(job.input_storage_paths) && job.input_storage_paths.length
-    ? job.input_storage_paths
-    : [job.input_storage_path];
-  if (inputPaths.length < 1 || inputPaths.length > 3) {
-    const error = new Error("IMAGE_EDIT_INPUT_COUNT_INVALID");
+  let inputPaths;
+  try { inputPaths = getImageEditInputPaths(job); }
+  catch {
+    const error = new Error("IMAGE_EDIT_INPUT_COUNT_OR_PATH_INVALID");
     error.retryable = false;
     throw error;
   }
