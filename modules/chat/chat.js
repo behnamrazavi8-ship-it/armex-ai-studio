@@ -26,10 +26,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  historyDrawer?.addEventListener("click",event=>{
   if(event.target?.matches?.("[data-chat-history-close]"))closeHistoryDrawer();
  });
- document.addEventListener("click",event=>{
-  const nav=event.target?.closest?.("[data-page]");
-  if(nav)document.body.classList.toggle("lokal-chat-active",nav.dataset.page==="chat");
- });
+ window.addEventListener("lokal:show-public-home",()=>document.body.classList.remove("lokal-chat-active"));
  let activeChatConversationId=null;
  let chatRequestBusy=false;
  let selectedImageFiles=[];
@@ -395,7 +392,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
  }));
  supabase.auth.onAuthStateChange((event,session)=>{
   if(event==="SIGNED_IN"&&session)void loadChatHistoryList(session);
-  if(event==="SIGNED_OUT"){activeChatConversationId=null;lastImageContext=[];window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=[];window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS=[];window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID="";window.LOKAL_PROMPT_REFERENCE_IMAGE=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
+  if(event==="SIGNED_OUT"){document.body.classList.remove("lokal-chat-active");activeChatConversationId=null;lastImageContext=[];window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=[];window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS=[];window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID="";window.LOKAL_PROMPT_REFERENCE_IMAGE=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
  });
  void supabase.auth.getSession().then(({data:{session}})=>{if(session)void loadChatHistoryList(session)});
 }
