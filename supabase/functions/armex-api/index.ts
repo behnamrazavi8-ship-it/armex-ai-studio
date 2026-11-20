@@ -1,5 +1,6 @@
 import { createSupabaseContext } from "npm:@supabase/server@1";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { handleImageEditApi } from "./image-edit-api.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -29,7 +30,7 @@ const allowedOrigins = (): string[] => {
     .map((value) => value.trim())
     .filter(Boolean);
   // Explicitly allow the active LOKAL AI Preview origin for authenticated browser testing.
-  return [...new Set([...configured, "https://feat-prompt-intelligence-pro.armex-ai-studio.pages.dev"])];
+  return [...new Set([...configured, "https://preview.lokal-ai.net", "https://feat-lokal-popcorn-visual-on.armex-ai-studio.pages.dev", "https://feat-prompt-intelligence-pro.armex-ai-studio.pages.dev"])];
 };
 
 const corsFor = (origin: string | null): HeadersInit => {
@@ -167,7 +168,7 @@ const listGeneratedImages = async (db: SupabaseClient, userId: string, cors: Hea
 };
 
 const generateImage = async (
-  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+  db: SupabaseClient, userId: string, body: Json, openRouterKey: string, cors: HeadersInit,
 ): Promise<Response> => {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   const requestId = isUuid(body.request_id) ? body.request_id : "";
@@ -180,6 +181,68 @@ const generateImage = async (
   if (!requestId) {
     return fail("A UUID request_id is required for safe image billing", 400, cors);
   }
+
+  // FLUX.1 Schnell is weak with mixed Persian/English instructions. Compile
+  // every request into a precise English prompt before reserving any credits.
+  // This inference is included in the image workflow and does not add a wallet debit.
+  if (!openRouterKey) return fail("Image prompt intelligence is temporarily unavailable; no credits were reserved", 503, cors);
+  let compiledPrompt = "";
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(OPENROUTER_URL + "/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: "Bearer " + openRouterKey,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://lokal-ai.net",
+          "X-Title": "LOKAL AI Image Prompt Compiler",
+        },
+        body: JSON.stringify({
+          model: "openai/gpt-4o-mini",
+          temperature: 0.1,
+          max_tokens: 650,
+          messages: [
+            {
+              role: "system",
+              content: "You are a strict text-to-image prompt compiler for FLUX. Translate the user's request into clear, concise English. Preserve every explicit object, exact count, identity, color, material, action, position, spatial relation, camera/viewpoint, background, style, lighting, and negative constraint. Never invent extra subjects, props, text, logos, or scene details. Do not omit small but explicit requirements. Resolve Persian wording faithfully; do not replace a specific object with a generic category. Return only the final image prompt, with no explanation or markdown."
+            },
+            {
+              role: "user",
+              content: "Compile this exact request without changing its meaning:\n\n" + prompt
+            }
+          ]
+        }),
+      });
+      if (!response.ok) throw new Error("PROMPT_COMPILER_HTTP_" + response.status);
+      const result = await response.json();
+      const content = result.choices?.[0]?.message?.content;
+      console.log("Image prompt compiled", {
+        requestId,
+        model: "openai/gpt-4o-mini",
+        inputTokens: Number(result.usage?.prompt_tokens || 0),
+        outputTokens: Number(result.usage?.completion_tokens || 0),
+        providerCostUsd: Number.isFinite(Number(result.usage?.cost)) ? Number(result.usage.cost) : null,
+      });
+      compiledPrompt = typeof content === "string"
+        ? content.replace(/^\s*```(?:text)?\s*/i, "").replace(/\s*```\s*$/, "").trim()
+        : "";
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch (error) {
+    console.error("Image prompt compilation failed", {
+      requestId,
+      code: String(error instanceof Error ? error.message : "prompt_compiler_error").slice(0, 80),
+    });
+    return fail("پرامپت برای موتور تصویر به‌درستی آماده نشد؛ هیچ اعتباری رزرو نشده است. دوباره تلاش کن.", 502, cors);
+  }
+  if (!compiledPrompt || compiledPrompt.length > 2048) {
+    return fail("پرامپت نهایی برای موتور تصویر معتبر نیست؛ هیچ اعتباری رزرو نشده است.", 502, cors);
+  }
+
   if (!Number.isSafeInteger(IMAGE_CREDIT_COST) || IMAGE_CREDIT_COST < 1 || IMAGE_CREDIT_COST > 1000) {
     return fail("Image billing configuration is invalid", 503, cors);
   }
@@ -187,7 +250,7 @@ const generateImage = async (
   const { data, error } = await db.rpc("armex_enqueue_image_generation", {
     p_user_id: userId,
     p_request_id: requestId,
-    p_prompt: prompt,
+    p_prompt: compiledPrompt,
     p_model: IMAGE_MODEL,
     p_aspect_ratio: aspectRatio,
     p_resolution: resolution,
@@ -212,6 +275,7 @@ const generateImage = async (
     job: { id: data.job_id, status: data.status || "pending" },
     credits_charged: IMAGE_CREDIT_COST,
     model: IMAGE_MODEL,
+    prompt_compiled: true,
   }, 202, cors);
 };
 
@@ -404,7 +468,7 @@ const listChatAttachments = async (
   db: SupabaseClient, userId: string, conversationId: string,
 ): Promise<Json[]> => {
   const { data, error } = await db.from("armex_chat_attachments")
-    .select("id,original_filename,mime_type,size_bytes,status,created_at,storage_path")
+    .select("id,message_id,original_filename,mime_type,size_bytes,status,created_at,storage_path")
     .eq("user_id", userId).eq("conversation_id", conversationId).eq("status", "ready")
     .order("created_at", { ascending: true }).limit(20);
   if (error) throw new Error("Could not load conversation attachments");
@@ -417,6 +481,55 @@ const listChatAttachments = async (
   })).then((items) => items.filter(Boolean) as Json[]);
 };
 
+
+const saveChatMessage = async (
+  db: SupabaseClient, userId: string, body: Json, cors: HeadersInit,
+): Promise<Response> => {
+  const conversationId = body.conversation_id;
+  const requestId = body.request_id;
+  const role = body.role === "assistant" ? "assistant" : body.role === "user" ? "user" : "";
+  const content = typeof body.content === "string" ? body.content.trim() : "";
+  const rawAttachmentIds = Array.isArray(body.attachment_ids)
+    ? body.attachment_ids
+    : body.attachment_id == null ? [] : [body.attachment_id];
+  const attachmentIds = rawAttachmentIds as unknown[];
+  const model = typeof body.model === "string" && body.model.trim() ? body.model.trim() : DEFAULT_MODEL;
+  if (!isUuid(conversationId) || !isUuid(requestId) || !role || !content || content.length > MAX_MESSAGE_CHARS) {
+    return fail("Invalid conversation message", 400, cors);
+  }
+  if (attachmentIds.length > 3 || attachmentIds.some((id) => !isUuid(id))) {
+    return fail("One to three valid attachment IDs are supported", 400, cors);
+  }
+  if (attachmentIds.length) {
+    const { data: attachments, error } = await db.from("armex_chat_attachments")
+      .select("id").in("id", attachmentIds as string[]).eq("user_id", userId)
+      .eq("conversation_id", conversationId).eq("status", "ready");
+    if (error || !attachments || attachments.length !== attachmentIds.length) {
+      return fail("One or more attachments were not found or are not ready", 404, cors);
+    }
+  }
+  const { data: messageId, error: saveError } = await db.rpc("armex_save_chat_message", {
+    p_user_id: userId,
+    p_conversation_id: conversationId,
+    p_request_id: requestId,
+    p_role: role,
+    p_content: content,
+    p_model: model,
+  });
+  if (saveError || !messageId) {
+    console.error("Chat message persistence failed", { requestId, code: saveError?.code });
+    return fail("Could not save conversation message", 500, cors);
+  }
+  if (attachmentIds.length) {
+    const { error: attachmentUpdateError } = await db.from("armex_chat_attachments")
+      .update({ message_id: messageId })
+      .in("id", attachmentIds as string[]).eq("user_id", userId).eq("conversation_id", conversationId);
+    if (attachmentUpdateError) {
+      console.error("Chat attachment message link failed", { requestId, code: attachmentUpdateError.code });
+    }
+  }
+  return json({ success: true, message_id: messageId, request_id: requestId }, 200, cors);
+};
 
 const handle = async (request: Request): Promise<Response> => {
   const origin = request.headers.get("Origin");
@@ -565,6 +678,11 @@ const handle = async (request: Request): Promise<Response> => {
     return json({ success: true, conversation, messages: (rows ?? []).reverse(), attachments }, 200, cors);
   }
 
+  const imageEditGetAction = url.searchParams.get("action") || "";
+  if (request.method === "GET" && ["image_edit_quota", "image_edit_status", "image_edits"].includes(imageEditGetAction)) {
+    return await handleImageEditApi(db, userId, imageEditGetAction, null, url.searchParams.get("job_id") || "", openRouterKey, cors);
+  }
+
   if (request.method === "GET" && url.searchParams.get("action") === "images") {
     return await listGeneratedImages(db, userId, cors);
   }
@@ -589,7 +707,7 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   if (body.action === "generate_image") {
-    return await generateImage(db, userId, body, cors);
+    return await generateImage(db, userId, body, openRouterKey, cors);
   }
   if (body.action === "create_conversation") {
     return await createChatConversation(db, userId, body, cors);
@@ -600,10 +718,27 @@ const handle = async (request: Request): Promise<Response> => {
   if (body.action === "complete_media_upload") {
     return await completeChatMediaUpload(db, userId, body, cors);
   }
+  if (body.action === "save_chat_message") {
+    return await saveChatMessage(db, userId, body, cors);
+  }
+  if (body.action === "edit_image") {
+    return await handleImageEditApi(db, userId, "edit_image", body, "", openRouterKey, cors);
+  }
 
-  const message = typeof body.message === "string" ? body.message.trim() : "";
+  const submittedMessage = typeof body.message === "string" ? body.message.trim() : "";
+  const rawAttachmentIds = Array.isArray(body.attachment_ids)
+    ? body.attachment_ids
+    : body.attachment_id == null ? [] : [body.attachment_id];
+  const attachmentIds = rawAttachmentIds as unknown[];
+  const attachmentOnlyRequest = attachmentIds.length > 0 && isUuid(body.conversation_id);
+  const message = submittedMessage || (attachmentOnlyRequest
+    ? "Please inspect the attached images and describe what is visible."
+    : "");
   if (!message || message.length > MAX_MESSAGE_CHARS) {
     return fail("A message between 1 and " + MAX_MESSAGE_CHARS + " characters is required", 400, cors);
+  }
+  if (attachmentIds.length > 3 || attachmentIds.some((id) => !isUuid(id))) {
+    return fail("One to three valid image attachments are supported", 400, cors);
   }
 
   const model = typeof body.model === "string" && body.model.trim()
@@ -614,9 +749,7 @@ const handle = async (request: Request): Promise<Response> => {
   }
 
   const conversationId = body.conversation_id;
-  const attachmentId = body.attachment_id == null ? null : body.attachment_id;
-  if (attachmentId != null && !isUuid(attachmentId)) return fail("Invalid attachment_id", 400, cors);
-  if (attachmentId != null && !conversationId) return fail("An attachment requires an existing conversation", 400, cors);
+  if (attachmentIds.length && !conversationId) return fail("Attachments require an existing conversation", 400, cors);
   if (conversationId != null && !isUuid(conversationId)) {
     return fail("Invalid conversation_id", 400, cors);
   }
@@ -634,10 +767,8 @@ const handle = async (request: Request): Promise<Response> => {
   if (!requestId) return fail("A UUID request_id is required for idempotent billing", 400, cors);
 
   const attemptId = crypto.randomUUID();
-  const chatCreditCost = Number(Deno.env.get("CHAT_CREDIT_COST") ?? "1");
-  if (!Number.isSafeInteger(chatCreditCost) || chatCreditCost !== 1) {
-    return fail("Chat billing configuration must be CHAT_CREDIT_COST=1", 503, cors);
-  }
+  // Smart Chat is free to the user; provider costs remain recorded in armex_usage.actual_cost_usd.
+  const chatCreditCost = 0;
 
   const { data: priorUsage, error: priorUsageError } = await db
     .from("armex_usage")
@@ -711,20 +842,39 @@ const handle = async (request: Request): Promise<Response> => {
     }).reverse();
   }
 
-  let verifiedAttachment: Record<string, unknown> | null = null;
-  let imageSignedUrl: string | null = null;
-  if (attachmentId) {
-    const { data: attachment, error: attachmentError } = await db.from("armex_chat_attachments")
+  const verifiedAttachments: Array<Record<string, unknown>> = [];
+  const imageSignedUrls: string[] = [];
+  let videoAttachment: Record<string, unknown> | null = null;
+  if (attachmentIds.length) {
+    const { data: attachments, error: attachmentError } = await db.from("armex_chat_attachments")
       .select("id,conversation_id,storage_path,mime_type,original_filename,status")
-      .eq("id", attachmentId).eq("user_id", userId).eq("conversation_id", conversationId)
-      .eq("status", "ready").maybeSingle();
-    if (attachmentError || !attachment) return fail("Attachment not found or not ready", 404, cors);
-    verifiedAttachment = attachment as Record<string, unknown>;
-    if (String(attachment.mime_type).startsWith("image/")) {
-      const { data: signed, error: signingError } = await db.storage.from(CHAT_MEDIA_BUCKET)
-        .createSignedUrl(String(attachment.storage_path), 300);
-      if (signingError || !signed?.signedUrl) return fail("Could not prepare image for the AI model", 503, cors);
-      imageSignedUrl = signed.signedUrl;
+      .in("id", attachmentIds as string[]).eq("user_id", userId).eq("conversation_id", conversationId)
+      .eq("status", "ready");
+    if (attachmentError || !attachments || attachments.length !== attachmentIds.length) {
+      return fail("One or more attachments were not found or are not ready", 404, cors);
+    }
+    const attachmentById = new Map<string, Record<string, unknown>>();
+    (attachments as Array<Record<string, unknown>>).forEach((item) => attachmentById.set(String(item.id), item));
+    const orderedAttachments: Record<string, unknown>[] = [];
+    (attachmentIds as string[]).forEach((id) => {
+      const item = attachmentById.get(id);
+      if (item) orderedAttachments.push(item);
+    });
+    verifiedAttachments.push(...orderedAttachments);
+    const imageAttachments = verifiedAttachments.filter((item) => String(item.mime_type).startsWith("image/"));
+    if (imageAttachments.length !== verifiedAttachments.length && verifiedAttachments.length !== 1) {
+      return fail("Only images can be combined in one chat message", 400, cors);
+    }
+    if (imageAttachments.length) {
+      const signedResults = await Promise.all(imageAttachments.map((item) =>
+        db.storage.from(CHAT_MEDIA_BUCKET).createSignedUrl(String(item.storage_path), 300)
+      ));
+      if (signedResults.some((item) => item.error || !item.data?.signedUrl)) {
+        return fail("Could not prepare all images for the AI model", 503, cors);
+      }
+      imageSignedUrls.push(...signedResults.map((item) => item.data!.signedUrl));
+    } else {
+      videoAttachment = verifiedAttachments[0];
     }
   }
 
@@ -748,28 +898,37 @@ const handle = async (request: Request): Promise<Response> => {
     const promptPrice = safeNumber(modelInfo?.pricing?.prompt, -1);
     const completionPrice = safeNumber(modelInfo?.pricing?.completion, -1);
 
-    const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
-      p_user_id: userId,
-      p_amount: chatCreditCost,
-      p_idempotency_key: "ai_request:" + requestId + ":" + attemptId,
-      p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
-      p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation?.id ?? null },
-    });
-    if (debitError) {
-      console.error("Credit debit failed", { requestId, code: debitError.code });
-      return fail("Could not reserve credits", 500, cors);
+    // Smart Chat and Prompt Lab are free (chatCreditCost = 0).
+    // Never call armex_debit_credits with zero: the database RPC correctly
+    // rejects non-positive amounts and was causing P0001 / "Could not reserve credits".
+    if (chatCreditCost > 0) {
+      const { data: debited, error: debitError } = await db.rpc("armex_debit_credits", {
+        p_user_id: userId,
+        p_amount: chatCreditCost,
+        p_idempotency_key: "ai_request:" + requestId + ":" + attemptId,
+        p_description: "مصرف اعتبار برای گفتگوی هوش مصنوعی",
+        p_metadata: { request_id: requestId, attempt_id: attemptId, model, conversation_id: conversation?.id ?? null },
+      });
+      if (debitError) {
+        console.error("Credit debit failed", { requestId, code: debitError.code });
+        return fail("Could not reserve credits", 500, cors);
+      }
+      if (debited !== true) return fail("Insufficient credits", 402, cors);
+      debitCompleted = true;
     }
-    if (debited !== true) return fail("Insufficient credits", 402, cors);
-    debitCompleted = true;
 
+    const userContent = imageSignedUrls.length
+      ? [
+          { type: "text", text: message },
+          ...imageSignedUrls.map((imageSignedUrl) => ({ type: "image_url", image_url: { url: imageSignedUrl } })),
+        ]
+      : videoAttachment
+      ? message + String.fromCharCode(10, 10) + "[The user attached a video file named " + String(videoAttachment.original_filename) + ". The video is securely stored but video understanding/editing is not available in this release. Do not claim to have viewed or edited it.]"
+      : message;
     const providerMessages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...context,
-      { role: "user", content: imageSignedUrl
-        ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageSignedUrl } }]
-        : verifiedAttachment && String(verifiedAttachment.mime_type).startsWith("video/")
-        ? message + String.fromCharCode(10, 10) + "[The user attached a video file named " + String(verifiedAttachment.original_filename) + ". The video is securely stored but video understanding/editing is not available in this release. Do not claim to have viewed or edited it.]"
-        : message },
+      { role: "user", content: userContent },
     ];
 
     const providerResponse = await fetch(OPENROUTER_URL + "/chat/completions", {
@@ -890,9 +1049,9 @@ const handle = async (request: Request): Promise<Response> => {
       );
     }
 
-    if (verifiedAttachment) {
+    if (verifiedAttachments.length) {
       await db.from("armex_chat_attachments").update({ message_id: savedMessages[0]?.id ?? null })
-        .eq("id", attachmentId).eq("user_id", userId);
+        .in("id", attachmentIds as string[]).eq("user_id", userId).eq("conversation_id", conversation.id);
     }
 
     const { error: usageError } = await db.from("armex_usage").insert({
