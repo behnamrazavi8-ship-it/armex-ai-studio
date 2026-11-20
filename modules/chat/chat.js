@@ -396,5 +396,7 @@ export function initSmartChat({ supabase, callArmexApi, loadWalletBalance, ensur
   if(event==="SIGNED_IN"&&session)void loadChatHistoryList(session);
   if(event==="SIGNED_OUT"){document.body.classList.remove("lokal-chat-active");activeChatConversationId=null;lastImageContext=[];window.LOKAL_PROMPT_REFERENCE_IMAGE_URL="";window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS=[];window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS=[];window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID="";window.LOKAL_PROMPT_REFERENCE_IMAGE=null;clearSelectedImage();chatHistoryList?.replaceChildren();renderChatHistory([]);setChatStatus("")}
  });
- void supabase.auth.getSession().then(({data:{session}})=>{if(session)void loadChatHistoryList(session)});
+ // Always render the initial empty state so the transcript is not blank on first visit.
+  renderChatHistory([]);
+  void supabase.auth.getSession().then(({data:{session}})=>{if(session)void loadChatHistoryList(session)});
 }
