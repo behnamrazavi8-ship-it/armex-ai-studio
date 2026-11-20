@@ -154,10 +154,12 @@
   }
   showPage(tool==='image'?'image':'prompt');
  }));
- // Dashboard tool cards: handle taps at the workspace root so nested SVG/text layers
- // cannot swallow the click before it reaches the navigation action.
- workspaceRoot?.addEventListener('click',event=>{
-  const card=event.target instanceof Element?event.target.closest('#page-home .app-tool'):null;
+ // Dashboard cards: delegate from document capture and inspect the composed event path.
+ // This also handles taps whose target is a nested SVG/path or another retargeted child.
+ document.addEventListener('click',event=>{
+  const path=typeof event.composedPath==='function'?event.composedPath():[];
+  const card=path.find(node=>node instanceof Element&&node.matches('#page-home .app-tool'))
+   ||(event.target instanceof Element?event.target.closest('#page-home .app-tool'):null);
   if(!card)return;
   event.preventDefault();
   event.stopImmediatePropagation();
