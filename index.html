@@ -544,7 +544,14 @@ else{
  document.querySelectorAll('.feature[data-page]').forEach(card=>{
   card.setAttribute('role','button');
   card.setAttribute('tabindex','0');
-  const openTool=()=>window.dispatchEvent(new CustomEvent('lokal:show-workspace',{detail:{page:card.dataset.page}}));
+  const openTool=()=>{
+   const page=card.dataset.page;
+   // Preserve the exact public landing-page entry before opening a tool, so Android
+   // Back returns to the page the user came from instead of leaving the app.
+   history.replaceState({lokalRoute:'public'},'',location.pathname+location.search+location.hash);
+   history.pushState({lokalRoute:'workspace',lokalWorkspacePage:page},'',location.pathname+location.search+'#workspace-'+page);
+   window.dispatchEvent(new CustomEvent('lokal:show-workspace',{detail:{page}}));
+  };
   card.addEventListener('click',openTool);
   card.addEventListener('keydown',event=>{
    if(event.key==='Enter'||event.key===' '){event.preventDefault();openTool();}
