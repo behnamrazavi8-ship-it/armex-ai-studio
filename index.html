@@ -173,6 +173,25 @@
   const target=card.dataset.page||card.dataset.go;
   if(target)showPage(target);
  },true);
+ // Mobile browsers can occasionally omit the synthesized click after a touch.
+ // Route dashboard cards on pointer release as well, while keeping click for keyboard activation.
+ document.addEventListener('pointerup',event=>{
+  const path=typeof event.composedPath==='function'?event.composedPath():[];
+  const card=path.find(node=>node instanceof Element&&node.matches('#page-home .app-tool'))
+   ||(event.target instanceof Element?event.target.closest('#page-home .app-tool'):null);
+  if(!card)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if(card.dataset.tool==='video'){
+   const type=document.getElementById('contentType');
+   if(type)type.value='video';
+   showPage('prompt');
+   toast('Prompt Lab برای آماده‌سازی پرامپت ویدئو باز شد. تولید خودکار ویدئو هنوز فعال نیست.');
+   return;
+  }
+  const target=card.dataset.page||card.dataset.go;
+  if(target)showPage(target);
+ },true);
  function buildPrompt(){const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return ''}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;const labels={image:'Create a high-quality image based on this concept:',video:'Create a cinematic video based on this concept:',design:'Create a polished graphic design based on this concept:',social:'Create engaging social media content based on this concept:'};const en=labels[type]+' '+idea+'. Visual direction: '+style+'. Composition: '+ratio+'. Use clear subject hierarchy, refined lighting, professional production quality, coherent perspective and intentional color grading. Avoid visual clutter, distorted anatomy, random text, watermarks and unwanted logos.';const fa='بر اساس این ایده '+(type==='video'?'یک ویدیوی سینمایی':type==='design'?'یک طراحی گرافیکی حرفه‌ای':type==='social'?'یک محتوای جذاب شبکه اجتماعی':'یک تصویر باکیفیت')+' خلق کن: '+idea+'؛ سبک بصری: '+style+'؛ کادر: '+ratio+'؛ ترکیب‌بندی حرفه‌ای، نورپردازی دقیق، جزئیات منسجم و کیفیت خروجی بالا. از شلوغی بصری، نوشته‌های تصادفی، واترمارک و لوگوهای ناخواسته پرهیز کن.';return lang==='fa'?fa:en}
  $('#generatePrompt').addEventListener('click',()=>{output=buildPrompt();if(!output)return;$('#promptResult').textContent=output;$('#promptResult').style.display='block';$('#resultActions').style.display='flex'});
  $('#generateAIPrompt').addEventListener('click',()=>{const idea=$('#idea').value.trim();if(!idea){toast('ابتدا ایده‌ات را بنویس.');$('#idea').focus();return}const type=$('#contentType').value,style=$('#style').value,ratio=$('#ratio').value,lang=$('#language').value;window.dispatchEvent(new CustomEvent('lokal:generate-ai-prompt',{detail:{prompt:idea,mediaType:type,style,aspectRatio:ratio,language:lang,imageBase64:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_base64||'',imageMimeType:window.LOKAL_PROMPT_REFERENCE_IMAGE?.image_mime_type||'',imageUrl:window.LOKAL_PROMPT_REFERENCE_IMAGE_URL||'',imageUrls:window.LOKAL_PROMPT_REFERENCE_IMAGE_URLS||[],imageAttachmentIds:window.LOKAL_PROMPT_REFERENCE_ATTACHMENT_IDS||[],conversationId:window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID||''}}))});
