@@ -123,7 +123,7 @@
   // Apply chat viewport mode even when navigation resolves to the already-active page.
   document.body.classList.toggle('lokal-chat-active',target==='chat');
   const current=$('.page.active')?.id.replace('page-','');
-  if(current===target)return;
+  if(current===target){if(target==='chat')window.scrollTo(0,0);return;}
   $$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+target));
   $$('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===target));
   const dockHome=$('.mobile-nav [data-open-workspace]');if(dockHome)dockHome.classList.toggle('active',target==='home');
@@ -132,7 +132,7 @@
   }
   if(target==='projects')renderProjects();
   if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'));
-   if(target==='chat')window.dispatchEvent(new CustomEvent('lokal:open-chat'));
+   if(target==='chat'){window.scrollTo(0,0);window.dispatchEvent(new CustomEvent('lokal:open-chat'));}
  }
  window.lokalShowPage=showPage;
  window.addEventListener('popstate',event=>{
