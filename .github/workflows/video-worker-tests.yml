@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/video-worker-ferdowsi-standalone
+      - feat/video-worker-helra-adapter
     paths:
       - "video-worker/**"
       - "supabase/migrations/**"
