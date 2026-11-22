@@ -48,7 +48,7 @@ def gpu_preflight() -> dict[str, Any]:
     }
 
 
-@app.function(gpu=GPU_TYPE, image=image, timeout=1200)
+@app.function(gpu=GPU_TYPE, image=image)
 def generate_video(payload: dict[str, Any]) -> dict[str, Any]:
     """Execute the existing worker contract on Helra allocated GPU.
 
