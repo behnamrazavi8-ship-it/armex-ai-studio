@@ -37,11 +37,18 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.match(worker, /allowedHosts\.has\(host\)/);
   assert.match(worker, /safeOutputUrl\(new URL\(location, url\)\.toString\(\), allowedHosts\)/);
   assert.match(worker, /isIpLiteral/);
-  assert.match(worker, /Deno\.resolveDns\(host, "A"\)/);
-  assert.match(worker, /Deno\.resolveDns\(host, "AAAA"\)/);
-  assert.match(worker, /isPublicIpv4/);
-  assert.match(worker, /provider_output_dns_not_public_ipv4_only/);
-  assert.match(worker, /await assertPublicDns\(new URL\(url\)\.hostname\)/);
+  assert.match(worker, /fetchPinnedHttps/);
+  const pinned = await read("supabase/functions/alpha-video-worker/pinned-http.ts");
+  assert.match(pinned, /Deno\.resolveDns\(host, "A"\)/);
+  assert.match(pinned, /Deno\.resolveDns\(host, "AAAA"\)/);
+  assert.match(pinned, /isPublicIpv4/);
+  assert.match(pinned, /provider_output_dns_not_public_ipv4_only/);
+  assert.match(pinned, /Deno\.connect\(\{ hostname: ip, port: 443, transport: "tcp" \}\)/);
+  assert.match(pinned, /Deno\.startTls\(tcp, \{ hostname: host \}\)/);
+  assert.match(pinned, /provider_output_peer_ip_mismatch/);
+  assert.match(pinned, /Accept-Encoding: identity/);
+  assert.match(pinned, /pinned_http_transfer_encoding_unsupported/);
+  assert.doesNotMatch(worker, /fetch\(url, \{ redirect: "manual" \}\)/);
 });
 
 test("schema draft reserves credits atomically and protects user-owned jobs", async () => {
