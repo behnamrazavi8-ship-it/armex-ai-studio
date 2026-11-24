@@ -4,6 +4,7 @@ const BASE = "https://api.appalpha.ir/v1";
 const BUCKET = "lokal-chat-media";
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const workerId = crypto.randomUUID();
+type WorkerDb = SupabaseClient<any, "public", "public", any, any>;
 
 function required(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -80,14 +81,14 @@ async function readBoundedBody(response: Response): Promise<Uint8Array> {
   return bytes;
 }
 
-async function markFailed(db: SupabaseClient, jobId: string, code: string) {
+async function markFailed(db: WorkerDb, jobId: string, code: string) {
   const { error } = await db.rpc("armex_fail_video_job", {
     p_job_id: jobId, p_worker_id: workerId, p_error_code: code.slice(0, 80),
   });
   if (error) throw new Error("VIDEO_FAIL_RPC_" + error.code);
 }
 
-async function processOne(db: ReturnType<typeof createClient>, apiKey: string) {
+async function processOne(db: WorkerDb, apiKey: string) {
   const { data: job, error: claimError } = await db.rpc("armex_claim_video_job", { p_worker_id: workerId });
   if (claimError) throw new Error("VIDEO_CLAIM_FAILED_" + claimError.code);
   if (!job) return { worked: false };
@@ -204,12 +205,14 @@ async function processOne(db: ReturnType<typeof createClient>, apiKey: string) {
     if (bytes.length < 12 || String.fromCharCode(...bytes.slice(4, 8)) !== "ftyp") {
       throw new Error("video_mp4_signature_invalid");
     }
-    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const outputBuffer = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(outputBuffer).set(bytes);
+    const digest = await crypto.subtle.digest("SHA-256", outputBuffer);
     const sha256 = Array.from(new Uint8Array(digest))
       .map((value) => value.toString(16).padStart(2, "0")).join("");
     outputPath = String(job.user_id) + "/video/" + jobId + ".mp4";
     await db.storage.from(BUCKET).remove([outputPath]);
-    const { error: uploadError } = await db.storage.from(BUCKET).upload(outputPath, new Blob([bytes], { type: "video/mp4" }), {
+    const { error: uploadError } = await db.storage.from(BUCKET).upload(outputPath, new Blob([outputBuffer], { type: "video/mp4" }), {
       contentType: "video/mp4", upsert: false,
     });
     if (uploadError) throw new Error("video_storage_upload_" + uploadError.message);
