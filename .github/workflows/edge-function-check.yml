@@ -16,11 +16,18 @@ on:
       - "supabase/staging/**"
       - "supabase/migrations/**"
   push:
-    branches: [main]
+    branches: [main, feat/alpha-video-provider]
     paths:
       - "index.html"
+      - "modules/chat/**"
+      - "modules/video/**"
+      - "tests/alpha-video-contract.test.mjs"
+      - "tests/chat-image-edit-intent.test.mjs"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
+      - "supabase/functions/alpha-video-worker/**"
+      - "docs/alpha-video/**"
+      - "supabase/migrations/**"
 
 permissions:
   contents: read
