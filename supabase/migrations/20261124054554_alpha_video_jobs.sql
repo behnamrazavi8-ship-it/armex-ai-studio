@@ -233,7 +233,7 @@ begin
   if p_storage_path is null or p_size_bytes is null or p_sha256 is null
      or p_storage_path <> v_job.user_id::text||'/video/'||v_job.id::text||'.mp4'
      or p_size_bytes <= 0 or p_size_bytes > 52428800
-     or p_sha256 !~ '^[0-9a-f]{64}
+     or p_sha256 !~ '^[0-9a-f]{64}$' then
     raise exception 'Invalid video output metadata' using errcode='22023';
   end if;
   insert into public.armex_messages(conversation_id,user_id,role,content,model)
@@ -273,74 +273,6 @@ begin
   select * into v_job from public.armex_video_generations
     where id=p_job_id and status in ('queued','submitting','processing')
       and locked_by=p_worker_id
-    for update;
-  if not found then return false; end if;
-  update public.armex_video_generations
-    set status='failed',error_code=left(coalesce(p_error_code,'provider_failed'),80),
-        locked_by=null,lease_expires_at=null,completed_at=now(),updated_at=now()
-    where id=p_job_id;
-  perform public.armex_grant_credits(
-    v_job.user_id,v_job.credits_reserved,'refund',
-    'alpha_video_refund:'||v_job.id::text,
-    'بازگشت اعتبار ساخت ویدئوی ناموفق',
-    jsonb_build_object('job_id',v_job.id,'request_id',v_job.request_id,
-      'provider','alpha','model','video-wan22')
-  );
-  return true;
-end;
-$function$;
-
-revoke all on function public.armex_create_video_job(uuid,uuid,uuid,uuid,text,boolean,bigint) from public,anon,authenticated;
-revoke all on function public.armex_claim_video_job(uuid) from public,anon,authenticated;
-revoke all on function public.armex_video_submission_result(uuid,uuid,text,bigint) from public,anon,authenticated;
-revoke all on function public.armex_video_submission_unknown(uuid,uuid) from public,anon,authenticated;
-revoke all on function public.armex_video_update_progress(uuid,uuid,text,integer) from public,anon,authenticated;
-revoke all on function public.armex_finish_video_job(uuid,uuid,text,bigint,text) from public,anon,authenticated;
-revoke all on function public.armex_fail_video_job(uuid,uuid,text) from public,anon,authenticated;
-grant execute on function public.armex_create_video_job(uuid,uuid,uuid,uuid,text,boolean,bigint) to service_role;
-grant execute on function public.armex_claim_video_job(uuid) to service_role;
-grant execute on function public.armex_video_submission_result(uuid,uuid,text,bigint) to service_role;
-grant execute on function public.armex_video_submission_unknown(uuid,uuid) to service_role;
-grant execute on function public.armex_video_update_progress(uuid,uuid,text,integer) to service_role;
-grant execute on function public.armex_finish_video_job(uuid,uuid,text,bigint,text) to service_role;
-grant execute on function public.armex_fail_video_job(uuid,uuid,text) to service_role;
- then
-    raise exception 'Invalid video output metadata' using errcode='22023';
-  end if;
-  insert into public.armex_messages(conversation_id,user_id,role,content,model)
-    values(v_job.conversation_id,v_job.user_id,'assistant',
-      'ویدئوی شما با Wan 2.2 آماده شد.','video-wan22')
-    returning id into v_message;
-  v_attachment := gen_random_uuid();
-  insert into public.armex_chat_attachments(
-    id,user_id,conversation_id,message_id,storage_path,original_filename,
-    mime_type,size_bytes,sha256,status,verified_at
-  ) values (
-    v_attachment,v_job.user_id,v_job.conversation_id,v_message,p_storage_path,
-    'lokal-ai-wan22-video.mp4','video/mp4',p_size_bytes,p_sha256,'ready',now()
-  );
-  update public.armex_video_generations
-    set status='completed',output_storage_path=p_storage_path,
-        output_mime_type='video/mp4',progress_percent=100,completed_at=now(),
-        locked_by=null,lease_expires_at=null,error_code=null,updated_at=now()
-    where id=p_job_id;
-  update public.armex_conversations set updated_at=now()
-    where id=v_job.conversation_id and user_id=v_job.user_id;
-  return true;
-end;
-$function$;
-
-create or replace function public.armex_fail_video_job(
-  p_job_id uuid,p_worker_id uuid,p_error_code text
-) returns boolean
-language plpgsql security definer
-set search_path = pg_catalog, public, pg_temp
-as $function$
-declare v_job public.armex_video_generations%rowtype;
-begin
-  select * into v_job from public.armex_video_generations
-    where id=p_job_id and status in ('queued','submitting','processing')
-      and (p_worker_id is null or locked_by=p_worker_id)
     for update;
   if not found then return false; end if;
   update public.armex_video_generations
