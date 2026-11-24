@@ -19,7 +19,7 @@ function safeOutputUrl(raw: unknown): string {
   const host = url.hostname.toLowerCase();
   if (url.protocol !== "https:" || url.username || url.password ||
       host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
-      host === "127.0.0.1" || host === "::1" || host.startsWith("10.") ||
+      host === "127.0.0.1" || host === "::1" || host === "[::1]" || host.startsWith("fc") || host.startsWith("fe80:") || host.startsWith("10.") ||
       host.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
       host === "169.254.169.254" || host === "0.0.0.0") {
     throw new Error("provider_output_url_rejected");
@@ -43,6 +43,39 @@ async function providerFetch(path: string, apiKey: string, init: RequestInit = {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function fetchProviderOutput(raw: unknown): Promise<Response> {
+  let url = safeOutputUrl(raw);
+  for (let hop = 0; hop < 4; hop++) {
+    const response = await fetch(url, { redirect: "manual" });
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+    const location = response.headers.get("location");
+    if (!location) throw new Error("provider_output_redirect_missing_location");
+    url = safeOutputUrl(new URL(location, url).toString());
+  }
+  throw new Error("provider_output_redirect_limit");
+}
+
+async function readBoundedBody(response: Response): Promise<Uint8Array> {
+  if (!response.body) throw new Error("provider_output_body_missing");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_OUTPUT_BYTES) {
+      await reader.cancel();
+      throw new Error("video_output_too_large");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return bytes;
 }
 
 async function markFailed(db: SupabaseClient, jobId: string, code: string) {
@@ -155,18 +188,16 @@ async function processOne(db: ReturnType<typeof createClient>, apiKey: string) {
 
   let outputPath = "";
   try {
-    const outputUrl = safeOutputUrl(statusData?.output?.url);
-    const download = await fetch(outputUrl, { redirect: "follow" });
+    const download = await fetchProviderOutput(statusData?.output?.url);
     if (!download.ok) throw new Error("output_download_http_" + download.status);
     const declaredLength = Number(download.headers.get("content-length") || 0);
     if (declaredLength > MAX_OUTPUT_BYTES) throw new Error("video_output_too_large");
     const contentType = (download.headers.get("content-type") || "").split(";")[0].toLowerCase();
-    const blob = await download.blob();
-    if (!blob.size || blob.size > MAX_OUTPUT_BYTES ||
-        (contentType && contentType !== "video/mp4" && contentType !== "application/octet-stream")) {
-      throw new Error("invalid_video_output_size_or_type");
+    if (contentType && contentType !== "video/mp4" && contentType !== "application/octet-stream") {
+      throw new Error("invalid_video_output_content_type");
     }
-    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const bytes = await readBoundedBody(download);
+    if (!bytes.length) throw new Error("video_output_empty");
     if (bytes.length < 12 || String.fromCharCode(...bytes.slice(4, 8)) !== "ftyp") {
       throw new Error("video_mp4_signature_invalid");
     }
