@@ -52,17 +52,21 @@ set search_path = pg_catalog, public, auth, pg_temp
 as $function$
 declare
   v_existing public.armex_video_generations%rowtype;
-  v_conversation uuid;
-  v_message uuid;
   v_attachment public.armex_chat_attachments%rowtype;
   v_debited boolean;
+  v_message uuid;
   v_job public.armex_video_generations%rowtype;
 begin
-  if p_user_id is null or p_request_id is null or p_attachment_id is null
-     or p_credits is null or p_credits <= 0
+  if p_user_id is null or p_request_id is null or p_conversation_id is null
+     or p_attachment_id is null or p_credits is null or p_credits <= 0
      or nullif(btrim(p_prompt), '') is null or char_length(p_prompt) > 1800 then
     raise exception 'Invalid video job parameters' using errcode='22023';
   end if;
+
+  -- Serialize identical user/request pairs before checking idempotency.
+  perform pg_advisory_xact_lock(
+    hashtextextended(p_user_id::text || ':' || p_request_id::text, 0)
+  );
 
   select * into v_existing from public.armex_video_generations
     where user_id=p_user_id and request_id=p_request_id;
@@ -73,24 +77,22 @@ begin
   end if;
 
   select * into v_attachment from public.armex_chat_attachments
-    where id=p_attachment_id and user_id=p_user_id and status='ready'
+    where id=p_attachment_id and user_id=p_user_id
+      and conversation_id=p_conversation_id and status='ready'
       and mime_type in ('image/jpeg','image/png','image/webp');
   if not found then
-    raise exception 'Verified image attachment not found' using errcode='P0002';
+    raise exception 'Verified image attachment for this conversation not found'
+      using errcode='P0002';
   end if;
 
-  if p_conversation_id is null then
-    insert into public.armex_conversations(user_id,title,model)
-      values(p_user_id,'ساخت ویدئو با Wan 2.2','video-wan22')
-      returning id into v_conversation;
-  else
-    select id into v_conversation from public.armex_conversations
-      where id=p_conversation_id and user_id=p_user_id;
-    if v_conversation is null then
-      raise exception 'Conversation not found' using errcode='P0002';
-    end if;
+  perform 1 from public.armex_conversations
+    where id=p_conversation_id and user_id=p_user_id;
+  if not found then
+    raise exception 'Conversation not found' using errcode='P0002';
   end if;
 
+  -- Debit first. If it fails, no message or conversation-side mutation is made.
+  -- Any later exception rolls this debit back with the surrounding transaction.
   v_debited := public.armex_debit_credits(
     p_user_id,p_credits,'alpha_video:'||p_request_id::text,
     'رزرو اعتبار برای ساخت ویدئو با Wan 2.2',
@@ -101,22 +103,22 @@ begin
   end if;
 
   insert into public.armex_messages(conversation_id,user_id,role,content,model,request_id)
-    values(v_conversation,p_user_id,'user',btrim(p_prompt),'video-wan22',p_request_id)
+    values(p_conversation_id,p_user_id,'user',btrim(p_prompt),'video-wan22',p_request_id)
     returning id into v_message;
 
   insert into public.armex_video_generations(
     user_id,request_id,conversation_id,user_message_id,input_attachment_id,
     input_storage_path,prompt,cinematic,credits_reserved
   ) values (
-    p_user_id,p_request_id,v_conversation,v_message,p_attachment_id,
+    p_user_id,p_request_id,p_conversation_id,v_message,p_attachment_id,
     v_attachment.storage_path,btrim(p_prompt),coalesce(p_cinematic,true),p_credits
   ) returning * into v_job;
 
   update public.armex_conversations set updated_at=now(),model='video-wan22'
-    where id=v_conversation and user_id=p_user_id;
+    where id=p_conversation_id and user_id=p_user_id;
 
   return jsonb_build_object('success',true,'duplicate',false,'job_id',v_job.id,
-    'status',v_job.status,'conversation_id',v_conversation,
+    'status',v_job.status,'conversation_id',p_conversation_id,
     'credits_reserved',v_job.credits_reserved);
 end;
 $function$;
