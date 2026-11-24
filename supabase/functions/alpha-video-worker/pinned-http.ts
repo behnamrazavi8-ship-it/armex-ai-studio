@@ -131,7 +131,7 @@ export async function fetchPinnedHttps(rawUrl: string): Promise<Response> {
           if (contentLength !== null && (!Number.isSafeInteger(contentLength) || contentLength < 0 || contentLength > MAX_BODY_BYTES)) {
             throw new Error("video_output_too_large");
           }
-          if ([301, 302, 303, 307, 308].includes(parsed.status) || [204, 304].includes(parsed.status)) {
+          if ([301, 302, 303, 307, 308].includes(parsed.status) || [204, 304].includes(parsed.status) || contentLength === 0) {
             reader.cancel().catch(() => {});
             socket.close();
             clearTimeout(timer);
