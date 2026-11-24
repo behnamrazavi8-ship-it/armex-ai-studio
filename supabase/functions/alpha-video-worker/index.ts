@@ -17,9 +17,11 @@ function safeOutputUrl(raw: unknown): string {
   if (typeof raw !== "string") throw new Error("provider_output_url_missing");
   const url = new URL(raw);
   const host = url.hostname.toLowerCase();
+  const ipv6Host = host.replace(/^\\[|\\]$/g, "");
+  const privateIpv6 = ipv6Host.includes(":") && (/^(fc|fd|fe80):/i.test(ipv6Host) || ipv6Host === "::1");
   if (url.protocol !== "https:" || url.username || url.password ||
       host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
-      host === "127.0.0.1" || host === "::1" || host === "[::1]" || host.startsWith("fc") || host.startsWith("fe80:") || host.startsWith("10.") ||
+      host === "127.0.0.1" || privateIpv6 || host.startsWith("10.") ||
       host.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
       host === "169.254.169.254" || host === "0.0.0.0") {
     throw new Error("provider_output_url_rejected");
