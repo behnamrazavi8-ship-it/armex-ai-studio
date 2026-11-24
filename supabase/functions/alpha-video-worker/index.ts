@@ -17,7 +17,7 @@ function safeOutputUrl(raw: unknown): string {
   if (typeof raw !== "string") throw new Error("provider_output_url_missing");
   const url = new URL(raw);
   const host = url.hostname.toLowerCase();
-  const ipv6Host = host.replace(/^\\[|\\]$/g, "");
+  const ipv6Host = host.replace(/^\[|\]$/g, "");
   const privateIpv6 = ipv6Host.includes(":") && (/^(fc|fd|fe80):/i.test(ipv6Host) || ipv6Host === "::1");
   if (url.protocol !== "https:" || url.username || url.password ||
       host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
