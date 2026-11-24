@@ -34,7 +34,14 @@ test("schema draft reserves credits atomically and protects user-owned jobs", as
   assert.match(sql, /armex_debit_credits/);
   assert.match(sql, /armex_grant_credits/);
   assert.match(sql, /unique \(user_id, request_id\)/i);
+  assert.match(sql, /pg_advisory_xact_lock/);
+  assert.match(sql, /conversation_id=p_conversation_id/);
   assert.match(sql, /armex_finish_video_job/);
+  assert.ok(
+    sql.indexOf("v_debited := public.armex_debit_credits") <
+      sql.indexOf("insert into public.armex_messages(conversation_id,user_id,role,content,model,request_id)"),
+    "credit debit must happen before the user message is inserted"
+  );
 });
 
 test("video studio uses private signed uploads and does not expose provider keys", async () => {
