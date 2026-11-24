@@ -71,3 +71,4 @@ jobs:
           git add "supabase/migrations/$MIGRATION_FILENAME"
           git commit -m "Prepare Alpha video jobs migration"
           git push origin HEAD:refs/heads/feat/alpha-video-provider
+# trigger migration preparation
