@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { isPublicIpv4 } from "../supabase/functions/alpha-video-worker/ip-safety.mjs";
+import { parsePinnedHttpHeaders } from "../supabase/functions/alpha-video-worker/http-headers.mjs";
 
 const read = (path) => readFile(new URL("../" + path, import.meta.url), "utf8");
 
@@ -137,4 +138,27 @@ test("pinned output transport accepts only globally routable IPv4 addresses", ()
     "256.1.1.1",
     "not-an-ip",
   ]) assert.equal(isPublicIpv4(address), false, address);
+});
+
+test("pinned HTTP parser rejects ambiguous or malformed response framing", () => {
+  const valid = parsePinnedHttpHeaders(
+    "HTTP/1.1 200 OK\\r\\nContent-Length: 12\\r\\nContent-Type: video/mp4\\r\\nConnection: close"
+  );
+  assert.equal(valid.status, 200);
+  assert.equal(valid.contentLength, 12);
+  assert.equal(valid.headers.get("content-type"), "video/mp4");
+
+  const invalid = [
+    "HTTP/1.1 100 Continue",
+    "HTTP/1.1 200 OK\\r\\nContent-Length: 12\\r\\nContent-Length: 12",
+    "HTTP/1.1 200 OK\\r\\nContent-Length: 12, 12",
+    "HTTP/1.1 200 OK\\r\\nContent-Length: +12",
+    "HTTP/1.1 200 OK\\r\\nContent-Length: 1e3",
+    "HTTP/1.1 200 OK\\r\\nTransfer-Encoding: chunked",
+    "HTTP/1.1 200 OK\\r\\nContent-Encoding: gzip",
+    "HTTP/1.1 200 OK\\r\\n Content-Length: 12",
+    "HTTP/1.1 200 OK\\r\\nBad Header: value",
+    "HTTP/1.1 200 OK\\r\\nContent-Length: 9007199254740992",
+  ];
+  for (const raw of invalid) assert.throws(() => parsePinnedHttpHeaders(raw), undefined, raw);
 });
