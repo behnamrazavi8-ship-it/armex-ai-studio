@@ -95,10 +95,14 @@ async function processOne(db: WorkerDb, apiKey: string) {
 
   const jobId = String(job.id);
   if (job.status === "submitting") {
+    // Distinguish local preparation failures from an ambiguous provider POST.
+    // Only a request that may have reached Alpha must remain submission_unknown.
+    let postAttempted = false;
     try {
       const { data: signed, error: signError } = await db.storage.from(BUCKET)
         .createSignedUrl(String(job.input_storage_path), 3600);
       if (signError || !signed?.signedUrl) throw new Error("input_signing_failed");
+      postAttempted = true;
       const response = await providerFetch("/generations", apiKey, {
         method: "POST",
         body: JSON.stringify({
@@ -134,7 +138,16 @@ async function processOne(db: WorkerDb, apiKey: string) {
       }
       return { worked: true, status: "processing", alpha_id: payload.id };
     } catch (error) {
-      // A timeout after POST is ambiguous: Alpha may have accepted and charged it.
+      if (!postAttempted) {
+        // No provider request was started, so this is a definite local failure.
+        await markFailed(db, jobId, "input_signing_failed");
+        console.error("Alpha input preparation failed before submission", {
+          jobId, error: String(error).slice(0, 100),
+        });
+        return { worked: true, status: "failed" };
+      }
+      // Once POST starts, a timeout or transport error is ambiguous: Alpha may
+      // have accepted and charged it. Never retry automatically.
       await db.rpc("armex_video_submission_unknown", { p_job_id: jobId, p_worker_id: workerId });
       console.error("Alpha submit outcome is unknown", { jobId, error: String(error).slice(0, 100) });
       return { worked: true, status: "submission_unknown" };
