@@ -35,23 +35,7 @@ function findHeaderEnd(bytes: Uint8Array): number {
   return -1;
 }
 
-function parseHeaders(raw: string): { status: number; headers: Headers } {
-  const lines = raw.split("\r\n");
-  const statusMatch = /^HTTP\/1\.[01] (\d{3})(?: |$)/.exec(lines.shift() || "");
-  if (!statusMatch) throw new Error("pinned_http_invalid_status_line");
-  const status = Number(statusMatch[1]);
-  if (status < 200 || status > 599) throw new Error("pinned_http_unsupported_status");
-  const headers = new Headers();
-  for (const line of lines) {
-    if (!line) continue;
-    const colon = line.indexOf(":");
-    if (colon <= 0) throw new Error("pinned_http_invalid_header");
-    const name = line.slice(0, colon).trim();
-    const value = line.slice(colon + 1).trim();
-    headers.append(name, value);
-  }
-  return { status, headers };
-}
+import { parsePinnedHttpHeaders } from "./http-headers.mjs";
 
 async function resolvePinnedIpv4(host: string): Promise<string[]> {
   let a: string[];
@@ -148,15 +132,10 @@ export async function fetchPinnedHttps(rawUrl: string): Promise<Response> {
         headerEnd = findHeaderEnd(combined);
         if (headerEnd >= 0) {
           const decoder = new TextDecoder("latin1");
-          const parsed = parseHeaders(decoder.decode(combined.subarray(0, headerEnd - 4)));
+          const parsed = parsePinnedHttpHeaders(decoder.decode(combined.subarray(0, headerEnd - 4)));
           initialBody = combined.slice(headerEnd);
-          const encoding = parsed.headers.get("content-encoding");
-          if (encoding && encoding.toLowerCase() !== "identity") throw new Error("pinned_http_unexpected_content_encoding");
-          const transferEncoding = parsed.headers.get("transfer-encoding");
-          if (transferEncoding) throw new Error("pinned_http_transfer_encoding_unsupported");
-          const lengthHeader = parsed.headers.get("content-length");
-          const contentLength = lengthHeader === null ? null : Number(lengthHeader);
-          if (contentLength !== null && (!Number.isSafeInteger(contentLength) || contentLength < 0 || contentLength > MAX_BODY_BYTES)) {
+          const contentLength = parsed.contentLength;
+          if (contentLength !== null && contentLength > MAX_BODY_BYTES) {
             throw new Error("video_output_too_large");
           }
           if ([301, 302, 303, 307, 308].includes(parsed.status) || [204, 205, 304].includes(parsed.status) || contentLength === 0) {
