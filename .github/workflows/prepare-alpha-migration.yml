@@ -1,7 +1,11 @@
 name: Prepare Alpha video migration
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - feat/alpha-video-provider
+    paths:
+      - .github/workflows/prepare-alpha-migration.yml
 
 permissions:
   contents: write
