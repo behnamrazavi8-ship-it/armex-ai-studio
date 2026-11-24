@@ -207,6 +207,7 @@ async function processOne(db: ReturnType<typeof createClient>, apiKey: string) {
     const sha256 = Array.from(new Uint8Array(digest))
       .map((value) => value.toString(16).padStart(2, "0")).join("");
     outputPath = String(job.user_id) + "/video/" + jobId + ".mp4";
+    await db.storage.from(BUCKET).remove([outputPath]);
     const { error: uploadError } = await db.storage.from(BUCKET).upload(outputPath, new Blob([bytes], { type: "video/mp4" }), {
       contentType: "video/mp4", upsert: false,
     });
