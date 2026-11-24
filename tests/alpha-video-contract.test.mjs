@@ -61,6 +61,7 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.match(pinned, /Accept-Encoding: identity/);
   const headers = await read("supabase/functions/alpha-video-worker/http-headers.mjs");
   assert.match(headers, /pinned_http_transfer_encoding_unsupported/);
+  assert.match(pinned, /pinned_http_body_length_mismatch/);
   assert.doesNotMatch(worker, /fetch\(url, \{ redirect: "manual" \}\)/);
 });
 
@@ -127,6 +128,9 @@ test("pinned output transport accepts only globally routable IPv4 addresses", ()
     "172.16.0.1",
     "192.0.0.8",
     "192.0.2.1",
+    "192.31.196.1",
+    "192.52.193.1",
+    "192.175.48.1",
     "192.88.99.1",
     "192.168.1.1",
     "198.18.0.1",
