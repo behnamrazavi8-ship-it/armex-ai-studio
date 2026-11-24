@@ -180,7 +180,9 @@ export async function fetchPinnedHttps(rawUrl: string): Promise<Response> {
                 let chunk = next.value;
                 if (contentLength !== null) {
                   const remaining = contentLength - sent;
-                  if (chunk.byteLength > remaining) chunk = chunk.subarray(0, remaining);
+                  if (chunk.byteLength > remaining) {
+                    throw new Error("pinned_http_body_length_mismatch");
+                  }
                 }
                 sent += chunk.byteLength;
                 if (sent > MAX_BODY_BYTES) throw new Error("video_output_too_large");
