@@ -194,7 +194,7 @@ async function processOne(db: ReturnType<typeof createClient>, apiKey: string) {
 Deno.serve(async (request) => {
   if (request.method !== "POST") return json({ success: false, error: "method_not_allowed" }, 405);
   const expected = required("ALPHA_VIDEO_WORKER_SECRET");
-  const supplied = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") || "";
+  const supplied = request.headers.get("x-worker-secret") || "";
   if (!supplied || supplied !== expected) return json({ success: false, error: "unauthorized" }, 401);
 
   try {
