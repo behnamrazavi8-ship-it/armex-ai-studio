@@ -3,6 +3,31 @@ const MAX_BODY_BYTES = 50 * 1024 * 1024;
 
 import { isPublicIpv4 } from "./ip-safety.mjs";
 
+async function withTimeout<T>(
+  promise: Promise<T>,
+  milliseconds: number,
+  errorCode: string,
+  onLate?: (value: T) => void,
+): Promise<T> {
+  let expired = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const guarded = promise.then((value) => {
+    if (expired) onLate?.(value);
+    return value;
+  });
+  const timeout = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => {
+      expired = true;
+      reject(new Error(errorCode));
+    }, milliseconds);
+  });
+  try {
+    return await Promise.race([guarded, timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 function findHeaderEnd(bytes: Uint8Array): number {
   for (let i = 0; i <= bytes.length - 4; i++) {
     if (bytes[i] === 13 && bytes[i + 1] === 10 && bytes[i + 2] === 13 && bytes[i + 3] === 10) return i + 4;
@@ -32,10 +57,14 @@ async function resolvePinnedIpv4(host: string): Promise<string[]> {
   let a: string[];
   let aaaa: string[];
   try {
-    [a, aaaa] = await Promise.all([
-      Deno.resolveDns(host, "A"),
-      Deno.resolveDns(host, "AAAA"),
-    ]);
+    [a, aaaa] = await withTimeout(
+      Promise.all([
+        Deno.resolveDns(host, "A"),
+        Deno.resolveDns(host, "AAAA"),
+      ]),
+      8000,
+      "provider_output_dns_timeout",
+    );
   } catch {
     throw new Error("provider_output_dns_resolution_failed");
   }
@@ -46,7 +75,13 @@ async function resolvePinnedIpv4(host: string): Promise<string[]> {
 }
 
 async function connectPinned(ip: string, host: string): Promise<Deno.TlsConn> {
-  const tcp = await Deno.connect({ hostname: ip, port: 443, transport: "tcp" });
+  const pendingTcp = Deno.connect({ hostname: ip, port: 443, transport: "tcp" });
+  const tcp = await withTimeout(
+    pendingTcp,
+    10000,
+    "provider_output_connect_timeout",
+    (lateSocket) => lateSocket.close(),
+  );
   try {
     const peer = tcp.remoteAddr;
     if (peer.transport !== "tcp" || peer.hostname !== ip) {
@@ -54,7 +89,13 @@ async function connectPinned(ip: string, host: string): Promise<Deno.TlsConn> {
     }
     // TCP is opened to the already-validated literal IP. TLS still uses the
     // original hostname for SNI and certificate hostname verification.
-    return await Deno.startTls(tcp, { hostname: host });
+    const pendingTls = Deno.startTls(tcp, { hostname: host });
+    return await withTimeout(
+      pendingTls,
+      10000,
+      "provider_output_tls_timeout",
+      (lateTls) => lateTls.close(),
+    );
   } catch (error) {
     tcp.close();
     throw error;
