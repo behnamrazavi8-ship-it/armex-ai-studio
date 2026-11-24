@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { isPublicIpv4 } from "../supabase/functions/alpha-video-worker/ip-safety.mjs";
 
 const read = (path) => readFile(new URL("../" + path, import.meta.url), "utf8");
 
@@ -98,4 +99,34 @@ test("video studio uses private signed uploads and does not expose provider keys
   assert.match(module, /complete_media_upload/);
   assert.match(module, /alpha_video_status/);
   assert.doesNotMatch(module, /ALPHA_API_KEY|ALPHA_VIDEO_WORKER_SECRET/);
+});
+
+test("pinned output transport accepts only globally routable IPv4 addresses", () => {
+  for (const address of [
+    "8.8.8.8",
+    "1.1.1.1",
+    "93.184.216.34",
+  ]) assert.equal(isPublicIpv4(address), true, address);
+
+  for (const address of [
+    "0.0.0.0",
+    "10.1.2.3",
+    "100.64.0.1",
+    "127.0.0.1",
+    "169.254.10.20",
+    "172.16.0.1",
+    "192.0.0.8",
+    "192.0.2.1",
+    "192.88.99.1",
+    "192.168.1.1",
+    "198.18.0.1",
+    "198.51.100.1",
+    "203.0.113.1",
+    "224.0.0.1",
+    "240.0.0.1",
+    "255.255.255.255",
+    "01.2.3.4",
+    "256.1.1.1",
+    "not-an-ip",
+  ]) assert.equal(isPublicIpv4(address), false, address);
 });
