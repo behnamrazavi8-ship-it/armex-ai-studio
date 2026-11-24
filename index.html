@@ -23,7 +23,7 @@
 @media(max-width:760px){.chat-layout{grid-template-columns:1fr;min-height:unset}.chat-list-panel{order:2}.chat-main{min-height:560px}.chat-messages{min-height:320px;max-height:52vh}.chat-list{max-height:180px;grid-template-columns:repeat(2,minmax(0,1fr))}.chat-bubble{max-width:94%}}
 
 .chat-attachment-card{align-self:flex-start;max-width:min(88%,520px);padding:10px;border:1px solid #28534b;border-radius:14px;background:#0a1c1b}.chat-attachment-card img,.chat-attachment-card video{display:block;width:100%;max-height:300px;object-fit:contain;border-radius:9px;background:#02070a}.chat-attachment-card .media-caption{font-size:10px;color:#a8c8c1;line-height:1.8;margin-top:7px;overflow-wrap:anywhere}.chat-attachment-card a{font-size:10px;color:#72e4cb;text-decoration:none}.chat-compose-actions button:disabled{opacity:.55;cursor:wait}
-</style>
+.video-studio-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.video-studio-preview{width:100%;max-height:420px;object-fit:contain;border-radius:13px;background:#02070a;border:1px solid var(--line);margin-top:12px}.video-history{display:grid;gap:12px;margin-top:14px}.video-history-card{min-width:0;padding:14px;border:1px solid var(--line);border-radius:15px;background:#09151d}.video-history-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}.video-history-card p{font-size:11px;line-height:1.9;color:#b9d0cc;white-space:pre-wrap;overflow-wrap:anywhere}.video-history-card video{display:block;width:100%;max-height:420px;background:#02070a;border-radius:10px;margin-top:10px}.video-history-card a{display:inline-block;color:var(--mint);font-size:11px;margin-top:10px;text-decoration:none}.video-history-card progress{display:block;width:100%;height:8px;margin-top:12px;accent-color:var(--mint)}.video-history-card small{display:block;color:var(--muted);font-size:10px;line-height:1.8;margin-top:8px}.video-indeterminate{height:7px;border-radius:99px;background:linear-gradient(90deg,#163a3b 0%,#2ce2b4 45%,#163a3b 90%);background-size:200% 100%;animation:video-progress 1.5s linear infinite;margin-top:12px}@keyframes video-progress{from{background-position:100% 0}to{background-position:-100% 0}}.video-status{min-height:24px;margin-top:12px;font-size:11px;line-height:1.9;color:#a9c4c2}.video-status.error{color:#ffb8c2}.video-form-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px}.video-check{display:flex;align-items:center;gap:8px;color:#b8d1cd;font-size:11px}@media(max-width:680px){.video-studio-grid{grid-template-columns:1fr}}</style>
 <link rel="stylesheet" href="./styles/lokal-luxe-theme.css?v=lokal-ai-assets-1">
 
 </head>
@@ -100,7 +100,30 @@
 <div class="image-cost-note">مدل: FLUX.1 Schnell · موتور Cloudflare Workers AI · هزینه هر تصویر: ۲۰ اعتبار · سهمیه رایگان روزانه محدود است</div><div class="workspace-actions"><button class="btn" id="generateImage" type="button">ساخت تصویر · ۲۰ اعتبار</button><button class="btn btn-ghost" id="usePromptInImage" type="button">استفاده از پرامپت Prompt Lab</button></div>
 <div class="image-status" id="imageStatus" role="status" aria-live="polite"></div><div class="image-preview" id="imagePreview" hidden><img id="generatedImage" alt="تصویر ساخته‌شده در LOKAL AI"><div class="image-preview-actions"><span class="muted-copy" id="imageMeta"></span><button class="btn btn-ghost btn-small" id="downloadGeneratedImage" type="button">دانلود تصویر</button></div><div class="download-progress" id="imageDownloadProgress" role="status" aria-live="polite" hidden><div class="download-progress-head"><span id="imageDownloadLabel">آماده‌سازی دانلود...</span><span id="imageDownloadPercent">۰٪</span></div><div class="download-progress-track"><div class="download-progress-fill" id="imageDownloadBar"></div></div></div></div></div>
 <div class="panel"><h3>گالری تصاویر من</h3><p class="muted-copy">تصاویر فقط برای حساب خودت قابل دسترسی هستند.</p><div id="imageGallery" class="image-gallery"><div class="empty">هنوز تصویری نساخته‌ای.</div></div></div></section>
-<section class="page" id="page-video"><div class="welcome"><h1>استودیوی ویدئو و صدا</h1></div><div class="empty">این بخش هنوز فعال نیست و هیچ خروجی نمایشی به‌عنوان تولید واقعی ارائه نمی‌کند.</div></section>
+<section class="page" id="page-video">
+ <div class="welcome"><div class="eyebrow">ALPHA AI · WAN 2.2</div><h1>استودیوی ساخت ویدئو</h1><p>یک تصویر انتخاب کن و حرکت دوربین یا سوژه را توضیح بده؛ خروجی واقعی در تاریخچهٔ گفتگوی خصوصی‌ات ذخیره می‌شود.</p></div>
+ <div class="panel">
+  <form id="video-form">
+   <div class="video-studio-grid">
+    <div>
+     <label class="field-label" for="video-image">تصویر شروع ویدئو · JPG / PNG / WebP</label>
+     <input class="input" id="video-image" type="file" accept="image/jpeg,image/png,image/webp" required>
+     <img id="video-image-preview" class="video-studio-preview" alt="پیش‌نمایش تصویر شروع" hidden>
+     <p class="muted-copy">حداکثر ۲۰ مگابایت؛ تصویر در فضای خصوصی حساب ذخیره می‌شود.</p>
+    </div>
+    <div>
+     <label class="field-label" for="video-prompt">توضیح حرکت ویدئو</label>
+     <textarea class="textarea" id="video-prompt" maxlength="1800" required placeholder="مثلاً: دوربین به‌آرامی به سوژه نزدیک شود، موها با نسیم حرکت کنند و نور غروب روی صورت تغییر کند…"></textarea>
+     <label class="video-check"><input id="video-cinematic" type="checkbox" checked> بازنویسی خودکار به پرامپت سینمایی</label>
+     <div class="notice">مدل Wan 2.2 تصویر به ویدئو (I2V) است. برای دستور فارسی، حالت سینمایی را روشن نگه دار. هزینهٔ اعتبار LOKAL AI فقط از تنظیم امن سرور خوانده می‌شود.</div>
+    </div>
+   </div>
+   <div class="video-form-actions"><button class="btn" id="video-generate" type="submit">ساخت ویدئو با Wan 2.2</button><span class="muted-copy">پردازش در پس‌زمینه ادامه می‌یابد؛ بستن صفحه درخواست را متوقف نمی‌کند.</span></div>
+   <div class="video-status" id="video-status" role="status" aria-live="polite"></div>
+  </form>
+ </div>
+ <div class="panel"><h3>تاریخچهٔ ویدئوهای من</h3><p class="muted-copy">ویدئوهای آماده در فضای خصوصی ذخیره و به تاریخچهٔ گفتگوی مربوط متصل می‌شوند.</p><div id="video-history" class="video-history"><div class="empty">برای دریافت تاریخچه، استودیو را باز کن.</div></div></div>
+</section>
 </main></div>
 </div>
 <nav class="mobile-nav" id="global-mobile-nav" aria-label="منوی اصلی LOKAL AI"><button class="active" data-open-workspace><span class="mobile-nav-icon">⌂</span><small>خانه</small></button><button data-page="chat"><span class="mobile-nav-icon">▢</span><small>گفتگو</small></button><button class="mobile-nav-create" data-page="prompt" aria-label="شروع ساخت"><span class="mobile-nav-icon">＋</span><small>ساخت</small></button><button data-page="projects"><span class="mobile-nav-icon">▱</span><small>کتابخانه</small></button><button data-page="account"><span class="mobile-nav-icon">◯</span><small>حساب من</small></button></nav>
@@ -132,6 +155,7 @@
   }
   if(target==='projects')renderProjects();
   if(target==='image')window.dispatchEvent(new CustomEvent('lokal:open-image-studio'));
+  if(target==='video')window.dispatchEvent(new CustomEvent('lokal:open-video-studio'));
    if(target==='chat'){window.scrollTo(0,0);window.dispatchEvent(new CustomEvent('lokal:open-chat'));}
  }
  window.lokalShowPage=showPage;
@@ -146,10 +170,7 @@
  $$('[data-tool]').forEach(b=>b.addEventListener('click',()=>{
   const tool=b.dataset.tool;
   if(tool==='video'){
-   const type=document.getElementById('contentType');
-   if(type)type.value='video';
-   showPage('prompt');
-   toast('Prompt Lab برای آماده‌سازی پرامپت ویدئو باز شد. تولید خودکار ویدئو هنوز فعال نیست.');
+   showPage('video');
    return;
   }
   showPage(tool==='image'?'image':'prompt');
@@ -281,6 +302,13 @@ else{
   } catch (error) {
     console.error("Image Editor initialization failed", error);
     setMessage("ویرایشگر تصویر بارگذاری نشد؛ سایر بخش‌های برنامه همچنان در دسترس‌اند.", true);
+  }
+  try {
+    const { initVideoStudio } = await import("./modules/video/video-studio.js?v=alpha-wan22-1");
+    initVideoStudio({ supabase, callArmexApi, loadWalletBalance });
+  } catch (error) {
+    console.error("Video Studio initialization failed", error);
+    setMessage("استودیوی ویدئو بارگذاری نشد؛ سایر بخش‌های برنامه همچنان در دسترس‌اند.", true);
   }
 
  const imageButton=document.getElementById("generateImage");
