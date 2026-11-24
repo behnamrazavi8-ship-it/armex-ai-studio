@@ -129,6 +129,10 @@ as $function$
 declare v_job public.armex_video_generations%rowtype;
 begin
   if p_worker_id is null then raise exception 'Worker ID required' using errcode='22023'; end if;
+  update public.armex_video_generations
+    set status='submission_unknown',error_code='worker_lease_expired_during_submit',
+        locked_by=null,lease_expires_at=null,updated_at=now()
+    where status='submitting' and lease_expires_at <= now();
   select * into v_job from public.armex_video_generations
     where status in ('queued','processing')
       and next_poll_at <= now()
@@ -138,7 +142,7 @@ begin
   if not found then return null; end if;
   update public.armex_video_generations
     set status=case when status='queued' then 'submitting' else status end,
-        locked_by=p_worker_id,lease_expires_at=now()+interval '90 seconds',
+        locked_by=p_worker_id,lease_expires_at=now()+interval '180 seconds',
         updated_at=now()
     where id=v_job.id returning * into v_job;
   return jsonb_build_object(
