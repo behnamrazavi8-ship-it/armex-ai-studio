@@ -13,7 +13,7 @@ This branch contains the first implementation slice for image-to-video generatio
 - Provider price shown in Alpha docs: 5,000 toman per successful video.
 - Provider input accepts a public URL, data URI, or base64; max file size 40 MB.
 - Provider generation can take up to 25 minutes. Poll status every 3–5 seconds; progress is optional and may be null.
-- Alpha's output URL is temporary. LOKAL AI copies the validated MP4 to its own private Storage bucket immediately.
+- Alpha's output URL is temporary. LOKAL AI copies the validated MP4 (up to the existing 50 MB private-bucket limit) to its own private Storage bucket immediately.
 
 Official docs: https://api.appalpha.ir/docs
 
@@ -40,7 +40,7 @@ The SQL file in this folder is a review draft, not an applied migration. Before 
 3. Review it against the live Production schema and Supabase security advisors.
 4. Obtain explicit approval before applying the migration to Production.
 
-The draft adds `public.armex_video_generations` with RLS enabled with service-role-only table access, API-enforced owner scoping, and a unique per-user request ID, atomic wallet debit/job creation, worker leases, safe terminal refund, and chat-message/attachment persistence. It uses the existing private `lokal-chat-media` bucket and does not create or modify buckets.
+The draft adds `public.armex_video_generations` with RLS enabled with service-role-only table access, API-enforced owner scoping, and a unique per-user request ID. The existing private bucket has a 50 MB object limit; no bucket setting is changed., atomic wallet debit/job creation, worker leases, safe terminal refund, and chat-message/attachment persistence. It uses the existing private `lokal-chat-media` bucket and does not create or modify buckets.
 
 ## Worker scheduling required before live processing
 
