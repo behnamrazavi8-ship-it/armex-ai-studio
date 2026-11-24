@@ -30,7 +30,7 @@ test("worker never retries an ambiguous Alpha create request", async () => {
 test("schema draft reserves credits atomically and protects user-owned jobs", async () => {
   const sql = await read("docs/alpha-video/alpha-video-schema-draft.sql");
   assert.match(sql, /enable row level security/i);
-  assert.match(sql, /revoke all on public\\.armex_video_generations from anon, authenticated/i);
+  assert.match(sql, /revoke all on public\.armex_video_generations from anon, authenticated/i);
   assert.match(sql, /armex_debit_credits/);
   assert.match(sql, /armex_grant_credits/);
   assert.match(sql, /unique \(user_id, request_id\)/i);
