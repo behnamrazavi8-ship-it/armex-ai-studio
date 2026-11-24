@@ -73,6 +73,12 @@ Each invocation claims at most one due job and exits quickly. Repeated invocatio
 No Production migration, Edge Function deployment, secret creation, scheduler setup, Worker activation, payment, Alpha request, credit consumption, PR creation, or merge was performed by this implementation.
 
 
+## Public output-host discovery (2026-11-24)
+
+The currently published Alpha API documentation identifies the output field as `output.url` and shows an example URL as `https://…/static/images/<id>.png`. The hostname is redacted in the public example, and that example is for an image output (not a Wan 2.2 video). The Wan 2.2 section documents the request and progress flow but does not publish a video output URL hostname or a video-specific URL example. Searches of the public docs for a video path or CDN hostname did not reveal one.
+
+Therefore, neither `api.appalpha.ir` nor any guessed storage/CDN hostname is approved for `ALPHA_OUTPUT_HOSTS`. Keep the allowlist unset and the worker fail-closed until an exact hostname is exposed through trustworthy provider documentation or observed from an explicitly approved real generation. Do not probe guessed hosts or issue a paid generation merely to discover the hostname.
+
 ## Output-fetch SSRF hardening status
 
 The branch now includes a pinned-IP HTTPS transport rather than standard `fetch()` for Alpha output files. It uses only A records and connects to a validated IPv4 literal; AAAA records are neither needed nor used, checks the peer address, and retains TLS SNI/certificate verification against the allowlisted hostname. Chunked transfer encoding is intentionally rejected pending a dedicated decoder. This closes the DNS re-resolution gap for the output socket, but it is not yet a live-provider validation: the exact official CDN hostnames still need to be configured from trusted documentation/observed provider metadata, and the raw HTTP transport must pass runtime integration tests before activation. Do not deploy or enable it until those checks and separate approval are complete.
