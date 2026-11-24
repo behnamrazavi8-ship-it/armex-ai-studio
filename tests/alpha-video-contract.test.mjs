@@ -37,6 +37,11 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.match(worker, /allowedHosts\.has\(host\)/);
   assert.match(worker, /safeOutputUrl\(new URL\(location, url\)\.toString\(\), allowedHosts\)/);
   assert.match(worker, /isIpLiteral/);
+  assert.match(worker, /Deno\.resolveDns\(host, "A"\)/);
+  assert.match(worker, /Deno\.resolveDns\(host, "AAAA"\)/);
+  assert.match(worker, /isPublicIpv4/);
+  assert.match(worker, /provider_output_dns_not_public_ipv4_only/);
+  assert.match(worker, /await assertPublicDns\(new URL\(url\)\.hostname\)/);
 });
 
 test("schema draft reserves credits atomically and protects user-owned jobs", async () => {
