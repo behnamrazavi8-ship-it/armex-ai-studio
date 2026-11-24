@@ -32,6 +32,11 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.match(worker, /armex_video_generations/);
   assert.match(worker, /reconciled\?\.status === "completed"/);
   assert.match(worker, /if \(finishAttempted\)/);
+  assert.match(worker, /parseOutputHosts/);
+  assert.match(worker, /required\("ALPHA_OUTPUT_HOSTS"\)/);
+  assert.match(worker, /allowedHosts\.has\(host\)/);
+  assert.match(worker, /safeOutputUrl\(new URL\(location, url\)\.toString\(\), allowedHosts\)/);
+  assert.match(worker, /isIpLiteral/);
 });
 
 test("schema draft reserves credits atomically and protects user-owned jobs", async () => {
@@ -47,6 +52,9 @@ test("schema draft reserves credits atomically and protects user-owned jobs", as
   assert.match(sql, /p_storage_path is null or p_size_bytes is null or p_sha256 is null/i);
   assert.match(sql, /if p_worker_id is null then/i);
   assert.match(sql, /and locked_by=p_worker_id/i);
+  assert.match(sql, /update public\.armex_chat_attachments[\s\S]*?set message_id=v_message/);
+  assert.match(sql, /get diagnostics v_updated = row_count/);
+  assert.match(sql, /if v_updated <> 1 then/);
   assert.ok(
     sql.indexOf("v_debited := public.armex_debit_credits") <
       sql.indexOf("insert into public.armex_messages(conversation_id,user_id,role,content,model,request_id)"),
