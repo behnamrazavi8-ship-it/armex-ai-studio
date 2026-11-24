@@ -215,11 +215,18 @@ async function processOne(db: WorkerDb, apiKey: string, allowedOutputHosts: Set<
   let finishAttempted = false;
   try {
     const download = await fetchProviderOutput(statusData?.output?.url, allowedOutputHosts);
-    if (!download.ok) throw new Error("output_download_http_" + download.status);
+    if (!download.ok) {
+      await download.body?.cancel();
+      throw new Error("output_download_http_" + download.status);
+    }
     const declaredLength = Number(download.headers.get("content-length") || 0);
-    if (declaredLength > MAX_OUTPUT_BYTES) throw new Error("video_output_too_large");
+    if (declaredLength > MAX_OUTPUT_BYTES) {
+      await download.body?.cancel();
+      throw new Error("video_output_too_large");
+    }
     const contentType = (download.headers.get("content-type") || "").split(";")[0].toLowerCase();
     if (contentType && contentType !== "video/mp4" && contentType !== "application/octet-stream") {
+      await download.body?.cancel();
       throw new Error("invalid_video_output_content_type");
     }
     const bytes = await readBoundedBody(download);
