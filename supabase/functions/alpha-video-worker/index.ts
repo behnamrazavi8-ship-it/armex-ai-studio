@@ -158,6 +158,8 @@ async function processOne(db: ReturnType<typeof createClient>, apiKey: string) {
     const outputUrl = safeOutputUrl(statusData?.output?.url);
     const download = await fetch(outputUrl, { redirect: "follow" });
     if (!download.ok) throw new Error("output_download_http_" + download.status);
+    const declaredLength = Number(download.headers.get("content-length") || 0);
+    if (declaredLength > MAX_OUTPUT_BYTES) throw new Error("video_output_too_large");
     const contentType = (download.headers.get("content-type") || "").split(";")[0].toLowerCase();
     const blob = await download.blob();
     if (!blob.size || blob.size > MAX_OUTPUT_BYTES ||
@@ -200,7 +202,7 @@ Deno.serve(async (request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const result = await processOne(db, required("ALPHA_API_KEY"));
-    return json({ success: true, ...result }, result.worked ? 200 : 204);
+    return result.worked ? json({ success: true, ...result }, 200) : new Response(null, { status: 204 });
   } catch (error) {
     console.error("Alpha video worker failed", String(error).slice(0, 200));
     return json({ success: false, error: "worker_failed" }, 500);
