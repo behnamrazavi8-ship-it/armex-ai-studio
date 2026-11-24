@@ -22,6 +22,9 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.match(worker, /\/generations/);
   assert.match(worker, /submission_unknown/);
   assert.match(worker, /armex_video_submission_unknown/);
+  assert.match(worker, /let postAttempted = false/);
+  assert.match(worker, /if \(!postAttempted\)[\s\S]*?markFailed\(db, jobId, "input_signing_failed"\)/);
+  assert.match(worker, /if \(postAttempted\)[\s\S]*?submission_unknown/);
   assert.match(worker, /MAX_OUTPUT_BYTES/);
   assert.match(worker, /ftyp/);
   assert.match(worker, /lokal-chat-media/);
