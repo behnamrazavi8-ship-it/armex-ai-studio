@@ -19,7 +19,7 @@ create table if not exists public.armex_video_generations (
   provider_status text,
   status text not null default 'queued' check (status in
     ('queued','submitting','processing','submission_unknown','completed','failed')),
-  progress_percent integer check (progress_percent between 0 and 99),
+  progress_percent integer check (progress_percent between 0 and 100),
   output_storage_path text,
   output_mime_type text,
   error_code text,
@@ -42,6 +42,7 @@ create index if not exists armex_video_generations_user_history_idx
 alter table public.armex_video_generations enable row level security;
 revoke all on public.armex_video_generations from anon, authenticated;
 grant select on public.armex_video_generations to authenticated;
+grant all on public.armex_video_generations to service_role;
 create policy "Users can read their own video generations"
   on public.armex_video_generations for select to authenticated
   using ((select auth.uid()) = user_id);
