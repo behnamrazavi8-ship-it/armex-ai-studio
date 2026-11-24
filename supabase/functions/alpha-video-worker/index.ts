@@ -215,7 +215,7 @@ async function processOne(db: WorkerDb, apiKey: string, allowedOutputHosts: Set<
   let finishAttempted = false;
   try {
     const download = await fetchProviderOutput(statusData?.output?.url, allowedOutputHosts);
-    if (!download.ok) {
+    if (download.status !== 200) {
       await download.body?.cancel();
       throw new Error("output_download_http_" + download.status);
     }
@@ -225,7 +225,7 @@ async function processOne(db: WorkerDb, apiKey: string, allowedOutputHosts: Set<
       throw new Error("video_output_too_large");
     }
     const contentType = (download.headers.get("content-type") || "").split(";")[0].toLowerCase();
-    if (contentType && contentType !== "video/mp4" && contentType !== "application/octet-stream") {
+    if (contentType !== "video/mp4" && contentType !== "application/octet-stream") {
       await download.body?.cancel();
       throw new Error("invalid_video_output_content_type");
     }
