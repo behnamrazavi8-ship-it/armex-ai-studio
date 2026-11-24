@@ -46,7 +46,7 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.doesNotMatch(pinned, /Deno\.resolveDns\(host, "AAAA"\)/);
   assert.match(pinned, /Deno\.resolveDns\(host, "A"\)/);
   assert.match(pinned, /isPublicIpv4/);
-  assert.match(pinned, /provider_output_dns_not_public_ipv4_only/);
+  assert.match(pinned, /provider_output_dns_not_public_ipv4/);
   assert.match(pinned, /Deno\.connect\(\{ hostname: ip, port: 443, transport: "tcp" \}\)/);
   assert.match(pinned, /Deno\.startTls\(tcp, \{ hostname: host \}\)/);
   assert.match(pinned, /provider_output_dns_timeout/);
