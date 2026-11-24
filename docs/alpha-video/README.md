@@ -37,7 +37,7 @@ The SQL file in this folder is a review draft, not an applied migration. Before 
 
 1. On a local checkout, create the migration through the Supabase CLI (`supabase migration new alpha_video_jobs`).
 2. Move the reviewed SQL into the generated timestamped migration.
-3. Review it against the live Production schema and Supabase security advisors.
+3. Review it against the live Production schema and Supabase security advisors. Confirm the migration role owns the `SECURITY DEFINER` functions and that only `service_role` can execute them.
 4. Obtain explicit approval before applying the migration to Production.
 
 The draft adds `public.armex_video_generations` with RLS enabled with service-role-only table access, API-enforced owner scoping, and a unique per-user request ID. The existing private bucket has a 50 MB object limit; no bucket setting is changed., atomic wallet debit/job creation, worker leases, safe terminal refund, and chat-message/attachment persistence. It uses the existing private `lokal-chat-media` bucket and does not create or modify buckets.
@@ -60,7 +60,7 @@ Each invocation claims at most one due job and exits quickly. Repeated invocatio
 ## Billing and failure safety
 
 - LOKAL AI credit cost is a required server setting; no rate conversion is assumed.
-- Job creation and LOKAL wallet debit occur in one database transaction through `armex_create_video_job`.
+- Job creation and LOKAL wallet debit occur in one database transaction through `armex_create_video_job`; duplicate user/request pairs are serialized before the idempotency check, and image/conversation ownership is enforced inside the database function.
 - A definite provider rejection or invalid output marks the job failed and refunds the reserved LOKAL credits through an idempotent ledger key.
 - A timeout or ambiguous response to Alpha's POST is marked `submission_unknown`. The worker does not submit again because the provider docs do not establish an idempotency-key contract. Reconcile against Alpha's request list before any manual retry.
 - A successful provider output is downloaded, checked for MP4 signature and size, stored privately, and attached to an assistant message in the related conversation.
