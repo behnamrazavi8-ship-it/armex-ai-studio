@@ -39,6 +39,8 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.match(worker, /safeOutputUrl\(new URL\(location, url\)\.toString\(\), allowedHosts\)/);
   assert.match(worker, /isIpLiteral/);
   assert.match(worker, /fetchPinnedHttps/);
+  assert.match(worker, /download\.status !== 200/);
+  assert.match(worker, /contentType !== "video\/mp4" && contentType !== "application\/octet-stream"/);
   const pinned = await read("supabase/functions/alpha-video-worker/pinned-http.ts");
   assert.match(pinned, /Deno\.resolveDns\(host, "A"\)/);
   assert.match(pinned, /Deno\.resolveDns\(host, "AAAA"\)/);
@@ -46,6 +48,11 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.match(pinned, /provider_output_dns_not_public_ipv4_only/);
   assert.match(pinned, /Deno\.connect\(\{ hostname: ip, port: 443, transport: "tcp" \}\)/);
   assert.match(pinned, /Deno\.startTls\(tcp, \{ hostname: host \}\)/);
+  assert.match(pinned, /provider_output_dns_timeout/);
+  assert.match(pinned, /provider_output_connect_timeout/);
+  assert.match(pinned, /provider_output_tls_timeout/);
+  assert.match(pinned, /8000/);
+  assert.match(pinned, /10000/);
   assert.match(pinned, /provider_output_peer_ip_mismatch/);
   assert.match(pinned, /remoteAddr/);
   assert.match(pinned, /contentLength === 0/);
