@@ -40,7 +40,7 @@ The SQL file in this folder is a review draft, not an applied migration. Before 
 3. Review it against the live Production schema and Supabase security advisors.
 4. Obtain explicit approval before applying the migration to Production.
 
-The draft adds `public.armex_video_generations` with owner-scoped RLS, a unique per-user request ID, atomic wallet debit/job creation, worker leases, safe terminal refund, and chat-message/attachment persistence. It uses the existing private `lokal-chat-media` bucket and does not create or modify buckets.
+The draft adds `public.armex_video_generations` with RLS enabled with service-role-only table access, API-enforced owner scoping, and a unique per-user request ID, atomic wallet debit/job creation, worker leases, safe terminal refund, and chat-message/attachment persistence. It uses the existing private `lokal-chat-media` bucket and does not create or modify buckets.
 
 ## Worker scheduling required before live processing
 
