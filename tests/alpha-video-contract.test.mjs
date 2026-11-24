@@ -55,20 +55,10 @@ test("Alpha migration matches the reviewed draft and has valid output guards", a
   const draft = await read("docs/alpha-video/alpha-video-schema-draft.sql");
   const migration = await read("supabase/migrations/20261124054554_alpha_video_jobs.sql");
   assert.equal(migration, draft, "timestamped migration must match the reviewed draft");
-  assert.match(migration, /p_sha256 !~ '\^\[0-9a-f\]\{64\}\
-  const ui = await read("index.html");
-  const module = await read("modules/video/video-studio.js");
-  assert.match(ui, /id="video-form"/);
-  assert.match(ui, /id="video-history"/);
-  assert.match(module, /uploadToSignedUrl/);
-  assert.match(module, /complete_media_upload/);
-  assert.match(module, /alpha_video_status/);
-  assert.doesNotMatch(module, /ALPHA_API_KEY|ALPHA_VIDEO_WORKER_SECRET/);
-});
- then/);
-  assert.doesNotMatch(migration, /\\n then\\n\\s*raise exception 'Invalid video output metadata'/);
+  assert.ok(migration.includes("or p_sha256 !~ '^[0-9a-f]{64}$' then"));
+  assert.doesNotMatch(migration, /\n then\n\s*raise exception 'Invalid video output metadata'/);
   assert.equal(
-    (migration.match(/create or replace function public\\.armex_finish_video_job/g) || []).length,
+    (migration.match(/create or replace function public\.armex_finish_video_job/g) || []).length,
     1,
     "finish function must appear exactly once"
   );
