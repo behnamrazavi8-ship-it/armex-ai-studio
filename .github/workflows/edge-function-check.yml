@@ -154,3 +154,4 @@ jobs:
           node --check /tmp/lokal-inline-0.js
           node --check /tmp/lokal-inline-1.mjs
 # verify Alpha migration integrity
+# verify Alpha pre-submit failure handling
