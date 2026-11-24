@@ -1,0 +1,69 @@
+name: Prepare Alpha video migration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Alpha branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/alpha-video-provider
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate migration filename with official Supabase CLI
+        id: migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if compgen -G "supabase/migrations/*_alpha_video_jobs.sql" > /dev/null; then
+            echo "An Alpha video migration already exists; refusing to overwrite it."
+            exit 1
+          fi
+
+          temp_dir="$(mktemp -d)"
+          mkdir -p "$temp_dir/project"
+          cd "$temp_dir/project"
+
+          npx --yes supabase@latest init
+          npx --yes supabase@latest migration new alpha_video_jobs
+
+          generated="$(find supabase/migrations -maxdepth 1 -type f -name '*_alpha_video_jobs.sql' -print -quit)"
+          test -n "$generated"
+
+          filename="$(basename "$generated")"
+          target="$GITHUB_WORKSPACE/supabase/migrations/$filename"
+          cp "$generated" "$target"
+          cat "$GITHUB_WORKSPACE/docs/alpha-video/alpha-video-schema-draft.sql" > "$target"
+          echo "filename=$filename" >> "$GITHUB_OUTPUT"
+
+      - name: Validate generated file
+        env:
+          MIGRATION_FILENAME: ${{ steps.migration.outputs.filename }}
+        run: |
+          set -euo pipefail
+          test -s "supabase/migrations/$MIGRATION_FILENAME"
+          git diff --check
+          echo "Prepared supabase/migrations/$MIGRATION_FILENAME"
+          echo "This workflow does not link to Supabase, run SQL, deploy functions, or access secrets."
+
+      - name: Commit migration on Alpha branch
+        env:
+          MIGRATION_FILENAME: ${{ steps.migration.outputs.filename }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "supabase/migrations/$MIGRATION_FILENAME"
+          git commit -m "Prepare Alpha video jobs migration"
+          git push origin HEAD:refs/heads/feat/alpha-video-provider
