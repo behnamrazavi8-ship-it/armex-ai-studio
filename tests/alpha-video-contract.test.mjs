@@ -25,6 +25,10 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.match(worker, /MAX_OUTPUT_BYTES/);
   assert.match(worker, /ftyp/);
   assert.match(worker, /lokal-chat-media/);
+  assert.match(worker, /finalization_unknown/);
+  assert.match(worker, /armex_video_generations/);
+  assert.match(worker, /reconciled\?\.status === "completed"/);
+  assert.match(worker, /if \(finishAttempted\)/);
 });
 
 test("schema draft reserves credits atomically and protects user-owned jobs", async () => {
@@ -37,6 +41,9 @@ test("schema draft reserves credits atomically and protects user-owned jobs", as
   assert.match(sql, /pg_advisory_xact_lock/);
   assert.match(sql, /conversation_id=p_conversation_id/);
   assert.match(sql, /armex_finish_video_job/);
+  assert.match(sql, /p_storage_path is null or p_size_bytes is null or p_sha256 is null/i);
+  assert.match(sql, /if p_worker_id is null then/i);
+  assert.match(sql, /and locked_by=p_worker_id/i);
   assert.ok(
     sql.indexOf("v_debited := public.armex_debit_credits") <
       sql.indexOf("insert into public.armex_messages(conversation_id,user_id,role,content,model,request_id)"),
