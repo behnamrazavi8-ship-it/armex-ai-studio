@@ -56,9 +56,44 @@ async function providerFetch(path: string, apiKey: string, init: RequestInit = {
   }
 }
 
+function isPublicIpv4(raw: string): boolean {
+  const parts = raw.split(".");
+  if (parts.length !== 4 || parts.some((part) => !/^\\d{1,3}$/.test(part) || Number(part) > 255)) return false;
+  const [a, b, c] = parts.map(Number);
+  if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && (b === 168 || (b === 0 && c === 0) || (b === 0 && c === 2))) return false;
+  if (a === 192 && b === 88 && c === 99) return false;
+  if (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) return false;
+  if (a === 203 && b === 0 && c === 113) return false;
+  if (a === 255) return false;
+  return true;
+}
+
+async function assertPublicDns(host: string): Promise<void> {
+  let ipv4: string[];
+  let ipv6: string[];
+  try {
+    [ipv4, ipv6] = await Promise.all([
+      Deno.resolveDns(host, "A"),
+      Deno.resolveDns(host, "AAAA"),
+    ]);
+  } catch {
+    throw new Error("provider_output_dns_resolution_failed");
+  }
+  // This worker intentionally supports IPv4-only output hosts until IPv6
+  // classification and destination pinning are implemented by the egress layer.
+  if (!ipv4.length || ipv6.length || ipv4.some((address) => !isPublicIpv4(address))) {
+    throw new Error("provider_output_dns_not_public_ipv4_only");
+  }
+}
+
 async function fetchProviderOutput(raw: unknown, allowedHosts: Set<string>): Promise<Response> {
   let url = safeOutputUrl(raw, allowedHosts);
   for (let hop = 0; hop < 4; hop++) {
+    await assertPublicDns(new URL(url).hostname);
     const response = await fetch(url, { redirect: "manual" });
     if (![301, 302, 303, 307, 308].includes(response.status)) return response;
     const location = response.headers.get("location");
