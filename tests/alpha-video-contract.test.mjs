@@ -46,6 +46,8 @@ test("worker never retries an ambiguous Alpha create request", async () => {
   assert.match(pinned, /Deno\.connect\(\{ hostname: ip, port: 443, transport: "tcp" \}\)/);
   assert.match(pinned, /Deno\.startTls\(tcp, \{ hostname: host \}\)/);
   assert.match(pinned, /provider_output_peer_ip_mismatch/);
+  assert.match(pinned, /remoteAddr/);
+  assert.match(pinned, /contentLength === 0/);
   assert.match(pinned, /Accept-Encoding: identity/);
   assert.match(pinned, /pinned_http_transfer_encoding_unsupported/);
   assert.doesNotMatch(worker, /fetch\(url, \{ redirect: "manual" \}\)/);
