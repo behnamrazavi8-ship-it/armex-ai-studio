@@ -189,6 +189,7 @@ async function processOne(db: ReturnType<typeof createClient>, apiKey: string) {
   }
 
   let outputPath = "";
+  let finishAttempted = false;
   try {
     const download = await fetchProviderOutput(statusData?.output?.url);
     if (!download.ok) throw new Error("output_download_http_" + download.status);
@@ -212,13 +213,39 @@ async function processOne(db: ReturnType<typeof createClient>, apiKey: string) {
       contentType: "video/mp4", upsert: false,
     });
     if (uploadError) throw new Error("video_storage_upload_" + uploadError.message);
+    finishAttempted = true;
     const { data: completed, error: finishError } = await db.rpc("armex_finish_video_job", {
       p_job_id: jobId, p_worker_id: workerId, p_storage_path: outputPath,
       p_size_bytes: bytes.length, p_sha256: sha256,
     });
-    if (finishError || completed !== true) throw new Error("video_finalize_failed");
-    return { worked: true, status: "completed", bytes: bytes.length };
+    if (!finishError && completed === true) {
+      return { worked: true, status: "completed", bytes: bytes.length };
+    }
+
+    // The RPC may have committed even if its response was lost. Reconcile before
+    // deleting the object or refunding credits.
+    const { data: reconciled, error: reconcileError } = await db.from("armex_video_generations")
+      .select("status,output_storage_path")
+      .eq("id", jobId)
+      .maybeSingle();
+    if (!reconcileError && reconciled?.status === "completed" &&
+        reconciled.output_storage_path === outputPath) {
+      return { worked: true, status: "completed", bytes: bytes.length, reconciled: true };
+    }
+    console.error("Alpha video finalization needs reconciliation", {
+      jobId, rpcError: finishError?.code || null,
+      reconcileError: reconcileError?.code || null,
+      observedStatus: reconciled?.status || null,
+    });
+    return { worked: true, status: "finalization_unknown" };
   } catch (error) {
+    if (finishAttempted) {
+      // Keep the object: the DB transaction may already have committed.
+      console.error("Alpha video finalization outcome is unknown", {
+        jobId, error: String(error).slice(0, 100),
+      });
+      return { worked: true, status: "finalization_unknown" };
+    }
     if (outputPath) await db.storage.from(BUCKET).remove([outputPath]);
     await markFailed(db, jobId, String(error instanceof Error ? error.message : "video_output_invalid"));
     return { worked: true, status: "failed" };
