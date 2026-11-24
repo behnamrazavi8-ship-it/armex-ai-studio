@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const BASE = "https://api.appalpha.ir/v1";
 const BUCKET = "lokal-chat-media";
-const MAX_OUTPUT_BYTES = 250 * 1024 * 1024;
+const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const workerId = crypto.randomUUID();
 
 function required(name: string): string {
