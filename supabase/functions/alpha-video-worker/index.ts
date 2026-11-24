@@ -14,17 +14,25 @@ function required(name: string): string {
 const json = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-function safeOutputUrl(raw: unknown): string {
+function parseOutputHosts(raw: string): Set<string> {
+  const hosts = raw.split(",").map((item) => item.trim().toLowerCase().replace(/\.$/, "")).filter(Boolean);
+  if (!hosts.length || hosts.some((host) =>
+    host.length > 253 || !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(host)
+  )) {
+    throw new Error("invalid_alpha_output_host_allowlist");
+  }
+  return new Set(hosts);
+}
+
+function safeOutputUrl(raw: unknown, allowedHosts: Set<string>): string {
   if (typeof raw !== "string") throw new Error("provider_output_url_missing");
-  const url = new URL(raw);
-  const host = url.hostname.toLowerCase();
-  const ipv6Host = host.replace(/^\[|\]$/g, "");
-  const privateIpv6 = ipv6Host.includes(":") && (/^(fc|fd|fe80):/i.test(ipv6Host) || ipv6Host === "::1");
+  let url: URL;
+  try { url = new URL(raw); } catch { throw new Error("provider_output_url_invalid"); }
+  const host = url.hostname.toLowerCase().replace(/\.$/, "");
+  const isIpLiteral = host.includes(":") || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host);
   if (url.protocol !== "https:" || url.username || url.password ||
-      host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
-      host === "127.0.0.1" || privateIpv6 || host.startsWith("10.") ||
-      host.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
-      host === "169.254.169.254" || host === "0.0.0.0") {
+      (url.port !== "" && url.port !== "443") || isIpLiteral ||
+      !allowedHosts.has(host)) {
     throw new Error("provider_output_url_rejected");
   }
   return url.toString();
@@ -48,14 +56,14 @@ async function providerFetch(path: string, apiKey: string, init: RequestInit = {
   }
 }
 
-async function fetchProviderOutput(raw: unknown): Promise<Response> {
-  let url = safeOutputUrl(raw);
+async function fetchProviderOutput(raw: unknown, allowedHosts: Set<string>): Promise<Response> {
+  let url = safeOutputUrl(raw, allowedHosts);
   for (let hop = 0; hop < 4; hop++) {
     const response = await fetch(url, { redirect: "manual" });
     if (![301, 302, 303, 307, 308].includes(response.status)) return response;
     const location = response.headers.get("location");
     if (!location) throw new Error("provider_output_redirect_missing_location");
-    url = safeOutputUrl(new URL(location, url).toString());
+    url = safeOutputUrl(new URL(location, url).toString(), allowedHosts);
   }
   throw new Error("provider_output_redirect_limit");
 }
@@ -88,7 +96,7 @@ async function markFailed(db: WorkerDb, jobId: string, code: string) {
   if (error) throw new Error("VIDEO_FAIL_RPC_" + error.code);
 }
 
-async function processOne(db: WorkerDb, apiKey: string) {
+async function processOne(db: WorkerDb, apiKey: string, allowedOutputHosts: Set<string>) {
   const { data: job, error: claimError } = await db.rpc("armex_claim_video_job", { p_worker_id: workerId });
   if (claimError) throw new Error("VIDEO_CLAIM_FAILED_" + claimError.code);
   if (!job) return { worked: false };
@@ -205,7 +213,7 @@ async function processOne(db: WorkerDb, apiKey: string) {
   let outputPath = "";
   let finishAttempted = false;
   try {
-    const download = await fetchProviderOutput(statusData?.output?.url);
+    const download = await fetchProviderOutput(statusData?.output?.url, allowedOutputHosts);
     if (!download.ok) throw new Error("output_download_http_" + download.status);
     const declaredLength = Number(download.headers.get("content-length") || 0);
     if (declaredLength > MAX_OUTPUT_BYTES) throw new Error("video_output_too_large");
@@ -278,7 +286,8 @@ Deno.serve(async (request) => {
     const db = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"), {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const result = await processOne(db, required("ALPHA_API_KEY"));
+    const allowedOutputHosts = parseOutputHosts(required("ALPHA_OUTPUT_HOSTS"));
+    const result = await processOne(db, required("ALPHA_API_KEY"), allowedOutputHosts);
     return result.worked ? json({ success: true, ...result }, 200) : new Response(null, { status: 204 });
   } catch (error) {
     console.error("Alpha video worker failed", String(error).slice(0, 200));
