@@ -1,6 +1,7 @@
 import { createSupabaseContext } from "npm:@supabase/server@1";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { handleImageEditApi } from "./image-edit-api.ts";
+import { handleAlphaVideoApi } from "./alpha-video-api.ts";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
@@ -678,6 +679,11 @@ const handle = async (request: Request): Promise<Response> => {
     return json({ success: true, conversation, messages: (rows ?? []).reverse(), attachments }, 200, cors);
   }
 
+  const alphaVideoGetAction = url.searchParams.get("action") || "";
+  if (request.method === "GET" && ["alpha_video_status", "alpha_video_history"].includes(alphaVideoGetAction)) {
+    return await handleAlphaVideoApi(db, userId, alphaVideoGetAction, null, url.searchParams.get("job_id") || "", cors);
+  }
+
   const imageEditGetAction = url.searchParams.get("action") || "";
   if (request.method === "GET" && ["image_edit_quota", "image_edit_status", "image_edits"].includes(imageEditGetAction)) {
     return await handleImageEditApi(db, userId, imageEditGetAction, null, url.searchParams.get("job_id") || "", openRouterKey, cors);
@@ -706,6 +712,9 @@ const handle = async (request: Request): Promise<Response> => {
     return fail("Invalid JSON", 400, cors);
   }
 
+  if (body.action === "create_alpha_video") {
+    return await handleAlphaVideoApi(db, userId, "create_alpha_video", body, "", cors);
+  }
   if (body.action === "generate_image") {
     return await generateImage(db, userId, body, openRouterKey, cors);
   }
