@@ -55,6 +55,7 @@ declare
   v_attachment public.armex_chat_attachments%rowtype;
   v_debited boolean;
   v_message uuid;
+  v_updated integer;
   v_job public.armex_video_generations%rowtype;
 begin
   if p_user_id is null or p_request_id is null or p_conversation_id is null
@@ -105,6 +106,17 @@ begin
   insert into public.armex_messages(conversation_id,user_id,role,content,model,request_id)
     values(p_conversation_id,p_user_id,'user',btrim(p_prompt),'video-wan22',p_request_id)
     returning id into v_message;
+
+  -- Keep the source image visible on the exact video-request message in chat history.
+  update public.armex_chat_attachments
+    set message_id=v_message
+    where id=p_attachment_id and user_id=p_user_id
+      and conversation_id=p_conversation_id and status='ready';
+  get diagnostics v_updated = row_count;
+  if v_updated <> 1 then
+    raise exception 'Video input attachment could not be linked to its request message'
+      using errcode='P0002';
+  end if;
 
   insert into public.armex_video_generations(
     user_id,request_id,conversation_id,user_message_id,input_attachment_id,
