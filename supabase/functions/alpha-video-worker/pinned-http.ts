@@ -55,21 +55,20 @@ function parseHeaders(raw: string): { status: number; headers: Headers } {
 
 async function resolvePinnedIpv4(host: string): Promise<string[]> {
   let a: string[];
-  let aaaa: string[];
   try {
-    [a, aaaa] = await withTimeout(
-      Promise.all([
-        Deno.resolveDns(host, "A"),
-        Deno.resolveDns(host, "AAAA"),
-      ]),
+    a = await withTimeout(
+      Deno.resolveDns(host, "A"),
       8000,
       "provider_output_dns_timeout",
     );
   } catch {
     throw new Error("provider_output_dns_resolution_failed");
   }
-  if (!a.length || aaaa.length || a.some((ip) => !isPublicIpv4(ip))) {
-    throw new Error("provider_output_dns_not_public_ipv4_only");
+  // The transport only ever opens TCP to validated IPv4 literals. It does not
+  // resolve or connect to AAAA records, so dual-stack hosts remain safe without
+  // relying on resolver-specific behavior for an absent AAAA record.
+  if (!a.length || a.some((ip) => !isPublicIpv4(ip))) {
+    throw new Error("provider_output_dns_not_public_ipv4");
   }
   return [...new Set(a)];
 }
