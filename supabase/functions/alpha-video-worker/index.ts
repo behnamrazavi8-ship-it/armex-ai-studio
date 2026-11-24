@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const BASE = "https://api.appalpha.ir/v1";
 const BUCKET = "lokal-chat-media";
@@ -45,7 +45,7 @@ async function providerFetch(path: string, apiKey: string, init: RequestInit = {
   }
 }
 
-async function markFailed(db: ReturnType<typeof createClient>, jobId: string, code: string) {
+async function markFailed(db: SupabaseClient, jobId: string, code: string) {
   const { error } = await db.rpc("armex_fail_video_job", {
     p_job_id: jobId, p_worker_id: workerId, p_error_code: code.slice(0, 80),
   });
@@ -89,7 +89,7 @@ async function processOne(db: ReturnType<typeof createClient>, apiKey: string) {
         p_job_id: jobId,
         p_worker_id: workerId,
         p_alpha_id: payload.id,
-        p_cost_toman: Number.isSafeInteger(Number(payload.cost_toman)) ? Number(payload.cost_toman) : 5000,
+        p_cost_toman: Number.isSafeInteger(Number(payload.cost_toman)) && Number(payload.cost_toman) > 0 ? Number(payload.cost_toman) : 5000,
       });
       if (saveError || accepted !== true) {
         // Provider accepted the generation; never submit it a second time.
