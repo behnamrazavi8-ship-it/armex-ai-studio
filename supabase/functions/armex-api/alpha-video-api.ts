@@ -50,14 +50,12 @@ export async function handleAlphaVideoApi(
     if (!body) return fail("درخواست ساخت ویدئو معتبر نیست.", 400, cors);
     const requestId = validUuid(body.request_id) ? body.request_id : "";
     const attachmentId = validUuid(body.attachment_id) ? body.attachment_id : "";
-    const conversationId = body.conversation_id == null
-      ? null
-      : validUuid(body.conversation_id) ? body.conversation_id : "";
+    const conversationId = validUuid(body.conversation_id) ? body.conversation_id : "";
     const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
     const cinematic = body.cinematic !== false;
     const credits = creditCost();
 
-    if (!requestId || !attachmentId || conversationId === "" ||
+    if (!requestId || !attachmentId || !conversationId ||
         !prompt || prompt.length > MAX_PROMPT_CHARS) {
       return fail("شناسه درخواست، تصویر و توضیح معتبر لازم است.", 400, cors);
     }
@@ -99,7 +97,6 @@ export async function handleAlphaVideoApi(
       duplicate: data.duplicate === true,
       job: { id: data.job_id, status: data.status || "queued", conversation_id: data.conversation_id },
       credits_reserved: data.credits_reserved,
-      provider_price_toman: 5000,
       message: "درخواست در صف امن قرار گرفت؛ پس از تکمیل Worker خروجی را ذخیره می‌کند.",
     }, 202, cors);
   }
