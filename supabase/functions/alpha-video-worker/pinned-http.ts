@@ -1,21 +1,7 @@
 const MAX_HEADER_BYTES = 32 * 1024;
 const MAX_BODY_BYTES = 50 * 1024 * 1024;
 
-export function isPublicIpv4(raw: string): boolean {
-  const parts = raw.split(".");
-  if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part) || Number(part) > 255)) return false;
-  const [a, b, c] = parts.map(Number);
-  if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
-  if (a === 100 && b >= 64 && b <= 127) return false;
-  if (a === 169 && b === 254) return false;
-  if (a === 172 && b >= 16 && b <= 31) return false;
-  if (a === 192 && (b === 168 || (b === 0 && (c === 0 || c === 2)))) return false;
-  if (a === 192 && b === 88 && c === 99) return false;
-  if (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) return false;
-  if (a === 203 && b === 0 && c === 113) return false;
-  if (a === 255) return false;
-  return true;
-}
+import { isPublicIpv4 } from "./ip-safety.mjs";
 
 function findHeaderEnd(bytes: Uint8Array): number {
   for (let i = 0; i <= bytes.length - 4; i++) {
@@ -28,6 +14,8 @@ function parseHeaders(raw: string): { status: number; headers: Headers } {
   const lines = raw.split("\r\n");
   const statusMatch = /^HTTP\/1\.[01] (\d{3})(?: |$)/.exec(lines.shift() || "");
   if (!statusMatch) throw new Error("pinned_http_invalid_status_line");
+  const status = Number(statusMatch[1]);
+  if (status < 200 || status > 599) throw new Error("pinned_http_unsupported_status");
   const headers = new Headers();
   for (const line of lines) {
     if (!line) continue;
@@ -37,7 +25,7 @@ function parseHeaders(raw: string): { status: number; headers: Headers } {
     const value = line.slice(colon + 1).trim();
     headers.append(name, value);
   }
-  return { status: Number(statusMatch[1]), headers };
+  return { status, headers };
 }
 
 async function resolvePinnedIpv4(host: string): Promise<string[]> {
@@ -131,7 +119,7 @@ export async function fetchPinnedHttps(rawUrl: string): Promise<Response> {
           if (contentLength !== null && (!Number.isSafeInteger(contentLength) || contentLength < 0 || contentLength > MAX_BODY_BYTES)) {
             throw new Error("video_output_too_large");
           }
-          if ([301, 302, 303, 307, 308].includes(parsed.status) || [204, 304].includes(parsed.status) || contentLength === 0) {
+          if ([301, 302, 303, 307, 308].includes(parsed.status) || [204, 205, 304].includes(parsed.status) || contentLength === 0) {
             reader.cancel().catch(() => {});
             socket.close();
             clearTimeout(timer);
