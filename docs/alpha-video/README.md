@@ -40,7 +40,7 @@ The SQL file in this folder is a review draft, not an applied migration. Before 
 3. Review it against the live Production schema and Supabase security advisors. Confirm the migration role owns the `SECURITY DEFINER` functions and that only `service_role` can execute them.
 4. Obtain explicit approval before applying the migration to Production.
 
-The draft adds `public.armex_video_generations` with RLS enabled with service-role-only table access, API-enforced owner scoping, and a unique per-user request ID. The existing private bucket has a 50 MB object limit; no bucket setting is changed., atomic wallet debit/job creation, worker leases, safe terminal refund, and chat-message/attachment persistence. It uses the existing private `lokal-chat-media` bucket and does not create or modify buckets.
+The draft adds `public.armex_video_generations` with RLS enabled and service-role-only table access, API-enforced owner scoping, and a unique per-user request ID. It uses the existing private `lokal-chat-media` bucket (50 MB limit) and does not create or modify buckets. Job creation serializes duplicate `(user_id, request_id)` submissions with a transaction-scoped advisory lock, verifies that the ready image attachment belongs to the exact selected conversation, and checks conversation ownership. It performs the wallet debit before inserting the user message and job. Because all operations run in one PostgreSQL transaction, a later insert failure rolls back the debit as well; insufficient balance leaves no new message or conversation-side mutation. Worker leases, safe terminal refunds, and chat-message/attachment persistence are included.
 
 ## Worker scheduling required before live processing
 
