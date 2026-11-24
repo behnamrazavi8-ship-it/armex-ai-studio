@@ -41,11 +41,7 @@ create index if not exists armex_video_generations_user_history_idx
 
 alter table public.armex_video_generations enable row level security;
 revoke all on public.armex_video_generations from anon, authenticated;
-grant select on public.armex_video_generations to authenticated;
 grant all on public.armex_video_generations to service_role;
-create policy "Users can read their own video generations"
-  on public.armex_video_generations for select to authenticated
-  using ((select auth.uid()) = user_id);
 
 create or replace function public.armex_create_video_job(
   p_user_id uuid, p_request_id uuid, p_conversation_id uuid,
@@ -222,7 +218,7 @@ begin
     where id=p_job_id and status='processing' and locked_by=p_worker_id
     for update;
   if not found then return false; end if;
-  if p_storage_path not like v_job.user_id::text||'/video/'||v_job.id::text||'.mp4'
+  if p_storage_path <> v_job.user_id::text||'/video/'||v_job.id::text||'.mp4'
      or p_size_bytes <= 0 or p_sha256 !~ '^[0-9a-f]{64}$' then
     raise exception 'Invalid video output metadata' using errcode='22023';
   end if;
