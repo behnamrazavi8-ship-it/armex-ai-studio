@@ -83,7 +83,7 @@ export async function fetchPinnedHttps(rawUrl: string): Promise<Response> {
   let lastError: unknown;
   for (const ip of ips) {
     let tls: Deno.TlsConn | null = null;
-    let timer: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       tls = await connectPinned(ip, host);
       const socket = tls;
