@@ -93,15 +93,20 @@ jobs:
       - name: Type-check Staging Prompt Intelligence
         run: deno check supabase/staging/functions/prompt-understanding/index.ts
 
-      - name: Type-check armex-api
-        run: deno check supabase/functions/armex-api/index.ts
+      - name: Type-check armex-api and Alpha video worker
+        run: |
+          deno check supabase/functions/armex-api/index.ts
+          deno check supabase/functions/alpha-video-worker/index.ts
 
       - name: Test Smart Chat image-edit intent
         run: node --test tests/chat-image-edit-intent.test.mjs
+      - name: Test Alpha Wan 2.2 integration contracts
+        run: node --test tests/alpha-video-contract.test.mjs
       - name: Syntax-check Smart Chat modules
         run: |
           node --input-type=module --check < modules/chat/chat.js
           node --input-type=module --check < modules/chat/image-edit-intent.mjs
+          node --input-type=module --check < modules/video/video-studio.js
           node --input-type=module --check < modules/image-editor/image-editor.js
 
       - name: Syntax-check browser JavaScript
