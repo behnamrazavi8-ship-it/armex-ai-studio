@@ -30,6 +30,7 @@ Official docs: https://api.appalpha.ir/docs
 2. `ALPHA_VIDEO_WORKER_SECRET`: independent random secret checked by the worker.
 3. `ALPHA_VIDEO_CREDIT_COST`: positive integer in LOKAL AI credits. There is deliberately no default: Alpha's 5,000-toman provider price is not automatically equal to 5,000 LOKAL credits.
 4. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`: standard server-side Supabase environment values for the worker. Never expose either secret to the browser.
+5. `ALPHA_OUTPUT_HOSTS`: comma-separated exact hostnames approved for Alpha's temporary output files (only after Alpha confirms the official CDN hostname). Wildcards, IP literals, and unlisted redirect hosts are rejected. This setting is mandatory; if it is missing or empty, the worker fails closed before claiming a job.
 
 ## Database preparation required before deployment
 
@@ -64,7 +65,7 @@ Each invocation claims at most one due job and exits quickly. Repeated invocatio
 - A definite provider rejection or invalid output marks the job failed and refunds the reserved LOKAL credits through an idempotent ledger key.
 - A timeout or ambiguous response to Alpha's POST is marked `submission_unknown`. The worker does not submit again because the provider docs do not establish an idempotency-key contract. Reconcile against Alpha's request list before any manual retry.
 - A successful provider output is downloaded, checked for MP4 signature and size, stored privately, and attached to an assistant message in the related conversation.
-- The provider's temporary output URL is never returned to the browser; the API issues a short-lived signed URL from LOKAL Storage.
+- The provider's temporary output URL is never returned to the browser; the API issues a short-lived signed URL from LOKAL Storage. Output downloads require an exact `ALPHA_OUTPUT_HOSTS` hostname allowlist and revalidate every redirect against the same list. Do not populate this setting from a job response or user input. The allowlist is not DNS pinning: before activation, confirm Alpha's official output hostnames and assess whether the runtime/network layer can guarantee public-IP resolution for those hosts.
 
 ## Not performed
 
