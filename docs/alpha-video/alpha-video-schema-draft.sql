@@ -1,6 +1,5 @@
--- DRAFT ONLY: reviewed schema for Alpha Wan 2.2 video jobs.
--- Do not apply directly to production. Convert to a timestamped migration with
--- the Supabase CLI, review against the live schema, then apply with explicit approval.
+-- Reviewed production migration for Alpha Wan 2.2 video jobs.
+-- Apply only after explicit approval; provider execution remains separately gated.
 
 create table if not exists public.armex_video_generations (
   id uuid primary key default gen_random_uuid(),
