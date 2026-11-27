@@ -557,7 +557,7 @@ else{
     output_language:d.language==="fa"?"fa":"en",visual_style:String(d.style||""),aspect_ratio:String(d.aspectRatio||"")
    };
    if(imageBase64){requestBody.image_base64=imageBase64;requestBody.image_mime_type=imageMimeType}
-   else if(imageAttachmentIds.length){throw new Error("لینک امن تصویرهای گفتگو در دسترس نیست؛ گفتگو را دوباره باز کن و سپس تحلیل را اجرا کن.")}
+   else if(imageAttachmentIds.length){requestBody.image_attachment_ids=imageAttachmentIds;requestBody.conversation_id=String(d.conversationId||"")}
    else if(imageUrls.length===1)requestBody.image_url=imageUrls[0];
    else if(imageUrls.length>1)requestBody.image_urls=imageUrls;
    const response=await fetch(config.promptIntelligenceUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding",{
@@ -575,7 +575,7 @@ else{
    window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID="";
    if(promptReferenceInput)promptReferenceInput.value="";
    if(promptReferenceStatus)promptReferenceStatus.textContent="تحلیل تصویر انجام شد؛ برای تصویر بعدی دوباره انتخاب کن.";
-   if(aiStatus)aiStatus.textContent="تحلیل با موفقیت انجام شد؛ از اعتبار کیف پول مصرف نشد.";
+   if(aiStatus)aiStatus.textContent="تحلیل هوشمند با موفقیت انجام شد.";
    window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{answer,ir:result.ir,usage:result.usage||null}}));
   }catch(e){
    const raw=String(e?.message||"");
