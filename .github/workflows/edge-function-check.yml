@@ -5,6 +5,8 @@ on:
     paths:
       - "index.html"
       - "modules/chat/**"
+      - "modules/prompt-lab/**"
+      - "tests/prompt-lab-ui.test.mjs"
       - "tests/chat-image-edit-intent.test.mjs"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
@@ -20,7 +22,9 @@ on:
     paths:
       - "index.html"
       - "modules/chat/**"
+      - "modules/prompt-lab/**"
       - "modules/video/**"
+      - "tests/prompt-lab-ui.test.mjs"
       - "tests/alpha-video-contract.test.mjs"
       - "tests/chat-image-edit-intent.test.mjs"
       - ".github/workflows/edge-function-check.yml"
@@ -109,6 +113,8 @@ jobs:
           deno check supabase/functions/armex-api/index.ts
           deno check supabase/functions/alpha-video-worker/index.ts
 
+      - name: Test Prompt Factory integration contracts
+        run: node --test tests/prompt-lab-ui.test.mjs
       - name: Test Smart Chat image-edit intent
         run: node --test tests/chat-image-edit-intent.test.mjs
       - name: Test Alpha Wan 2.2 integration contracts
@@ -116,6 +122,7 @@ jobs:
       - name: Syntax-check Smart Chat modules
         run: |
           node --input-type=module --check < modules/chat/chat.js
+          node --input-type=module --check < modules/prompt-lab/prompt-lab.js
           node --input-type=module --check < modules/chat/image-edit-intent.mjs
           node --input-type=module --check < modules/video/video-studio.js
           node --input-type=module --check < modules/image-editor/image-editor.js
