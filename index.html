@@ -584,7 +584,7 @@ else{
    window.LOKAL_PROMPT_REFERENCE_CONVERSATION_ID="";
    if(promptReferenceInput)promptReferenceInput.value="";
    if(promptReferenceStatus)promptReferenceStatus.textContent="تحلیل تصویر انجام شد؛ برای تصویر بعدی دوباره انتخاب کن.";
-   if(aiStatus)aiStatus.textContent="تحلیل هوشمند با موفقیت انجام شد.";
+   if(aiStatus)aiStatus.textContent="تحلیل با موفقیت انجام شد؛ از اعتبار کیف پول مصرف نشد.";
    window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{answer,ir:result.ir,usage:result.usage||null}}));
   }catch(e){
    const raw=String(e?.message||"");
