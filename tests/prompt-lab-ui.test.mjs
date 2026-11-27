@@ -12,7 +12,14 @@ test("Prompt Factory is a dedicated workspace enhancement on the existing Prompt
  assert.match(module, /initPromptLab\(\);/);
  assert.match(module, /lokal:ai-prompt-result/);
  assert.match(module, /factory-send-image/);
+ assert.match(html, /requestBody\.image_attachment_ids=imageAttachmentIds/);
+ assert.match(html, /requestBody\.conversation_id=String\(d\.conversationId\|\|\x22\x22\)/);
  assert.match(css, /prompt-factory-layout/);
+});
+test("Prompt Factory forwards private chat image IDs to the authenticated understanding endpoint", async () => {
+ const html = await read("index.html");
+ assert.match(html, /requestBody\.image_attachment_ids=imageAttachmentIds/);
+ assert.match(html, /requestBody\.conversation_id=String\(d\.conversationId\|\|\x22\x22\)/);
 });
 test("Prompt Factory UI does not directly call generation, wallet, or provider endpoints", async () => {
  const module = await read("modules/prompt-lab/prompt-lab.js");
