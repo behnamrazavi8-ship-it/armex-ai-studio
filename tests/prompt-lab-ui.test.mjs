@@ -9,6 +9,7 @@ test("Prompt Factory is a dedicated workspace enhancement on the existing Prompt
  assert.match(html, /modules\/prompt-lab\/prompt-lab\.js/);
  assert.match(html, /modules\/prompt-lab\/prompt-lab\.css/);
  assert.match(module, /Semantic IR/);
+ assert.match(module, /initPromptLab\(\);/);
  assert.match(module, /lokal:ai-prompt-result/);
  assert.match(module, /factory-send-image/);
  assert.match(css, /prompt-factory-layout/);
