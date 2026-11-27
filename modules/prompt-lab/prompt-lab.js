@@ -60,3 +60,6 @@ export function initPromptLab(){
  });
  renderRecent();
 }
+
+// The module is loaded after the workspace markup, so initialize the factory now.
+initPromptLab();
