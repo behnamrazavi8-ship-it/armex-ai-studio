@@ -557,7 +557,16 @@ else{
     output_language:d.language==="fa"?"fa":"en",visual_style:String(d.style||""),aspect_ratio:String(d.aspectRatio||"")
    };
    if(imageBase64){requestBody.image_base64=imageBase64;requestBody.image_mime_type=imageMimeType}
-   else if(imageAttachmentIds.length){requestBody.image_attachment_ids=imageAttachmentIds;requestBody.conversation_id=String(d.conversationId||"")}
+   else if(imageAttachmentIds.length){
+    const conversationId=String(d.conversationId||"");
+    if(!conversationId)throw new Error("شناسه گفتگوی تصاویر مرجع در دسترس نیست؛ گفتگو را دوباره باز کن.");
+    const conversation=await callArmexApi(session,"?action=conversation&id="+encodeURIComponent(conversationId));
+    if(conversation.success!==true||!Array.isArray(conversation.attachments))throw new Error("دریافت پیوند امن و تازه تصاویر گفتگو ناموفق بود.");
+    const attachmentsById=new Map(conversation.attachments.map(item=>[String(item.id),item]));
+    const freshImageUrls=imageAttachmentIds.map(id=>attachmentsById.get(id)?.signed_url);
+    if(freshImageUrls.some(url=>typeof url!=="string"||!url.trim()))throw new Error("یک یا چند تصویر مرجع دیگر در دسترس نیست؛ گفتگو را دوباره باز کن.");
+    requestBody.image_urls=freshImageUrls;
+   }
    else if(imageUrls.length===1)requestBody.image_url=imageUrls[0];
    else if(imageUrls.length>1)requestBody.image_urls=imageUrls;
    const response=await fetch(config.promptIntelligenceUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding",{
