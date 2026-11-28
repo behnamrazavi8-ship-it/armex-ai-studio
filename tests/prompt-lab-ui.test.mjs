@@ -30,3 +30,9 @@ test("Prompt Factory UI does not directly call generation, wallet, or provider e
  assert.doesNotMatch(module, /fetch\s*\(/);
  assert.doesNotMatch(module, /generate_image|generate_video|wallet|ALPHA_API_KEY/i);
 });
+
+test("Semantic Prompt Intelligence prioritizes explicit scene constraints over subject stereotypes", async () => {
+ const source = await read("supabase/staging/functions/prompt-understanding/index.ts");
+ assert.match(source, /snowman explicitly requested in summer/);
+ assert.match(source, /Do not infer a season, weather, location, or background from the subject alone/);
+});
