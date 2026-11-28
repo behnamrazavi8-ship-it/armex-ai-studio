@@ -5,6 +5,8 @@ on:
     paths:
       - "index.html"
       - "modules/chat/**"
+      - "modules/prompt-lab/**"
+      - "tests/prompt-lab-ui.test.mjs"
       - "tests/chat-image-edit-intent.test.mjs"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
@@ -12,7 +14,7 @@ on:
       - "supabase/staging/**"
       - "supabase/migrations/**"
   push:
-    branches: [main]
+    branches: [main, feat/lokal-popcorn-visual-only]
     paths:
       - "index.html"
       - ".github/workflows/edge-function-check.yml"
@@ -96,11 +98,14 @@ jobs:
       - name: Type-check armex-api
         run: deno check supabase/functions/armex-api/index.ts
 
+      - name: Test Prompt Factory integration contracts
+        run: node --test tests/prompt-lab-ui.test.mjs
       - name: Test Smart Chat image-edit intent
         run: node --test tests/chat-image-edit-intent.test.mjs
       - name: Syntax-check Smart Chat modules
         run: |
           node --input-type=module --check < modules/chat/chat.js
+          node --input-type=module --check < modules/prompt-lab/prompt-lab.js
           node --input-type=module --check < modules/chat/image-edit-intent.mjs
           node --input-type=module --check < modules/image-editor/image-editor.js
 
