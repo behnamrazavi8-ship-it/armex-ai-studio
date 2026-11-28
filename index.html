@@ -25,6 +25,7 @@
 .chat-attachment-card{align-self:flex-start;max-width:min(88%,520px);padding:10px;border:1px solid #28534b;border-radius:14px;background:#0a1c1b}.chat-attachment-card img,.chat-attachment-card video{display:block;width:100%;max-height:300px;object-fit:contain;border-radius:9px;background:#02070a}.chat-attachment-card .media-caption{font-size:10px;color:#a8c8c1;line-height:1.8;margin-top:7px;overflow-wrap:anywhere}.chat-attachment-card a{font-size:10px;color:#72e4cb;text-decoration:none}.chat-compose-actions button:disabled{opacity:.55;cursor:wait}
 </style>
 <link rel="stylesheet" href="./styles/lokal-luxe-theme.css?v=lokal-ai-assets-1">
+<link rel="stylesheet" href="./modules/prompt-lab/prompt-lab.css?v=1">
 
 </head>
 <body>
@@ -500,7 +501,16 @@ else{
     output_language:d.language==="fa"?"fa":"en",visual_style:String(d.style||""),aspect_ratio:String(d.aspectRatio||"")
    };
    if(imageBase64){requestBody.image_base64=imageBase64;requestBody.image_mime_type=imageMimeType}
-   else if(imageAttachmentIds.length){throw new Error("لینک امن تصویرهای گفتگو در دسترس نیست؛ گفتگو را دوباره باز کن و سپس تحلیل را اجرا کن.")}
+   else if(imageAttachmentIds.length){
+    const conversationId=String(d.conversationId||"");
+    if(!conversationId)throw new Error("شناسه گفتگوی تصاویر مرجع در دسترس نیست؛ گفتگو را دوباره باز کن.");
+    const conversation=await callArmexApi(session,"?action=conversation&id="+encodeURIComponent(conversationId));
+    if(conversation.success!==true||!Array.isArray(conversation.attachments))throw new Error("دریافت پیوند امن و تازه تصاویر گفتگو ناموفق بود.");
+    const attachmentsById=new Map(conversation.attachments.map(item=>[String(item.id),item]));
+    const freshImageUrls=imageAttachmentIds.map(id=>attachmentsById.get(id)?.signed_url);
+    if(freshImageUrls.some(url=>typeof url!=="string"||!url.trim()))throw new Error("یک یا چند تصویر مرجع دیگر در دسترس نیست؛ گفتگو را دوباره باز کن.");
+    requestBody.image_urls=freshImageUrls;
+   }
    else if(imageUrls.length===1)requestBody.image_url=imageUrls[0];
    else if(imageUrls.length>1)requestBody.image_urls=imageUrls;
    const response=await fetch(config.promptIntelligenceUrl.replace(/\/$/,"")+"/functions/v1/prompt-understanding",{
@@ -519,7 +529,7 @@ else{
    if(promptReferenceInput)promptReferenceInput.value="";
    if(promptReferenceStatus)promptReferenceStatus.textContent="تحلیل تصویر انجام شد؛ برای تصویر بعدی دوباره انتخاب کن.";
    if(aiStatus)aiStatus.textContent="تحلیل با موفقیت انجام شد؛ از اعتبار کیف پول مصرف نشد.";
-   window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{answer}}));
+   window.dispatchEvent(new CustomEvent("lokal:ai-prompt-result",{detail:{answer,ir:result.ir,usage:result.usage||null}}));
   }catch(e){
    const raw=String(e?.message||"");
    const friendly=/Insufficient credits/i.test(raw)?"اعتبار کیف پول کافی نیست.":/Invalid or expired session/i.test(raw)?"نشست ورود منقضی شده است؛ دوباره وارد شو.":/PROMPT_IR_BLOCKED:/.test(raw)?"درخواست ابهام مهمی دارد؛ لطفاً توضیح دقیق‌تری وارد کن.":/PROMPT_TOO_LONG/.test(raw)?"پرامپت نهایی بیش از حد مجاز است؛ توضیح را کوتاه‌تر کن.":raw||"تحلیل هوشمند ناموفق بود؛ دوباره تلاش کن.";
@@ -579,5 +589,6 @@ else{
  const {data:{session}}=await supabase.auth.getSession();if(!session)history.replaceState(location.hash.startsWith('#workspace-')?{lokalRoute:'workspace',lokalWorkspacePage:'home'}:{lokalRoute:'public'},'',location.pathname+location.search+(location.hash||'#top'));renderSession(session);if(session){window.lokalShowPage?.("home");if(location.hash.startsWith("#access_token")||location.hash.startsWith("#refresh_token"))history.replaceState(null,"",location.pathname+location.search)}supabase.auth.onAuthStateChange((event,next)=>{renderSession(next);if(next&&(event==="SIGNED_IN"||event==="INITIAL_SESSION")){window.lokalShowPage?.("home");if(location.hash.startsWith("#access_token")||location.hash.startsWith("#refresh_token"))history.replaceState(null,"",location.pathname+location.search)}});
 }
 </script>
+<script type="module" src="./modules/prompt-lab/prompt-lab.js?v=1"></script>
 </body>
 </html>
