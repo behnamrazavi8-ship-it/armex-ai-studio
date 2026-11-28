@@ -1,0 +1,5 @@
+project_id = "pismnyrbbdrreugpxjcj"
+
+[functions.prompt-understanding]
+# The Staging function validates Production user access tokens itself.
+verify_jwt = false
