@@ -21,6 +21,10 @@ test("Prompt Factory forwards private chat image IDs to the authenticated unders
  assert.match(html, /action=conversation&id=/);
  assert.match(html, /requestBody\.image_urls=freshImageUrls/);
 });
+test("Staging Prompt Intelligence allows the verified preview origin", async () => {
+ const source = await read("supabase/staging/functions/prompt-understanding/index.ts");
+ assert.match(source, /parsed\.hostname === "preview\.lokal-ai\.net"/);
+});
 test("Prompt Factory UI does not directly call generation, wallet, or provider endpoints", async () => {
  const module = await read("modules/prompt-lab/prompt-lab.js");
  assert.doesNotMatch(module, /fetch\s*\(/);
