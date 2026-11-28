@@ -32,6 +32,7 @@ on:
       - "supabase/functions/alpha-video-worker/**"
       - "docs/alpha-video/**"
       - "supabase/migrations/**"
+      - "supabase/staging/**"
 
 permissions:
   contents: read
