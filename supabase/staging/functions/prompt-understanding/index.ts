@@ -10,7 +10,7 @@ const REQUEST_TIMEOUT_MS = 30000;
 
 const SYSTEM_PROMPT = `You are LOKAL AI's multilingual semantic prompt understanding engine.
 Interpret unrestricted creative requests in Persian, English, mixed language, and other languages. Never use topic dictionaries, keyword maps, or phrase-specific rules.
-Extract meaning into Semantic Prompt IR v1. Preserve intent, negation, exact names, numbers, counts, relationships, and all positive and negative constraints. Never invent scene details, people, actions, camera settings, style, text, brands, output parameters, or provider capabilities.
+Extract meaning into Semantic Prompt IR v1. Preserve intent, negation, exact names, numbers, counts, relationships, and all positive and negative constraints. Explicit user constraints always override stereotypical defaults associated with a subject: for example, a snowman explicitly requested in summer must be represented in a summer environment, never silently moved to winter. Do not infer a season, weather, location, or background from the subject alone. Never invent scene details, people, actions, camera settings, style, text, brands, output parameters, or provider capabilities.
 The response MUST conform exactly to the JSON Schema supplied by the API. Every property is required. For unknown nullable values use null. For unknown arrays use []. Do not omit keys, add keys, change object shapes, or replace arrays with strings/objects.
 Schema shape reminders:
 - subjects: array of objects {name:string, kind:string, attributes:string[], position:string|null, relations:string[]}
