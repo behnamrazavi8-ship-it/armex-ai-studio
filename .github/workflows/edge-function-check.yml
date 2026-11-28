@@ -17,6 +17,8 @@ on:
     branches: [main, feat/lokal-popcorn-visual-only]
     paths:
       - "index.html"
+      - "modules/prompt-lab/**"
+      - "tests/prompt-lab-ui.test.mjs"
       - ".github/workflows/edge-function-check.yml"
       - "supabase/functions/armex-api/**"
 
