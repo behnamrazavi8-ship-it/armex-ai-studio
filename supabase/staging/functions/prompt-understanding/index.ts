@@ -36,6 +36,7 @@ const isAllowedOrigin = (origin: string | null): boolean => {
     return parsed.protocol === "https:" && (
       parsed.hostname === "lokal-ai.net" ||
       parsed.hostname === "www.lokal-ai.net" ||
+      parsed.hostname === "preview.lokal-ai.net" ||
       parsed.hostname.endsWith(".armex-ai-studio.pages.dev")
     );
   } catch {
